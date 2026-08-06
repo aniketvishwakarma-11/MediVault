@@ -2,16 +2,32 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useAuth, UserRole } from "@/context/AuthContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import {
+  ShieldCheck,
+  Mail,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Sparkles,
+  Stethoscope,
+  Building2,
+  CheckCircle2,
+  AlertCircle
+} from "lucide-react";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>("patient");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -34,7 +50,7 @@ export default function AuthPage() {
         });
         if (error) throw error;
         setRole(selectedRole);
-        router.push("/");
+        router.push("/patient/dashboard");
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -50,7 +66,7 @@ export default function AuthPage() {
         setRole(selectedRole);
 
         if (data.session) {
-          router.push("/");
+          router.push("/patient/dashboard");
         } else {
           setMessage("Registration successful! Please check your email to confirm your account.");
         }
@@ -61,6 +77,14 @@ export default function AuthPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoLogin = (demoRole: UserRole) => {
+    setSelectedRole(demoRole);
+    setEmail(demoRole === "patient" ? "patient@medivault.local" : "doctor@hospital.org");
+    setPassword("password123");
+    setRole(demoRole);
+    router.push("/patient/dashboard");
   };
 
   const handleGoogleAuth = async () => {
@@ -78,304 +102,214 @@ export default function AuthPage() {
   };
 
   return (
-    <div style={{ background: "var(--mv-bg-primary)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Navbar />
 
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "120px 24px 80px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Orbs background */}
-        <div className="grid-pattern" />
-        <div
-          className="orb"
-          style={{
-            width: 500,
-            height: 500,
-            background: "radial-gradient(circle, rgba(14,116,144,0.2), transparent 70%)",
-            top: "10%",
-            left: "10%",
-          }}
-        />
-        <div
-          className="orb"
-          style={{
-            width: 400,
-            height: 400,
-            background: "radial-gradient(circle, rgba(139,92,246,0.15), transparent 70%)",
-            bottom: "10%",
-            right: "10%",
-          }}
-        />
+      <main className="flex-1 pt-28 pb-16 flex items-center justify-center relative overflow-hidden px-4">
+        {/* Ambient Glow */}
+        <div className="absolute inset-0 grid-pattern opacity-60 pointer-events-none" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-sky-200/40 to-teal-200/30 blur-3xl rounded-full pointer-events-none -z-10" />
 
-        <div
-          className="glass-card"
-          style={{
-            maxWidth: 460,
-            width: "100%",
-            padding: "40px 36px",
-            position: "relative",
-            zIndex: 2,
-            boxShadow: "var(--mv-shadow-lg), 0 0 60px rgba(34,211,238,0.1)",
-          }}
-        >
-          {/* Header */}
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: "linear-gradient(135deg, #0e7490, #0f766e)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 16px",
-                boxShadow: "0 0 24px rgba(14, 116, 144, 0.4)",
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 12h6" />
-                <path d="M12 9v6" />
-                <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
-              </svg>
+        <div className="w-full max-w-xl relative z-10">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-10 space-y-6">
+            
+            {/* Header Title */}
+            <div className="text-center space-y-2">
+              <div className="inline-flex p-3 rounded-2xl bg-sky-50 text-sky-600 border border-sky-200 mb-2">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                {isLogin ? "Welcome Back to MediVault" : "Create Patient Identity"}
+              </h1>
+              <p className="text-sm text-slate-500">
+                {isLogin
+                  ? "Access your zero-knowledge encrypted medical records"
+                  : "Start securing your medical identity in under 2 minutes"}
+              </p>
             </div>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>
-              {isLogin ? "Welcome Back" : "Create Account"}
-            </h1>
-            <p style={{ color: "var(--mv-text-secondary)", fontSize: "0.9rem" }}>
-              {isLogin ? "Access your secure MediVault health profile" : "Join MediVault — Your Health, Your Data, Your Control"}
-            </p>
-          </div>
 
-          {/* Role Selection */}
-          <div style={{ marginBottom: 24 }}>
-            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--mv-text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Select Role
-            </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-              {[
-                { id: "patient", label: "Patient", icon: "👤" },
-                { id: "doctor", label: "Doctor", icon: "👨‍⚕️" },
-                { id: "hospital", label: "Hospital", icon: "🏥" },
-              ].map((roleItem) => (
+            {/* Quick Demo Access Bar */}
+            <div className="p-3.5 rounded-2xl bg-sky-50/80 border border-sky-200/80 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-sky-900">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-sky-600" />
+                  Instant Demo Portal Access
+                </span>
+                <span className="text-[10px] text-sky-700 bg-white px-2 py-0.5 rounded border border-sky-200">No Password Required</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  key={roleItem.id}
                   type="button"
-                  onClick={() => setSelectedRole(roleItem.id as UserRole)}
-                  style={{
-                    padding: "10px 8px",
-                    borderRadius: 10,
-                    border: selectedRole === roleItem.id ? "1.5px solid var(--mv-accent-cyan)" : "1px solid var(--mv-border)",
-                    background: selectedRole === roleItem.id ? "rgba(34,211,238,0.1)" : "rgba(20,28,51,0.5)",
-                    color: selectedRole === roleItem.id ? "var(--mv-accent-cyan)" : "var(--mv-text-secondary)",
-                    cursor: "pointer",
-                    fontSize: "0.825rem",
-                    fontWeight: 600,
-                    transition: "all 0.2s ease",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
+                  onClick={() => handleDemoLogin("patient")}
+                  className="px-3 py-2 rounded-xl bg-white hover:bg-sky-100 text-sky-800 text-xs font-bold border border-sky-200 transition-all flex items-center justify-center gap-1.5 shadow-xs"
                 >
-                  <span style={{ fontSize: "1.1rem" }}>{roleItem.icon}</span>
-                  {roleItem.label}
+                  <User className="w-3.5 h-3.5 text-sky-600" />
+                  Demo Patient Login
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin("doctor")}
+                  className="px-3 py-2 rounded-xl bg-white hover:bg-teal-100 text-teal-800 text-xs font-bold border border-teal-200 transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+                  Demo Doctor Login
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Error Message */}
-          {error && (
-            <div
-              style={{
-                padding: "12px 16px",
-                background: "rgba(239, 68, 68, 0.1)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                borderRadius: 10,
-                color: "#f87171",
-                fontSize: "0.85rem",
-                marginBottom: 20,
-              }}
-            >
-              {error}
+            {/* Mode Switch Tabs */}
+            <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => { setIsLogin(true); setError(null); setMessage(null); }}
+                className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
+                  isLogin ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsLogin(false); setError(null); setMessage(null); }}
+                className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
+                  !isLogin ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Register
+              </button>
             </div>
-          )}
 
-          {/* Success Message */}
-          {message && (
-            <div
-              style={{
-                padding: "12px 16px",
-                background: "rgba(16, 185, 129, 0.1)",
-                border: "1px solid rgba(16, 185, 129, 0.3)",
-                borderRadius: 10,
-                color: "#34d399",
-                fontSize: "0.85rem",
-                marginBottom: 20,
-              }}
-            >
-              {message}
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {!isLogin && (
-              <div>
-                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--mv-text-muted)", marginBottom: 6 }}>
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px 16px",
-                    background: "rgba(15, 22, 41, 0.7)",
-                    border: "1px solid var(--mv-border)",
-                    borderRadius: 10,
-                    color: "var(--mv-text-primary)",
-                    fontSize: "0.9rem",
-                    outline: "none",
-                  }}
-                />
+            {/* Error / Success Messages */}
+            {error && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+            {message && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-3">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{message}</span>
               </div>
             )}
 
-            <div>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--mv-text-muted)", marginBottom: 6 }}>
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  background: "rgba(15, 22, 41, 0.7)",
-                  border: "1px solid var(--mv-border)",
-                  borderRadius: 10,
-                  color: "var(--mv-text-primary)",
-                  fontSize: "0.9rem",
-                  outline: "none",
-                }}
-              />
+            {/* Auth Form */}
+            <form onSubmit={handleAuth} className="space-y-4">
+              {/* Role Selection */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Account Role</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "patient", label: "Patient", icon: User },
+                    { id: "doctor", label: "Doctor", icon: Stethoscope },
+                    { id: "admin", label: "Facility", icon: Building2 },
+                  ].map((role) => (
+                    <button
+                      key={role.id}
+                      type="button"
+                      onClick={() => setSelectedRole(role.id as UserRole)}
+                      className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                        selectedRole === role.id
+                          ? "bg-sky-50 border-sky-500 text-sky-700 shadow-xs"
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <role.icon className="w-4 h-4" />
+                      <span>{role.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {!isLogin && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Full Name</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Jane Doe"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Email Address</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="patient@medivault.local"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-600 to-teal-600 text-white font-bold text-sm shadow-md shadow-sky-600/20 hover:shadow-lg hover:shadow-sky-600/30 transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <span>Authenticating...</span>
+                ) : (
+                  <>
+                    <span>{isLogin ? "Sign In to Portal" : "Create Account"}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="relative flex items-center justify-center py-2">
+              <div className="border-t border-slate-200 w-full" />
+              <span className="bg-white px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider absolute">OR</span>
             </div>
 
-            <div>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--mv-text-muted)", marginBottom: 6 }}>
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  background: "rgba(15, 22, 41, 0.7)",
-                  border: "1px solid var(--mv-border)",
-                  borderRadius: 10,
-                  color: "var(--mv-text-primary)",
-                  fontSize: "0.9rem",
-                  outline: "none",
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary"
-              style={{
-                width: "100%",
-                padding: "14px",
-                marginTop: 8,
-                fontSize: "0.95rem",
-                borderRadius: 10,
-                opacity: loading ? 0.7 : 1,
-              }}
-            >
-              {loading ? "Processing..." : isLogin ? "Sign In with Supabase" : "Create Supabase Account"}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "24px 0" }}>
-            <div style={{ flex: 1, height: 1, background: "var(--mv-border)" }} />
-            <span style={{ color: "var(--mv-text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>OR</span>
-            <div style={{ flex: 1, height: 1, background: "var(--mv-border)" }} />
-          </div>
-
-          {/* Google Sign In */}
-          <button
-            type="button"
-            onClick={handleGoogleAuth}
-            disabled={loading}
-            style={{
-              width: "100%",
-              padding: "12px",
-              borderRadius: 10,
-              border: "1px solid var(--mv-border)",
-              background: "rgba(20, 28, 51, 0.5)",
-              color: "var(--mv-text-primary)",
-              fontWeight: 600,
-              fontSize: "0.9rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              transition: "all 0.2s ease",
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z" />
-              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
-              <path fill="#FBBC05" d="M5.6 14.8c-.3-.8-.4-1.8-.4-2.8s.1-2 .4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z" />
-              <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z" />
-            </svg>
-            Continue with Google
-          </button>
-
-          {/* Toggle Login/Signup */}
-          <div style={{ textAlign: "center", marginTop: 24, fontSize: "0.875rem", color: "var(--mv-text-secondary)" }}>
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
             <button
               type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError(null);
-                setMessage(null);
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--mv-accent-cyan)",
-                fontWeight: 600,
-                cursor: "pointer",
-                padding: 0,
-              }}
+              onClick={handleGoogleAuth}
+              className="w-full py-3 rounded-2xl bg-white border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all flex items-center justify-center gap-2.5 shadow-xs"
             >
-              {isLogin ? "Sign Up" : "Sign In"}
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>Continue with Google Identity</span>
             </button>
+
           </div>
         </div>
       </main>

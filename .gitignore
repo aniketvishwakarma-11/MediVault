@@ -1,7 +1,8 @@
-# Root level exclusions - ignore docs & credentials outside backend and frontend
-auth.txt
-MediVault_Project_Docs/
-MediVault_Project_Description.md
+# Ignore everything in root folder except backend, frontend, and .gitignore
+/*
+!/backend/
+!/frontend/
+!/.gitignore
 
 # OS / IDE / Environment
 .DS_Store

@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS public.patients (
     blood_group VARCHAR(10),
     emergency_contact VARCHAR(100),
     emergency_qr_code TEXT,
+    weight VARCHAR(50),
+    height VARCHAR(50),
+    allergies TEXT,
+    chronic_conditions TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -180,3 +184,5 @@ CREATE POLICY "Public update profiles" ON public.profiles FOR UPDATE USING (auth
 
 CREATE POLICY "Public read patients" ON public.patients FOR SELECT USING (true);
 CREATE POLICY "Public insert patients" ON public.patients FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update patients" ON public.patients FOR UPDATE USING (true) WITH CHECK (true);
+

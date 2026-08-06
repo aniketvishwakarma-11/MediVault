@@ -3,18 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 
 interface CounterStatsProps {
-  stats: {
+  stats?: {
     value: number;
     suffix: string;
     label: string;
   }[];
 }
 
+const defaultStats = [
+  { value: 100, suffix: "K+", label: "Encrypted Records" },
+  { value: 99, suffix: ".99%", label: "Uptime & Availability" },
+  { value: 50, suffix: "ms", label: "ZKP Verification Time" },
+  { value: 100, suffix: "%", label: "HIPAA & FHIR Compliant" },
+];
+
 function easeOutExpo(t: number): number {
   return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 }
 
-export default function CounterStats({ stats }: CounterStatsProps) {
+export default function CounterStats({ stats = defaultStats }: CounterStatsProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [counts, setCounts] = useState<number[]>(stats.map(() => 0));
   const hasAnimated = useRef(false);
@@ -36,7 +43,7 @@ export default function CounterStats({ stats }: CounterStatsProps) {
 
     observer.observe(el);
     return () => observer.disconnect();
-  });
+  }, []);
 
   function animateCounters() {
     const duration = 2000;
@@ -60,21 +67,15 @@ export default function CounterStats({ stats }: CounterStatsProps) {
   return (
     <div
       ref={ref}
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-        gap: "32px",
-        textAlign: "center",
-        padding: "48px 0",
-      }}
+      className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
     >
       {stats.map((stat, i) => (
-        <div key={i}>
-          <div className="stat-value gradient-text-static">
+        <div key={i} className="space-y-1">
+          <div className="text-3xl sm:text-4xl font-black text-sky-600 tracking-tight">
             {counts[i].toLocaleString()}
             {stat.suffix}
           </div>
-          <div className="stat-label">{stat.label}</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{stat.label}</div>
         </div>
       ))}
     </div>
