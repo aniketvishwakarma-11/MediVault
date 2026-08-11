@@ -14,12 +14,13 @@ export const uploadDocumentSchema = z.object({
   document_category: z.string().refine((val) => ALLOWED_CATEGORIES.includes(val), {
     message: `Invalid document category. Allowed categories: ${ALLOWED_CATEGORIES.join(', ')}`,
   }),
-  hospital_name: z.string().max(255, { message: 'Hospital name cannot exceed 255 characters.' }).optional(),
-  doctor_name: z.string().max(255, { message: 'Doctor name cannot exceed 255 characters.' }).optional(),
+  hospital_name: z.string().max(255, { message: 'Hospital name cannot exceed 255 characters.' }).optional().or(z.literal('')),
+  doctor_name: z.string().max(255, { message: 'Doctor name cannot exceed 255 characters.' }).optional().or(z.literal('')),
   visit_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Visit date must be in YYYY-MM-DD format.' })
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   custom_metadata: z.record(z.string(), z.any()).optional(),
 });
 
@@ -42,7 +43,7 @@ export const updateDocumentMetadataSchema = z.object({
 
 // Search & Filter Query Schema
 export const searchDocumentsQuerySchema = z.object({
-  patient_id: z.string().uuid().optional(),
+  patient_id: z.string().optional(),
   document_category: z.string().optional(),
   hospital_name: z.string().optional(),
   doctor_name: z.string().optional(),

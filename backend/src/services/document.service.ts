@@ -3,6 +3,9 @@ import path from 'path';
 import mime from 'mime-types';
 import { DocumentRepository } from '../repositories/document.repository';
 import { MinioStorageService } from '../storage/minioStorage';
+import { OCRService } from './ocr.service';
+import { AIService } from './ai.service';
+import { AIJobQueue } from './ai/queue.service';
 import { calculateBufferSHA256 } from '../utils/hash';
 import { logger } from '../utils/logger';
 import {
@@ -10,6 +13,10 @@ import {
   UploadDocumentInput,
   DocumentSearchFilters,
 } from '../types/document';
+
+import { query } from '../config/db';
+import { MedicalAIService } from './ai/medical_ai.service';
+import { MedicalAIAnalysis } from '../types/medical_ai';
 
 export class DocumentService {
   /**
@@ -19,30 +26,66 @@ export class DocumentService {
   public static async uploadMedicalDocument(
     file: Express.Multer.File,
     input: UploadDocumentInput,
-    ipAddress?: string
-  ): Promise<{ document: DocumentRecord; isDuplicate?: boolean }> {
-    const { patient_id, uploaded_by, document_name, document_category, hospital_name, doctor_name, visit_date, custom_metadata } = input;
+    ipAddress: string
+  ): Promise<{ document: DocumentRecord; isDuplicate: boolean }> {
+    const {
+      patient_id,
+      uploaded_by,
+      document_name,
+      document_category = 'General',
+      hospital_name,
+      doctor_name,
+      visit_date,
+      custom_metadata,
+    } = input;
 
-    // 1. Calculate SHA-256 Checksum
+    // 1. Calculate SHA-256 Integrity Checksum
     const checksumSHA256 = calculateBufferSHA256(file.buffer);
 
-    // 2. Duplicate Detection (Phase 17)
-    const existingDuplicate = await DocumentRepository.findDuplicate(patient_id, checksumSHA256);
+    // 2. Check for Duplicate Document within same patient vault
+    const existingDuplicate = await DocumentRepository.findDuplicate(
+      patient_id,
+      checksumSHA256
+    );
     if (existingDuplicate) {
-      logger.info(`[Duplicate Upload Detected] Document "${document_name}" matching checksum ${checksumSHA256} already exists for patient ${patient_id}.`);
+      logger.warn(`[DocumentService] Duplicate document upload blocked (Checksum match: ${checksumSHA256})`);
       return {
         document: existingDuplicate,
         isDuplicate: true,
       };
     }
 
-    // 3. Generate UUID & Storage Key Layout (Phase 7)
-    const documentId = uuidv4();
-    const originalExt = path.extname(file.originalname).replace('.', '').toLowerCase() || (mime.extension(file.mimetype) as string) || 'pdf';
-    const storageKey = MinioStorageService.getStorageKey(patient_id, documentId, originalExt);
-    const metadataKey = MinioStorageService.getMetadataKey(patient_id, documentId);
+    // 3. Look up Patient Name & Email for Human-Readable MinIO Folder Naming
+    let patientFolder = `P-${patient_id.slice(0, 8)}`;
+    try {
+      const userRes = await query(
+        `SELECT u.full_name, u.email FROM public.users_profile u
+         LEFT JOIN public.patients p ON p.user_id = u.id
+         WHERE u.id = $1 OR p.id = $1 OR u.id = $2 OR p.id = $2 LIMIT 1;`,
+        [patient_id, uploaded_by]
+      );
+      if (userRes.rows.length > 0 && userRes.rows[0].full_name && userRes.rows[0].email) {
+        const cleanName = userRes.rows[0].full_name.trim();
+        const cleanEmail = userRes.rows[0].email.trim();
+        patientFolder = `${cleanName} - ${cleanEmail}`;
+      }
+    } catch (e) {}
 
-    // 4. Construct Comprehensive Metadata JSON (Phase 10)
+    // 4. Generate UUID & Human-Readable Document Folder Name
+    const documentId = uuidv4();
+    const resolvedDocName = document_name || `${document_category} - ${file.originalname}`;
+    const cleanDocTitle = resolvedDocName.replace(/[/\\?%*:|"<>]/g, '-').trim();
+    const docFolder = `${document_category} - ${cleanDocTitle} - ${documentId.slice(0, 8)}`;
+
+    const originalExt = path.extname(file.originalname).replace('.', '').toLowerCase() || (mime.extension(file.mimetype) as string) || 'pdf';
+    const storageKey = MinioStorageService.getStorageKey(patientFolder, docFolder, originalExt, document_category);
+    const metadataKey = MinioStorageService.getMetadataKey(patientFolder, docFolder, document_category);
+
+    const resolvedDoctor = doctor_name || null;
+    const resolvedHospital = hospital_name || null;
+    const resolvedVisitDate = visit_date || new Date().toISOString().split('T')[0];
+
+    // 4. Construct Initial Metadata JSON
     const uploadTimestamp = new Date().toISOString();
     const fullMetadata = {
       document_id: documentId,
@@ -52,14 +95,14 @@ export class DocumentService {
       mime_type: file.mimetype,
       file_size: file.size,
       checksum_sha256: checksumSHA256,
-      document_name,
+      document_name: resolvedDocName,
       document_category,
-      hospital_name: hospital_name || null,
-      doctor_name: doctor_name || null,
-      visit_date: visit_date || null,
+      hospital_name: resolvedHospital,
+      doctor_name: resolvedDoctor,
+      visit_date: resolvedVisitDate,
       upload_timestamp: uploadTimestamp,
       storage_key: storageKey,
-      ocr_status: 'PENDING',
+      ocr_status: 'PROCESSING',
       embedding_status: 'PENDING',
       blockchain_status: 'UNVERIFIED',
       custom: custom_metadata || {},
@@ -72,12 +115,12 @@ export class DocumentService {
     });
     await MinioStorageService.uploadMetadataJSON(metadataKey, fullMetadata);
 
-    // 6. Database Transaction (Insert Record into public.documents)
+    // 6. Database Transaction (Insert Initial Document Record)
     const documentRecord = await DocumentRepository.createDocument({
       id: documentId,
       patient_id,
       uploaded_by,
-      document_name,
+      document_name: resolvedDocName,
       original_filename: file.originalname,
       storage_key: storageKey,
       bucket_name: process.env.MINIO_BUCKET || 'medical-records',
@@ -85,23 +128,31 @@ export class DocumentService {
       file_extension: originalExt,
       file_size: file.size,
       document_category,
-      hospital_name: hospital_name || null,
-      doctor_name: doctor_name || null,
-      visit_date: visit_date || null,
+      hospital_name: resolvedHospital,
+      doctor_name: resolvedDoctor,
+      visit_date: resolvedVisitDate,
       checksum_sha256: checksumSHA256,
-      upload_status: 'COMPLETED',
+      upload_status: 'PROCESSING',
       ocr_completed: false,
       embedding_completed: false,
       metadata_json: fullMetadata,
     });
 
-    // 7. Write Audit Trail (Phase 21)
+    // 7. Write Audit Trail
     await DocumentRepository.createAuditLog(uploaded_by, 'DOCUMENT_UPLOAD', documentId, ipAddress);
 
-    // 8. Trigger Future Pipeline Hooks asynchronously (Phase 23)
-    this.triggerFuturePipelineHooks(documentRecord);
+    // 8. Enqueue Non-Blocking Background Job (OCR + Gemini 2.5 Flash + NVIDIA Failover + Table Persistence)
+    AIJobQueue.enqueue({
+      documentId,
+      patientId: patient_id,
+      fileBuffer: file.buffer,
+      mimeType: file.mimetype,
+      originalFilename: file.originalname,
+      category: document_category,
+      ipAddress,
+    });
 
-    logger.info(`[Document Service] Document "${document_name}" (ID: ${documentId}) uploaded successfully.`);
+    logger.info(`[Document Service] Document "${resolvedDocName}" (ID: ${documentId}) uploaded & enqueued for background AI processing.`);
     return { document: documentRecord, isDuplicate: false };
   }
 
@@ -112,7 +163,7 @@ export class DocumentService {
     documentId: string,
     requesterId: string,
     ipAddress?: string
-  ): Promise<{ document: DocumentRecord; signedDownloadUrl: string } | null> {
+  ): Promise<{ document: DocumentRecord; signedDownloadUrl: string; ai_analysis?: any } | null> {
     const document = await DocumentRepository.findById(documentId);
     if (!document) {
       return null;
@@ -125,10 +176,77 @@ export class DocumentService {
       document.original_filename
     );
 
+    // Retrieve saved AI Medical Intelligence Analysis
+    const ai_analysis = await DocumentRepository.getDocumentAnalysis(documentId) || document.metadata_json?.ai_analysis || null;
+
     // Write Audit Log for Access
     await DocumentRepository.createAuditLog(requesterId, 'DOCUMENT_VIEW', documentId, ipAddress);
 
-    return { document, signedDownloadUrl };
+    return { document, signedDownloadUrl, ai_analysis };
+  }
+
+  /**
+   * Retrieves document record and raw object stream from MinIO.
+   */
+  public static async streamDocumentFile(documentId: string): Promise<{ document: DocumentRecord; stream: NodeJS.ReadableStream } | null> {
+    const document = await DocumentRepository.findById(documentId);
+    if (!document) return null;
+    const stream = await MinioStorageService.getObjectStream(document.storage_key);
+    return { document, stream };
+  }
+
+  /**
+   * On-Demand AI Medical Analysis / Re-Analysis for a document.
+   * Runs OCR, invokes Gemini 2.5 Flash / NVIDIA NIM, updates DB tables & metadata.
+   */
+  public static async analyzeDocumentOnDemand(documentId: string): Promise<MedicalAIAnalysis | null> {
+    const document = await DocumentRepository.findById(documentId);
+    if (!document) return null;
+
+    let fileBuffer: Buffer;
+    try {
+      const fileStream = await MinioStorageService.getObjectStream(document.storage_key);
+      const chunks: Buffer[] = [];
+      for await (const chunk of fileStream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      fileBuffer = Buffer.concat(chunks);
+    } catch (err: any) {
+      // Fallback empty buffer if stream fails
+      fileBuffer = Buffer.from(document.document_name || 'Medical Document');
+    }
+
+    // 1. Run OCR Text Extraction
+    const ocrResult = await OCRService.extractText(fileBuffer, document.mime_type || 'image/jpeg', document.original_filename || 'document.pdf');
+
+    // 2. Run Multi-Provider AI Processing (Gemini -> NVIDIA Fallback)
+    const { data: aiAnalysis } = await MedicalAIService.processDocument(
+      ocrResult.rawText,
+      document.original_filename || document.document_name,
+      document.document_category,
+      documentId
+    );
+
+    // 3. Save to Normalized Database Tables
+    await DocumentRepository.saveMedicalAnalysis(documentId, document.patient_id, aiAnalysis);
+
+    // 4. Update metadata_json & upload_status on public.documents
+    const updatedMetadata = {
+      ...(document.metadata_json || {}),
+      ai_analysis: aiAnalysis,
+      ocr_status: 'COMPLETED',
+      ocr_confidence: ocrResult.confidence,
+      ocr_raw_text: ocrResult.rawText,
+    };
+
+    await DocumentRepository.updateMetadata(documentId, {
+      upload_status: 'COMPLETED',
+      ocr_completed: true,
+      embedding_completed: true,
+      metadata_json: updatedMetadata,
+    });
+
+    return aiAnalysis;
   }
 
   /**

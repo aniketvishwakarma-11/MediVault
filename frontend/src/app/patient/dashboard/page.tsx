@@ -6,27 +6,24 @@ import {
   FileText, 
   Upload, 
   ShieldCheck, 
-  Clock, 
   CheckCircle2, 
   ArrowUpRight, 
-  Activity, 
   Sparkles,
   Bot,
   Key,
   ShieldAlert,
   Lock,
-  ExternalLink,
   RefreshCw,
   AlertCircle,
   Heart,
   TrendingUp,
-  UserCheck,
   Download,
   Plus
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { DEMO_REPORTS, DEMO_PATIENT_PROFILE } from "@/lib/demoData";
 
 interface DocumentRecord {
   id: string;
@@ -58,10 +55,19 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 function calculateRealBmi(heightStr: string | null | undefined, weightStr: string | null | undefined) {
   if (!heightStr || !weightStr) return { bmi: null, status: null };
 
-  const heightVal = parseFloat(heightStr.split(" ")[0]);
-  const heightUnit = heightStr.includes("ft") ? "ft" : "cm";
-  const weightVal = parseFloat(weightStr.split(" ")[0]);
-  const weightUnit = weightStr.includes("lbs") ? "lbs" : "kg";
+  const cleanHeight = String(heightStr).trim();
+  const cleanWeight = String(weightStr).trim();
+
+  const heightMatch = cleanHeight.match(/([0-9.]+)/);
+  const weightMatch = cleanWeight.match(/([0-9.]+)/);
+
+  if (!heightMatch || !weightMatch) return { bmi: null, status: null };
+
+  const heightVal = parseFloat(heightMatch[1]);
+  const weightVal = parseFloat(weightMatch[1]);
+
+  const heightUnit = cleanHeight.toLowerCase().includes("ft") ? "ft" : "cm";
+  const weightUnit = cleanWeight.toLowerCase().includes("lbs") ? "lbs" : "kg";
 
   if (isNaN(heightVal) || isNaN(weightVal) || heightVal <= 0 || weightVal <= 0) {
     return { bmi: null, status: null };
@@ -93,7 +99,7 @@ function calculateRealBmi(heightStr: string | null | undefined, weightStr: strin
 }
 
 export default function PatientDashboard() {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
 
   const [stats, setStats] = useState({
     totalDocuments: 0,
@@ -110,13 +116,49 @@ export default function PatientDashboard() {
   useEffect(() => {
     let isMounted = true;
 
+    // IF DEMO USER: Load complete demo dataset
+    if (isDemo) {
+      if (isMounted) {
+        setRecentReports(DEMO_REPORTS as DocumentRecord[]);
+        setStats({
+          totalDocuments: DEMO_REPORTS.length,
+          verifiedBlockchain: DEMO_REPORTS.length,
+          recentVisits: 3,
+          activeConsents: 2,
+        });
+        setPatientVitals({
+          blood_group: DEMO_PATIENT_PROFILE.blood_group,
+          height: `${DEMO_PATIENT_PROFILE.height} ${DEMO_PATIENT_PROFILE.height_unit}`,
+          weight: `${DEMO_PATIENT_PROFILE.weight} ${DEMO_PATIENT_PROFILE.weight_unit}`,
+          bmi: "23.0",
+          bmiStatus: "Healthy",
+          allergies: DEMO_PATIENT_PROFILE.allergies,
+          chronic_conditions: DEMO_PATIENT_PROFILE.chronic_conditions,
+        });
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // IF REAL USER: Fetch STRICTLY real database records
     const fetchDashboardData = async () => {
       setIsLoading(true);
       setApiError(null);
 
       try {
-        const docsRes = await fetch(`${API_BASE_URL}/documents/search?limit=5`);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token || '';
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const docsRes = await fetch(`${API_BASE_URL}/documents/search?limit=5`, { headers });
         if (!docsRes.ok) {
+          if (docsRes.status === 401) {
+            // Handle unauthenticated state gracefully for initial load
+            setRecentReports([]);
+            setIsLoading(false);
+            return;
+          }
           throw new Error(`API responded with status ${docsRes.status}`);
         }
         const docsData = await docsRes.json();
@@ -136,7 +178,6 @@ export default function PatientDashboard() {
       } catch (err: any) {
         console.warn("[Dashboard Sync Warning] Backend API status:", err);
         if (isMounted) {
-          setApiError("Backend API server is offline. Run 'npm run dev' inside backend folder for live sync.");
           setRecentReports([]);
           setStats({
             totalDocuments: 0,
@@ -153,26 +194,84 @@ export default function PatientDashboard() {
     async function fetchRealPatientVitals() {
       if (!user) return;
       try {
-        const { data: patientRow } = await supabase
+        const { data: patientRow, error: patientErr } = await supabase
           .from("patients")
-          .select("blood_group, height, weight, allergies, chronic_conditions")
+          .select("blood_group, vitals_json, allergies_json, chronic_conditions_json")
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (isMounted && patientRow) {
-          const { bmi, status } = calculateRealBmi(patientRow.height, patientRow.weight);
+        if (patientErr) {
+          console.warn("Patient vitals query warning:", patientErr.message);
+        }
+
+        let rawBloodGroup = patientRow?.blood_group || "";
+        let rawHeight = "";
+        let rawWeight = "";
+        let rawAllergies = "";
+        let rawChronic = "";
+
+        if (patientRow) {
+          let vitalsObj: any = {};
+          if (typeof patientRow.vitals_json === "string") {
+            try {
+              vitalsObj = JSON.parse(patientRow.vitals_json);
+            } catch (e) {}
+          } else if (patientRow.vitals_json && typeof patientRow.vitals_json === "object") {
+            vitalsObj = patientRow.vitals_json;
+          }
+
+          rawHeight = vitalsObj.height || (patientRow as any).height || "";
+          rawWeight = vitalsObj.weight || (patientRow as any).weight || "";
+
+          if (Array.isArray(patientRow.allergies_json) && patientRow.allergies_json.length > 0) {
+            rawAllergies = patientRow.allergies_json.join(", ");
+          } else if (typeof patientRow.allergies_json === "string" && (patientRow.allergies_json as string).trim()) {
+            rawAllergies = patientRow.allergies_json;
+          } else if ((patientRow as any).allergies) {
+            rawAllergies = (patientRow as any).allergies;
+          }
+
+          if (Array.isArray(patientRow.chronic_conditions_json) && patientRow.chronic_conditions_json.length > 0) {
+            rawChronic = patientRow.chronic_conditions_json.join(", ");
+          } else if (typeof patientRow.chronic_conditions_json === "string" && (patientRow.chronic_conditions_json as string).trim()) {
+            rawChronic = patientRow.chronic_conditions_json;
+          } else if ((patientRow as any).chronic_conditions) {
+            rawChronic = (patientRow as any).chronic_conditions;
+          }
+        }
+
+        // Draft / LocalStorage fallback resilience
+        try {
+          const draftKey = `medivault_profile_draft_${user.id}`;
+          const savedDraft = sessionStorage.getItem(draftKey);
+          if (savedDraft) {
+            const parsed = JSON.parse(savedDraft);
+            if (!rawBloodGroup && parsed.blood_group) rawBloodGroup = parsed.blood_group;
+            if (!rawHeight && parsed.height) rawHeight = `${parsed.height} ${parsed.height_unit || 'cm'}`;
+            if (!rawWeight && parsed.weight) rawWeight = `${parsed.weight} ${parsed.weight_unit || 'kg'}`;
+            if (!rawAllergies && parsed.allergies) rawAllergies = parsed.allergies;
+            if (!rawChronic && parsed.chronic_conditions) rawChronic = parsed.chronic_conditions;
+          }
+        } catch (e) {}
+
+        const { bmi, status } = calculateRealBmi(rawHeight, rawWeight);
+
+        if (isMounted) {
+          const finalHeight = rawHeight && rawHeight.trim() !== "cm" && rawHeight.trim() !== "kg" ? rawHeight : "Not recorded";
+          const finalWeight = rawWeight && rawWeight.trim() !== "cm" && rawWeight.trim() !== "kg" ? rawWeight : "Not recorded";
+
           setPatientVitals({
-            blood_group: patientRow.blood_group || "Not recorded",
-            height: patientRow.height || "Not recorded",
-            weight: patientRow.weight || "Not recorded",
+            blood_group: rawBloodGroup && rawBloodGroup !== "Not provided" ? rawBloodGroup : "Not recorded",
+            height: finalHeight,
+            weight: finalWeight,
             bmi: bmi,
             bmiStatus: status,
-            allergies: patientRow.allergies || "No known allergies",
-            chronic_conditions: patientRow.chronic_conditions || "None reported",
+            allergies: rawAllergies || "No known allergies reported",
+            chronic_conditions: rawChronic || "None reported",
           });
         }
-      } catch (err) {
-        console.warn("Failed to fetch patient vitals:", err);
+      } catch (e) {
+        console.warn("Patient vitals fetch warning:", e);
       }
     }
 
@@ -182,7 +281,7 @@ export default function PatientDashboard() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, isDemo]);
 
   const formatBytes = (bytes: number) => {
     if (!bytes || bytes === 0) return "0 B";
@@ -193,19 +292,19 @@ export default function PatientDashboard() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 font-body">
       
       {/* ================= GREETING HEADER ================= */}
-      <div className="bg-gradient-to-r from-sky-600 via-teal-600 to-sky-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-sky-600/15 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-[#0891B2] via-[#0e7490] to-[#22D3EE] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-cyan-900/10 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-2xl z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/20">
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-[#22D3EE]" />
             <span>Health Vault Online • Zero-Knowledge Active</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">
             Welcome to Your MediVault Portal
           </h1>
-          <p className="text-sky-100 text-xs sm:text-sm leading-relaxed">
+          <p className="text-cyan-100 text-xs sm:text-sm leading-relaxed">
             Your medical records are fully encrypted and synchronized with IPFS storage and ZKP verification proofs.
           </p>
         </div>
@@ -214,33 +313,33 @@ export default function PatientDashboard() {
         <div className="flex flex-wrap items-center gap-3 z-10 w-full md:w-auto">
           <Link
             href="/patient/reports"
-            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-white text-sky-900 font-bold text-xs shadow-md hover:bg-sky-50 transition-all"
+            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#22C55E] hover:bg-[#16a34a] text-white font-bold text-xs shadow-md transition-all min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            <Upload className="w-4 h-4 text-sky-600" />
+            <Upload className="w-4 h-4" />
             <span>Upload Record</span>
           </Link>
           <Link
             href="/patient/emergency"
-            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all"
+            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            <ShieldAlert className="w-4 h-4" />
-            <span>Emergency QR</span>
+            <ShieldAlert className="w-4 h-4 text-[#22D3EE]" />
+            <span>Emergency QR Pass</span>
           </Link>
         </div>
       </div>
 
       {/* API Notice Banner if backend is offline */}
       {apiError && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-xs">
+        <div className="p-4 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] text-xs flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[#92400E] shrink-0" />
             <span className="font-medium">{apiError}</span>
           </div>
           <button
             onClick={() => window.location.reload()}
-            className="px-3 py-1 rounded-xl bg-amber-100 text-amber-800 font-bold hover:bg-amber-200 transition-colors flex items-center gap-1 shrink-0"
+            className="px-3.5 py-1.5 rounded-xl bg-[#FDE68A] text-[#92400E] font-bold hover:bg-amber-200 transition-colors flex items-center gap-1.5 shrink-0 min-h-[36px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#92400E]"
           >
-            <RefreshCw className="w-3 h-3" /> Retry Sync
+            <RefreshCw className="w-3.5 h-3.5" /> Retry Sync
           </button>
         </div>
       )}
@@ -250,69 +349,69 @@ export default function PatientDashboard() {
         {/* Metric 1 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Records</span>
-            <div className="p-2.5 rounded-2xl bg-sky-50 text-sky-600 border border-sky-100">
+            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Total Records</span>
+            <div className="p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
               <FileText className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">{stats.totalDocuments}</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              <TrendingUp className="w-3 h-3" /> Live
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{stats.totalDocuments}</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
+              <TrendingUp className="w-3 h-3 text-[#22C55E]" /> Live Sync
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">Encrypted on IPFS Network</p>
+          <p className="text-[11px] text-[#475569] font-mono">Encrypted on IPFS Network</p>
         </div>
 
         {/* Metric 2 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Verified Proofs</span>
-            <div className="p-2.5 rounded-2xl bg-teal-50 text-teal-600 border border-teal-100">
+            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Verified Proofs</span>
+            <div className="p-2.5 rounded-2xl bg-teal-50 text-[#0891B2] border border-teal-100">
               <ShieldCheck className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">{stats.verifiedBlockchain}</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-              <CheckCircle2 className="w-3 h-3" /> ZKP Active
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{stats.verifiedBlockchain}</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200">
+              <CheckCircle2 className="w-3 h-3 text-[#0891B2]" /> ZKP Active
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">Polygon Blockchain Verified</p>
+          <p className="text-[11px] text-[#475569]">Polygon Blockchain Verified</p>
         </div>
 
         {/* Metric 3 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Consents</span>
+            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Active Consents</span>
             <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
               <Key className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">{stats.activeConsents}</span>
-            <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{stats.activeConsents}</span>
+            <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
               {stats.activeConsents} Active
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">Doctor Access Permissions</p>
+          <p className="text-[11px] text-[#475569]">Doctor Access Permissions</p>
         </div>
 
         {/* Metric 4 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">AI Copilot</span>
-            <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Bot className="w-5 h-5" />
+            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">AI Copilot</span>
+            <div className="p-2.5 rounded-2xl bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
+              <Bot className="w-5 h-5 text-[#22C55E]" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900">Ready</span>
-            <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">Ready</span>
+            <span className="text-[11px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
               Active
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">Instant Health Insights</p>
+          <p className="text-[11px] text-[#475569]">Instant Health Insights</p>
         </div>
       </div>
 
@@ -326,77 +425,77 @@ export default function PatientDashboard() {
               <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
                 <Heart className="w-5 h-5 fill-rose-500" />
               </div>
-              <h3 className="font-bold text-slate-900 text-base">Patient Medical Identity & Vitals</h3>
+              <h3 className="font-heading font-bold text-[#0F172A] text-base">Patient Medical Identity & Vitals</h3>
             </div>
-            <Link href="/patient/profile" className="text-[11px] font-bold text-sky-600 hover:text-sky-700">
+            <Link href="/patient/profile" className="text-xs font-bold text-[#0891B2] hover:text-[#0e7490] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] rounded-md px-2 py-1">
               Edit Profile
             </Link>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <div className="text-[11px] font-semibold text-slate-500">Blood Group</div>
-              <div className="text-xl font-extrabold text-slate-900">{patientVitals?.blood_group || "No data"}</div>
-              <div className="text-[10px] font-bold text-teal-600">Recorded</div>
+              <div className="text-[11px] font-semibold text-[#475569]">Blood Group</div>
+              <div className="font-heading text-xl font-extrabold text-[#0F172A]">{patientVitals?.blood_group || "No data"}</div>
+              <div className="text-[10px] font-bold text-[#0891B2]">Recorded</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <div className="text-[11px] font-semibold text-slate-500">Height</div>
-              <div className="text-xl font-extrabold text-slate-900">{patientVitals?.height || "No data"}</div>
-              <div className="text-[10px] font-bold text-sky-600">Patient Vitals</div>
+              <div className="text-[11px] font-semibold text-[#475569]">Height</div>
+              <div className="font-heading text-xl font-extrabold text-[#0F172A]">{patientVitals?.height || "No data"}</div>
+              <div className="text-[10px] font-bold text-[#0891B2]">Patient Vitals</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <div className="text-[11px] font-semibold text-slate-500">Weight</div>
-              <div className="text-xl font-extrabold text-slate-900">{patientVitals?.weight || "No data"}</div>
-              <div className="text-[10px] font-bold text-sky-600">Patient Vitals</div>
+              <div className="text-[11px] font-semibold text-[#475569]">Weight</div>
+              <div className="font-heading text-xl font-extrabold text-[#0F172A]">{patientVitals?.weight || "No data"}</div>
+              <div className="text-[10px] font-bold text-[#0891B2]">Patient Vitals</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <div className="text-[11px] font-semibold text-slate-500">Calculated BMI</div>
-              <div className="text-xl font-extrabold text-slate-900">{patientVitals?.bmi || "No data"}</div>
-              <div className={`text-[10px] font-bold ${patientVitals?.bmiStatus === "Healthy" ? "text-emerald-600" : "text-amber-600"}`}>
+              <div className="text-[11px] font-semibold text-[#475569]">Calculated BMI</div>
+              <div className="font-heading text-xl font-extrabold text-[#0F172A]">{patientVitals?.bmi || "No data"}</div>
+              <div className={`text-[10px] font-bold ${patientVitals?.bmiStatus === "Healthy" ? "text-[#065F46]" : "text-[#92400E]"}`}>
                 {patientVitals?.bmiStatus || "Requires Ht & Wt"}
               </div>
             </div>
           </div>
 
           <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-100 font-medium">
-              <span className="font-bold text-amber-900">Known Allergies: </span>
-              <span className="text-amber-800">{patientVitals?.allergies || "No known allergies reported"}</span>
+            <div className="p-3.5 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] font-medium">
+              <span className="font-heading font-bold text-[#92400E]">Known Allergies: </span>
+              <span>{patientVitals?.allergies || "No known allergies reported"}</span>
             </div>
-            <div className="p-3 rounded-2xl bg-purple-50/60 border border-purple-100 font-medium">
-              <span className="font-bold text-purple-900">Chronic Conditions: </span>
-              <span className="text-purple-800">{patientVitals?.chronic_conditions || "None reported"}</span>
+            <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-100 text-purple-900 font-medium">
+              <span className="font-heading font-bold text-purple-900">Chronic Conditions: </span>
+              <span>{patientVitals?.chronic_conditions || "None reported"}</span>
             </div>
           </div>
         </div>
 
         {/* AI Copilot Quick Assistant Card */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-sky-50 to-teal-50/70 p-6 rounded-3xl border border-sky-200/80 shadow-xs space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-gradient-to-br from-cyan-50 to-teal-50/70 p-6 rounded-3xl border border-cyan-200/80 shadow-xs space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-sky-600 text-white shadow-xs">
+                <div className="p-2.5 rounded-xl bg-[#0891B2] text-white shadow-xs">
                   <Bot className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-sky-950 text-base">AI Medical Copilot</h3>
+                <h3 className="font-heading font-bold text-[#0F172A] text-base">AI Medical Copilot</h3>
               </div>
-              <span className="text-[10px] font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full border border-sky-200">
+              <span className="text-[10px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
                 Online
               </span>
             </div>
-            <p className="text-xs text-slate-700 leading-relaxed font-medium">
+            <p className="text-xs text-[#475569] leading-relaxed font-medium">
               Have questions about a lab result or prescription? Ask the AI Copilot for clinical explanations and symptom analysis.
             </p>
           </div>
 
           <Link
             href="/patient/ai-copilot"
-            className="w-full py-3 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-2xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-4 h-4 text-[#22D3EE]" />
             <span>Open AI Chat Assistant</span>
           </Link>
         </div>
@@ -407,12 +506,12 @@ export default function PatientDashboard() {
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
-            <h3 className="font-bold text-slate-900 text-lg">Recent Medical Documents</h3>
-            <p className="text-xs text-slate-500">Encrypted files uploaded to your private vault</p>
+            <h3 className="font-heading font-bold text-[#0F172A] text-lg">Recent Medical Documents</h3>
+            <p className="text-xs text-[#475569]">Encrypted files uploaded to your private vault</p>
           </div>
           <Link
             href="/patient/reports"
-            className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"
+            className="text-xs font-bold text-[#0891B2] hover:text-[#0e7490] flex items-center gap-1 min-h-[36px] px-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
           >
             <span>View All Vault Documents</span>
             <ArrowUpRight className="w-4 h-4" />
@@ -426,13 +525,13 @@ export default function PatientDashboard() {
         ) : recentReports.length === 0 ? (
           <div className="py-12 text-center space-y-3">
             <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-            <p className="text-sm font-semibold text-slate-700">No medical records uploaded yet</p>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            <p className="font-heading text-sm font-semibold text-[#0F172A]">No medical records uploaded yet</p>
+            <p className="text-xs text-[#475569] max-w-sm mx-auto">
               Upload your lab reports, prescriptions, or discharge summaries to store them securely.
             </p>
             <Link
               href="/patient/reports"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 text-white text-xs font-bold shadow-xs hover:bg-sky-700 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#22C55E] hover:bg-[#16a34a] text-white text-xs font-bold shadow-xs transition-all min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22C55E]"
             >
               <Plus className="w-4 h-4" /> Upload Document Now
             </Link>
@@ -441,42 +540,42 @@ export default function PatientDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold text-[10px]">
-                  <th className="pb-3 px-2">Document Name</th>
-                  <th className="pb-3 px-2">Category</th>
-                  <th className="pb-3 px-2">Doctor / Facility</th>
-                  <th className="pb-3 px-2">Size</th>
-                  <th className="pb-3 px-2">Status</th>
-                  <th className="pb-3 px-2 text-right">Action</th>
+                <tr className="border-b border-slate-100 text-[#475569] uppercase font-heading font-bold text-[10px]">
+                  <th className="pb-3 px-3">Document Name</th>
+                  <th className="pb-3 px-3">Category</th>
+                  <th className="pb-3 px-3">Doctor / Facility</th>
+                  <th className="pb-3 px-3">Size</th>
+                  <th className="pb-3 px-3">Status</th>
+                  <th className="pb-3 px-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {recentReports.map((doc) => (
                   <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-2 font-bold text-slate-900 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-sky-600 shrink-0" />
+                    <td className="py-3.5 px-3 font-heading font-bold text-[#0F172A] flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[#0891B2] shrink-0" />
                       <span className="truncate max-w-xs">{doc.document_name || doc.original_filename}</span>
                     </td>
-                    <td className="py-3.5 px-2">
-                      <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
+                    <td className="py-3.5 px-3">
+                      <span className="px-2.5 py-1 rounded-full bg-slate-100 text-[#475569] font-medium text-[11px]">
                         {doc.document_category || "General"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-2 text-slate-600">
+                    <td className="py-3.5 px-3 text-[#475569]">
                       {doc.doctor_name || doc.hospital_name || "Self Uploaded"}
                     </td>
-                    <td className="py-3.5 px-2 text-slate-500 font-mono">
+                    <td className="py-3.5 px-3 text-[#475569] font-mono">
                       {formatBytes(doc.file_size)}
                     </td>
-                    <td className="py-3.5 px-2">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 font-bold border border-teal-200">
-                        <Lock className="w-3 h-3 text-teal-600" /> IPFS Encrypted
+                    <td className="py-3.5 px-3">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#065F46] font-bold border border-[#A7F3D0] text-[11px]">
+                        <Lock className="w-3 h-3 text-[#22C55E]" /> IPFS Encrypted
                       </span>
                     </td>
-                    <td className="py-3.5 px-2 text-right">
+                    <td className="py-3.5 px-3 text-right">
                       <Link
                         href="/patient/reports"
-                        className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 inline-flex items-center gap-1 font-bold text-xs"
+                        className="px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-[#0891B2] inline-flex items-center gap-1 font-bold text-xs min-h-[36px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
                       >
                         <Download className="w-3.5 h-3.5" /> View
                       </Link>

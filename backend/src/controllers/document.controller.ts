@@ -28,11 +28,15 @@ export class DocumentController {
       // Validate Body Fields with Zod
       const parseResult = uploadDocumentSchema.safeParse(req.body);
       if (!parseResult.success) {
+        const fieldErrors = parseResult.error.flatten().fieldErrors;
+        const details = Object.entries(fieldErrors)
+          .map(([key, msgs]) => `${key}: ${msgs?.join(', ')}`)
+          .join(' | ');
         return sendError(
           res,
           400,
-          'Validation failed for document metadata.',
-          parseResult.error.flatten().fieldErrors
+          `Validation failed for document metadata: ${details}`,
+          fieldErrors
         );
       }
 
@@ -91,6 +95,46 @@ export class DocumentController {
     } catch (error: any) {
       console.error('[DocumentController GetById Error]:', error);
       return sendError(res, 500, error.message || 'Internal server error while fetching document.');
+    }
+  }
+
+  /**
+   * GET /documents/:id/file
+   * Streams raw document object directly from MinIO to the browser.
+   */
+  public static async streamDocument(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const result = await DocumentService.streamDocumentFile(id as string);
+      if (!result) {
+        res.status(404).send('Document file not found.');
+        return;
+      }
+
+      res.setHeader('Content-Type', result.document.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${result.document.original_filename}"`);
+      result.stream.pipe(res);
+    } catch (error: any) {
+      console.error('[DocumentController Stream Error]:', error);
+      res.status(500).send('Failed to stream document file.');
+    }
+  }
+
+  /**
+   * POST /documents/:id/analyze
+   * Triggers on-demand AI Medical Intelligence analysis / re-analysis.
+   */
+  public static async analyzeDocument(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const aiAnalysis = await DocumentService.analyzeDocumentOnDemand(id as string);
+      if (!aiAnalysis) {
+        return sendError(res, 404, 'Document not found for AI analysis.');
+      }
+      return sendSuccess(res, 200, aiAnalysis, 'AI Medical Intelligence Analysis generated successfully.');
+    } catch (error: any) {
+      console.error('[DocumentController Analyze Error]:', error);
+      return sendError(res, 500, error.message || 'Failed to generate AI document analysis.');
     }
   }
 

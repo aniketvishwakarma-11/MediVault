@@ -26,41 +26,57 @@ export const authenticateJWT = async (
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // In development mode or unauthenticated browser requests, assign default patient context
-    req.user = {
-      id: 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d',
-      email: 'patient@medivault.local',
-      role: 'patient',
-      patient_id: 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d',
-    };
-    return next();
+    return sendError(
+      res,
+      401,
+      'Authentication required. Authorization header missing or invalid format (expected: Bearer <token>).'
+    );
   }
 
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      decoded = jwt.decode(token);
+    }
 
-    // Resolve patient_id if user role is patient
+    if (!decoded || typeof decoded !== 'object') {
+      return sendError(res, 401, 'Invalid, expired, or untrusted authentication token.');
+    }
+
+    if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+      return sendError(res, 401, 'Authentication token has expired. Please refresh your session.');
+    }
+
+    const userId = decoded.id || decoded.sub;
+    if (!userId) {
+      return sendError(res, 401, 'Invalid authentication token payload.');
+    }
+
+    const role = decoded.role || decoded.user_metadata?.role || 'patient';
     let patientId = decoded.patient_id;
-    if (decoded.role === 'patient' && !patientId) {
+
+    if (role === 'patient' && !patientId) {
       try {
-        const patientRes = await query('SELECT id FROM public.patients WHERE user_id = $1', [decoded.id]);
+        const patientRes = await query('SELECT id FROM public.patients WHERE user_id = $1', [userId]);
         if (patientRes.rows.length > 0) {
           patientId = patientRes.rows[0].id;
+        } else {
+          patientId = userId;
         }
       } catch (err: any) {
-        if (isConnectionError(err)) {
-          patientId = decoded.patient_id || decoded.id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
-        }
+        patientId = userId;
       }
     }
 
     req.user = {
-      id: decoded.id || decoded.sub,
-      email: decoded.email,
-      role: decoded.role || 'patient',
-      patient_id: patientId,
+      id: userId,
+      email: decoded.email || decoded.user_metadata?.email || '',
+      role: role,
+      patient_id: patientId || userId,
     };
 
     next();

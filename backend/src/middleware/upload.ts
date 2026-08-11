@@ -124,7 +124,23 @@ export const handleSingleFileUpload = (fieldName: string) => {
         );
       }
 
-      next();
+      // Phase 10: Optimize Image Buffer if image payload
+      if (['image/jpeg', 'image/png', 'image/webp'].includes(req.file.mimetype)) {
+        import('sharp').then((sharpModule) => {
+          const sharp = sharpModule.default;
+          sharp(req.file!.buffer)
+            .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
+            .toBuffer()
+            .then((optBuffer) => {
+              req.file!.buffer = optBuffer;
+              req.file!.size = optBuffer.length;
+              next();
+            })
+            .catch(() => next());
+        }).catch(() => next());
+      } else {
+        next();
+      }
     });
   };
 };

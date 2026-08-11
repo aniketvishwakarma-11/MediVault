@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
+import { DEMO_PATIENT_PROFILE } from "@/lib/demoData";
 
 interface PatientProfileData {
   full_name: string;
@@ -57,9 +58,9 @@ function parseValAndUnit(raw: string | null | undefined, defaultUnit: string) {
 }
 
 function PatientProfileContent() {
-  const { user, userProfile, isProfileCompleted, refreshProfileCompletion } = useAuth();
+  const { user, userProfile, isDemo, isProfileCompleted, refreshProfileCompletion } = useAuth();
   const searchParams = useSearchParams();
-  const isRequired = searchParams.get("required") === "true" || isProfileCompleted === false;
+  const isRequired = !isDemo && (searchParams.get("required") === "true" || isProfileCompleted === false);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -95,8 +96,19 @@ function PatientProfileContent() {
       setLoading(true);
       setErrorMsg(null);
 
-      const defaultEmail = user?.email || userProfile?.email || "patient@medivault.local";
-      const defaultName = userProfile?.displayName || user?.user_metadata?.full_name || "Aniket Vishwakarma";
+      // IF DEMO USER: Load rich demo patient profile
+      if (isDemo) {
+        if (isMounted) {
+          setDbData(DEMO_PATIENT_PROFILE);
+          setProfileData(DEMO_PATIENT_PROFILE);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // IF REAL USER: Fetch ONLY real profile from Supabase database
+      const defaultEmail = user?.email || userProfile?.email || "";
+      const defaultName = userProfile?.displayName || user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "Patient");
 
       let initialData: PatientProfileData = {
         full_name: defaultName,
@@ -104,7 +116,7 @@ function PatientProfileContent() {
         phone: "Not provided",
         date_of_birth: "Not provided",
         gender: "Prefer not to say",
-        blood_group: "O+",
+        blood_group: "Not provided",
         emergency_contact: "",
         weight: "",
         weight_unit: "kg",
@@ -117,7 +129,7 @@ function PatientProfileContent() {
       if (user) {
         try {
           const { data: profileRow } = await supabase
-            .from("profiles")
+            .from("users_profile")
             .select("*")
             .eq("id", user.id)
             .maybeSingle();
@@ -138,8 +150,17 @@ function PatientProfileContent() {
             rawDob = "Not provided";
           }
 
-          const parsedHeight = parseValAndUnit(patientRow?.height, "cm");
-          const parsedWeight = parseValAndUnit(patientRow?.weight, "kg");
+          const vitalsObj = patientRow?.vitals_json || {};
+          const parsedHeight = vitalsObj.height ? parseValAndUnit(vitalsObj.height, "cm") : parseValAndUnit(patientRow?.height, "cm");
+          const parsedWeight = vitalsObj.weight ? parseValAndUnit(vitalsObj.weight, "kg") : parseValAndUnit(patientRow?.weight, "kg");
+
+          const allergiesStr = Array.isArray(patientRow?.allergies_json)
+            ? patientRow.allergies_json.join(", ")
+            : (patientRow?.allergies || "");
+
+          const chronicStr = Array.isArray(patientRow?.chronic_conditions_json)
+            ? patientRow.chronic_conditions_json.join(", ")
+            : (patientRow?.chronic_conditions || "");
 
           initialData = {
             full_name: profileRow?.full_name || defaultName,
@@ -147,14 +168,14 @@ function PatientProfileContent() {
             phone: profileRow?.phone || "Not provided",
             date_of_birth: rawDob,
             gender: patientRow?.gender || "Prefer not to say",
-            blood_group: patientRow?.blood_group || "O+",
-            emergency_contact: patientRow?.emergency_contact || "",
+            blood_group: patientRow?.blood_group || "Not provided",
+            emergency_contact: patientRow?.emergency_contact_name || patientRow?.emergency_contact || "",
             weight: parsedWeight.val,
             weight_unit: parsedWeight.unit,
             height: parsedHeight.val,
             height_unit: parsedHeight.unit,
-            allergies: patientRow?.allergies || "",
-            chronic_conditions: patientRow?.chronic_conditions || "",
+            allergies: allergiesStr,
+            chronic_conditions: chronicStr,
           };
         } catch (err: any) {
           console.warn("Profile load warning:", err);
@@ -188,7 +209,7 @@ function PatientProfileContent() {
     return () => {
       isMounted = false;
     };
-  }, [user, userProfile]);
+  }, [user, userProfile, isDemo]);
 
   // Persist draft to sessionStorage whenever profileData changes in edit mode
   useEffect(() => {
@@ -240,9 +261,9 @@ function PatientProfileContent() {
       const formattedHeightStr = `${profileData.height.trim()} ${profileData.height_unit || "cm"}`;
       const formattedWeightStr = `${profileData.weight.trim()} ${profileData.weight_unit || "kg"}`;
 
-      // Upsert profiles table with conflict resolution & explicit error checking
+      // Upsert users_profile table with conflict resolution & explicit error checking
       const { error: profileErr } = await supabase
-        .from("profiles")
+        .from("users_profile")
         .upsert(
           {
             id: user.id,
@@ -260,6 +281,14 @@ function PatientProfileContent() {
         throw new Error(`Profile Save Failure: ${profileErr.message}`);
       }
 
+      const allergiesList = profileData.allergies && profileData.allergies.trim().length > 0
+        ? profileData.allergies.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : [];
+
+      const chronicList = profileData.chronic_conditions && profileData.chronic_conditions.trim().length > 0
+        ? profileData.chronic_conditions.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : [];
+
       // Upsert patients table with conflict resolution & explicit error checking
       const { error: patientErr } = await supabase
         .from("patients")
@@ -269,11 +298,14 @@ function PatientProfileContent() {
             date_of_birth: formattedDob,
             gender: profileData.gender || "Prefer not to say",
             blood_group: profileData.blood_group || "O+",
-            emergency_contact: profileData.emergency_contact ? profileData.emergency_contact.trim() : null,
-            weight: formattedWeightStr,
-            height: formattedHeightStr,
-            allergies: profileData.allergies ? profileData.allergies.trim() : null,
-            chronic_conditions: profileData.chronic_conditions ? profileData.chronic_conditions.trim() : null,
+            emergency_contact_name: profileData.emergency_contact ? profileData.emergency_contact.trim() : null,
+            vitals_json: {
+              height: formattedHeightStr,
+              weight: formattedWeightStr,
+            },
+            allergies_json: allergiesList,
+            chronic_conditions_json: chronicList,
+            updated_at: new Date().toISOString(),
           },
           { onConflict: "user_id" }
         );

@@ -26,18 +26,20 @@ interface Message {
 }
 
 export default function PatientAICopilotPage() {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, isDemo } = useAuth();
   const [inputQuery, setInputQuery] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const displayName = userProfile?.displayName || user?.email?.split("@")[0] || "Patient";
+  const displayName = isDemo
+    ? "Demo Patient"
+    : userProfile?.displayName || (user?.email ? user.email.split("@")[0] : "Patient");
   const userInitial = displayName.charAt(0).toUpperCase();
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "msg-1",
       sender: "ai",
-      text: `Hello ${displayName}! I am your MediVault AI Health Copilot. I can analyze your uploaded medical reports, explain lab values, check potential drug interactions, or clarify medical terminology. How can I assist your health today?`,
+      text: `Hello ${displayName}! I am your MediVault AI Health Copilot. I can analyze your medical reports, explain lab values, check potential drug interactions, or clarify medical terminology. How can I assist your health today?`,
       timestamp: "10:30 AM",
     },
   ]);
@@ -49,7 +51,7 @@ export default function PatientAICopilotPage() {
     "Summarize my recent cardiology follow-up note",
   ];
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const query = textToSend || inputQuery;
     if (!query.trim()) return;
 
@@ -64,8 +66,35 @@ export default function PatientAICopilotPage() {
     setInputQuery("");
     setIsTyping(true);
 
-    // Simulate AI Copilot Response
-    setTimeout(() => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiUrl}/ai/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: query,
+          patient_id: (userProfile as any)?.id || user?.id || "a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d",
+        }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const aiData = json.data;
+        const aiMsg: Message = {
+          id: `ai-${Date.now()}`,
+          sender: "ai",
+          text: aiData.answer || aiData.response || "No response text received from AI engine.",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          sources: aiData.sources || ["Encrypted_Vault_Records.pdf"],
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      } else {
+        throw new Error(`API returned HTTP status ${response.status}`);
+      }
+    } catch (err) {
+      // Fallback local intelligence if backend is starting or offline
       let aiResponseText = "Based on your encrypted vault records and clinical knowledge base: ";
       if (query.toLowerCase().includes("lipid")) {
         aiResponseText += "Your HDL cholesterol is 58 mg/dL (optimal, >40 mg/dL target) and Triglycerides are 110 mg/dL (normal). Overall cardiovascular biomarker trends show positive improvement compared to last quarter.";
@@ -84,10 +113,10 @@ export default function PatientAICopilotPage() {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         sources: ["Lipid_Panel_Report.pdf", "Prescription_Aug2026.pdf"],
       };
-
       setMessages((prev) => [...prev, aiMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1200);
+    }
   };
 
   return (

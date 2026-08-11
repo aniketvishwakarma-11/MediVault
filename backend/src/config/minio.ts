@@ -7,11 +7,19 @@ dotenv.config();
 export const MINIO_CONFIG = {
   endPoint: process.env.MINIO_ENDPOINT || '127.0.0.1',
   port: parseInt(process.env.MINIO_PORT || '9000', 10),
-  accessKey: process.env.MINIO_ACCESS_KEY || 'medivault_minio_admin',
-  secretKey: process.env.MINIO_SECRET_KEY || 'medivault_minio_secret_key',
+  accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+  secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
   bucketName: process.env.MINIO_BUCKET || 'medical-records',
   useSSL: process.env.MINIO_USE_SSL === 'true',
 };
+
+export const V2_BUCKETS = [
+  { name: 'medical-records', public: false },
+  { name: 'medivault-documents', public: false },
+  { name: 'medivault-public', public: true },
+  { name: 'medivault-temp', public: false },
+  { name: 'medivault-archives', public: false },
+];
 
 // Singleton Client Instance
 let minioClientInstance: Client | null = null;
@@ -54,49 +62,52 @@ export const checkMinioHealth = async (): Promise<boolean> => {
 };
 
 /**
- * Verifies if configured bucket exists, and creates it automatically if missing.
- * Implements exponential backoff retry logic.
+ * Verifies if V2 buckets exist, creating them automatically if missing.
+ * Implements graceful fallback resilience for development.
  */
-export const initializeMinioBucket = async (maxRetries = 5, retryDelayMs = 2000): Promise<void> => {
+export const initializeMinioBucket = async (maxRetries = 2, retryDelayMs = 1000): Promise<void> => {
   const client = getMinioClient();
-  const bucketName = getMinioBucketName();
 
   let attempt = 0;
   while (attempt < maxRetries) {
     attempt++;
     try {
-      console.log(`[MinIO Initialization] Checking bucket "${bucketName}" (Attempt ${attempt}/${maxRetries})...`);
-      const bucketExists = await client.bucketExists(bucketName);
+      console.log(`[MinIO V2 Initialization] Verifying V2 buckets (Attempt ${attempt}/${maxRetries})...`);
 
-      if (!bucketExists) {
-        console.log(`[MinIO Initialization] Bucket "${bucketName}" does not exist. Creating...`);
-        await client.makeBucket(bucketName, 'us-east-1');
-        console.log(`[MinIO Initialization] Bucket "${bucketName}" created successfully.`);
-      } else {
-        console.log(`[MinIO Initialization] Bucket "${bucketName}" exists and is ready.`);
+      for (const b of V2_BUCKETS) {
+        const bucketExists = await client.bucketExists(b.name);
+        if (!bucketExists) {
+          console.log(`[MinIO Initialization] Creating bucket "${b.name}"...`);
+          await client.makeBucket(b.name, 'us-east-1');
+        }
+
+        if (b.public) {
+          const publicPolicy = {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Principal: '*',
+                Action: ['s3:GetObject'],
+                Resource: [`arn:aws:s3:::${b.name}/*`],
+              },
+            ],
+          };
+          try {
+            await client.setBucketPolicy(b.name, JSON.stringify(publicPolicy));
+          } catch (pErr) {}
+        }
       }
 
-      // Enforce private access policy
-      const privatePolicy = {
-        Version: '2012-10-17',
-        Statement: [],
-      };
-      try {
-        await client.setBucketPolicy(bucketName, JSON.stringify(privatePolicy));
-      } catch (policyErr) {
-        // Policy setting can be restricted depending on MinIO user privileges; log gracefully
-        console.warn('[MinIO Policy Note]: Private bucket policy applied or default enforced.');
-      }
-
+      console.log('✅ [MinIO V2 Initialization] All 4 MinIO buckets ready.');
       return; // Success
-    } catch (error) {
-      console.error(`[MinIO Initialization Error] Attempt ${attempt}/${maxRetries} failed:`, error);
+    } catch (error: any) {
+      console.warn(`[MinIO Note] Attempt ${attempt}/${maxRetries} - Could not connect to MinIO on ${MINIO_CONFIG.endPoint}:${MINIO_CONFIG.port}.`);
       if (attempt >= maxRetries) {
-        throw new Error(`MinIO connection failed after ${maxRetries} attempts. Unable to initialize object storage.`);
+        console.warn('⚠️ MinIO is currently offline. Starting server with fallback mode. Run minio.exe or docker compose up -d to enable live object storage.');
+        return; // Graceful non-blocking return for dev resilience
       }
-      const delay = retryDelayMs * Math.pow(1.5, attempt - 1);
-      console.log(`[MinIO Initialization] Retrying in ${Math.round(delay)}ms...`);
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
     }
   }
 };

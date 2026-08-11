@@ -50,13 +50,16 @@ export interface DocumentRecord {
   id: string;
   patient_id: string;
   uploaded_by: string;
+  uploader_id?: string;
   document_name: string;
   original_filename: string;
   storage_key: string;
+  storage_path?: string;
   bucket_name: string;
   mime_type: string;
   file_extension: string;
   file_size: number;
+  file_size_bytes?: number;
   document_category: DocumentCategory | string;
   hospital_name?: string | null;
   doctor_name?: string | null;
@@ -64,6 +67,7 @@ export interface DocumentRecord {
   checksum_sha256: string;
   upload_status: UploadStatus | string;
   is_deleted: boolean;
+  is_archived?: boolean;
   created_at: Date | string;
   updated_at: Date | string;
   blockchain_hash?: string | null;

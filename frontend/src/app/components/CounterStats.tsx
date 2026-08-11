@@ -67,15 +67,15 @@ export default function CounterStats({ stats = defaultStats }: CounterStatsProps
   return (
     <div
       ref={ref}
-      className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
+      className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center"
     >
       {stats.map((stat, i) => (
-        <div key={i} className="space-y-1">
-          <div className="text-3xl sm:text-4xl font-black text-sky-600 tracking-tight">
+        <div key={i} className="space-y-1.5 p-4 rounded-2xl bg-white/80 border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
+          <div className="font-heading text-3xl sm:text-4xl font-extrabold text-[#0891B2] tracking-tight">
             {counts[i].toLocaleString()}
             {stat.suffix}
           </div>
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{stat.label}</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-600">{stat.label}</div>
         </div>
       ))}
     </div>

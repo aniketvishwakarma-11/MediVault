@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { DEMO_CONSENTS } from "@/lib/demoData";
 
 interface AccessGrant {
   id: string;
@@ -28,7 +29,7 @@ interface AccessGrant {
 }
 
 export default function PatientConsentPage() {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const [grants, setGrants] = useState<AccessGrant[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -46,6 +47,16 @@ export default function PatientConsentPage() {
       setIsLoading(true);
       setErrorMsg(null);
 
+      // IF DEMO USER: Load rich demo consent permissions
+      if (isDemo) {
+        if (isMounted) {
+          setGrants(DEMO_CONSENTS as AccessGrant[]);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      // IF REAL USER: Fetch STRICTLY real consent records from Supabase
       if (!user) {
         if (isMounted) {
           setGrants([]); // STRICTLY ZERO DUMMY DATA! Empty array fallback.
@@ -90,7 +101,7 @@ export default function PatientConsentPage() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, isDemo]);
 
   const handleRevoke = async (id: string) => {
     if (!confirm("Are you sure you want to revoke this doctor's access to your medical vault?")) return;

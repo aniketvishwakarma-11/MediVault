@@ -18,11 +18,14 @@ interface AuthContextType {
   session: Session | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  isDemo: boolean;
   isProfileCompleted: boolean | null;
+  setIsProfileCompleted: (completed: boolean) => void;
   refreshProfileCompletion: () => Promise<boolean>;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   setRole: (role: UserRole) => void;
+  setDemoUser: (role: UserRole) => void;
   role: UserRole;
 }
 
@@ -33,22 +36,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRoleState] = useState<UserRole>("patient");
+  const [isDemo, setIsDemo] = useState<boolean>(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileCompleted, setIsProfileCompleted] = useState<boolean | null>(null);
 
   const checkProfileCompletion = async (currentUser: User): Promise<boolean> => {
     try {
+      const activeRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
+
+      if (activeRole === "doctor") {
+        if (typeof window !== "undefined" && currentUser?.id) {
+          const localDone = localStorage.getItem(`medivault_doctor_completed_${currentUser.id}`);
+          if (localDone === "true") {
+            setIsProfileCompleted(true);
+            return true;
+          }
+        }
+
+        const { data: profileRow } = await supabase
+          .from("users_profile")
+          .select("full_name")
+          .eq("id", currentUser.id)
+          .maybeSingle();
+
+        const { data: docRow } = await supabase
+          .from("doctors")
+          .select("license_number, specialization")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        const isNameOk = Boolean(profileRow?.full_name && profileRow.full_name.trim().length > 0);
+        const isLicenseOk = Boolean(docRow?.license_number && docRow.license_number.trim().length > 0);
+
+        const completed = isNameOk && isLicenseOk;
+        setIsProfileCompleted(completed);
+        return completed;
+      }
+
+      // Patient profile check
       const { data: profileRow } = await supabase
-        .from("profiles")
+        .from("users_profile")
         .select("full_name, phone")
         .eq("id", currentUser.id)
         .maybeSingle();
 
       const { data: patientRow } = await supabase
         .from("patients")
-        .select("blood_group, date_of_birth, height, weight")
+        .select("blood_group, date_of_birth, vitals_json")
         .eq("user_id", currentUser.id)
         .maybeSingle();
+
+      let vitalsObj: any = {};
+      if (typeof patientRow?.vitals_json === "string") {
+        try { vitalsObj = JSON.parse(patientRow.vitals_json); } catch {}
+      } else if (patientRow?.vitals_json && typeof patientRow.vitals_json === "object") {
+        vitalsObj = patientRow.vitals_json;
+      }
+      const heightVal = vitalsObj.height || (patientRow as any)?.height || "";
+      const weightVal = vitalsObj.weight || (patientRow as any)?.weight || "";
 
       const isNameOk = Boolean(profileRow?.full_name && profileRow.full_name.trim().length > 0);
       const isPhoneOk = Boolean(profileRow?.phone && profileRow.phone !== "Not provided" && profileRow.phone.trim().length >= 8);
@@ -59,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         String(patientRow.date_of_birth).trim() !== "" &&
         !isNaN(new Date(patientRow.date_of_birth).getTime())
       );
-      const isHeightOk = Boolean(patientRow?.height && String(patientRow.height).trim().length > 0 && String(patientRow.height) !== "Not provided");
-      const isWeightOk = Boolean(patientRow?.weight && String(patientRow.weight).trim().length > 0 && String(patientRow.weight) !== "Not provided");
+      const isHeightOk = Boolean(heightVal && String(heightVal).trim().length > 0 && String(heightVal) !== "Not provided");
+      const isWeightOk = Boolean(weightVal && String(weightVal).trim().length > 0 && String(weightVal) !== "Not provided");
 
       const completed = isNameOk && isPhoneOk && isBloodOk && isDobOk && isHeightOk && isWeightOk;
       setIsProfileCompleted(completed);
@@ -73,6 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshProfileCompletion = async (): Promise<boolean> => {
+    if (isDemo) {
+      setIsProfileCompleted(true);
+      return true;
+    }
     if (!user) {
       setIsProfileCompleted(false);
       return false;
@@ -81,21 +130,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Read saved role
+    // Read saved role & demo state
     const savedRole = localStorage.getItem("medivault_user_role") as UserRole;
     if (savedRole) {
       setRoleState(savedRole);
     }
+    const savedIsDemo = localStorage.getItem("medivault_is_demo") === "true";
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
+        // REAL USER LOGGED IN WITH VALID JWT SESSION
+        setIsDemo(false);
+        localStorage.removeItem("medivault_is_demo");
         updateProfileState(session.user);
         checkProfileCompletion(session.user);
+      } else if (savedIsDemo) {
+        // DEMO USER LOGGED IN (NO REAL JWT SESSION)
+        setIsDemo(true);
+        const demoRole = savedRole || "patient";
+        setUserProfile({
+          uid: "demo-patient-123",
+          email: demoRole === "patient" ? "patient@medivault.local" : "doctor@hospital.org",
+          displayName: demoRole === "patient" ? "Demo Patient (Alex Morgan)" : "Dr. Sarah Jenkins (Demo)",
+          role: demoRole,
+        });
+        setIsProfileCompleted(true);
       } else {
-        setIsProfileCompleted(false);
+        setIsDemo(false);
+        setIsProfileCompleted(true);
       }
       setLoading(false);
     });
@@ -105,11 +171,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        // Real user session detected -> clear demo flag
+        setIsDemo(false);
+        localStorage.removeItem("medivault_is_demo");
         updateProfileState(session.user);
         checkProfileCompletion(session.user);
       } else {
-        setUserProfile(null);
-        setIsProfileCompleted(false);
+        const isStillDemo = localStorage.getItem("medivault_is_demo") === "true";
+        if (isStillDemo) {
+          setIsDemo(true);
+          const activeRole = (localStorage.getItem("medivault_user_role") as UserRole) || "patient";
+          setUserProfile({
+            uid: "demo-patient-123",
+            email: activeRole === "patient" ? "patient@medivault.local" : "doctor@hospital.org",
+            displayName: activeRole === "patient" ? "Demo Patient (Alex Morgan)" : "Dr. Sarah Jenkins (Demo)",
+            role: activeRole,
+          });
+          setIsProfileCompleted(true);
+        } else {
+          setIsDemo(false);
+          setUserProfile(null);
+          setIsProfileCompleted(false);
+        }
       }
       setLoading(false);
     });
@@ -135,13 +218,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setDemoUser = (demoRole: UserRole) => {
+    setIsDemo(true);
+    setRoleState(demoRole);
+    localStorage.setItem("medivault_is_demo", "true");
+    localStorage.setItem("medivault_user_role", demoRole);
+    setUserProfile({
+      uid: "demo-patient-123",
+      email: demoRole === "patient" ? "patient@medivault.local" : "doctor@hospital.org",
+      displayName: demoRole === "patient" ? "Demo Patient (Alex Morgan)" : "Dr. Sarah Jenkins (Demo)",
+      role: demoRole,
+    });
+    setIsProfileCompleted(true);
+  };
+
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("SignOut error:", err);
+    }
     localStorage.removeItem("medivault_user_role");
+    localStorage.removeItem("medivault_is_demo");
+    setIsDemo(false);
+    setUserProfile(null);
     setIsProfileCompleted(false);
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   };
 
   const signInWithGoogle = async () => {
+    localStorage.removeItem("medivault_is_demo");
+    setIsDemo(false);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -158,11 +267,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         userProfile,
         loading,
+        isDemo,
         isProfileCompleted,
+        setIsProfileCompleted,
         refreshProfileCompletion,
         logout,
         signInWithGoogle,
         setRole,
+        setDemoUser,
         role,
       }}
     >
@@ -178,3 +290,4 @@ export function useAuth() {
   }
   return context;
 }
+

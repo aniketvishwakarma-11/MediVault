@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { securityHeaders } from './middleware/security';
 import documentRoutes from './routes/document.routes';
+import aiRoutes from './routes/ai.routes';
+import doctorRoutes from './routes/doctor.routes';
+import timelineRoutes from './routes/timeline.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -30,8 +33,14 @@ app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'UP', service: 'MediVault Document Management API', timestamp: new Date().toISOString() });
 });
 
-// Mount Document Management Module Routes
+// Mount Module Routes
 app.use('/documents', documentRoutes);
+app.use('/ai', aiRoutes);
+app.use('/system/ai', aiRoutes);
+app.use('/doctor', doctorRoutes);
+app.use('/api/doctor', doctorRoutes);
+app.use('/timeline', timelineRoutes);
+app.use('/api/timeline', timelineRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {
@@ -47,8 +56,13 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 // Server Initialization
 const PORT = process.env.PORT || 5000;
 
+import { runAutoMigrations } from './config/migrate';
+
 export const startServer = async () => {
   try {
+    // Run Database Migrations to ensure AI schema tables exist
+    await runAutoMigrations();
+
     // Initialize MinIO Object Storage Bucket
     logger.info('[App Startup] Initializing MinIO Object Storage connection...');
     await initializeMinioBucket();

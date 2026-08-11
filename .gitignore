@@ -9,6 +9,7 @@
 Thumbs.db
 .env
 .env.*
+auth.txt
 *.log
 .vscode/
 .idea/

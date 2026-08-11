@@ -31,15 +31,15 @@ assert(calculateBufferSHA256(sampleBuffer) === computedHash, 'Deterministic SHA-
 // 2. Storage Key Hierarchy Tests
 const patientId = 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
 const docId = 'b4c9d0e1-2f3a-4b5c-9d0e-1f2a3b4c5d6e';
-const key = MinioStorageService.getStorageKey(patientId, docId, 'pdf');
+const key = MinioStorageService.getStorageKey(patientId, docId, 'pdf', 'Blood Report');
 assert(
-  key === 'patients/a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d/b4c9d0e1-2f3a-4b5c-9d0e-1f2a3b4c5d6e/original.pdf',
-  'Storage key must follow patients/{patientId}/{documentId}/original.ext layout'
+  key === 'patients/P-a3b8c9d0/documents/Blood-Report/b4c9d0e1-2f3a-4b5c-9d0e-1f2a3b4c5d6e/original.pdf',
+  'Storage key must follow patients/P-{shortId}/documents/{category}/{documentId}/original.ext layout'
 );
 
-const metaKey = MinioStorageService.getMetadataKey(patientId, docId);
+const metaKey = MinioStorageService.getMetadataKey(patientId, docId, 'Blood Report');
 assert(
-  metaKey === 'patients/a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d/b4c9d0e1-2f3a-4b5c-9d0e-1f2a3b4c5d6e/metadata.json',
+  metaKey === 'patients/P-a3b8c9d0/documents/Blood-Report/b4c9d0e1-2f3a-4b5c-9d0e-1f2a3b4c5d6e/metadata.json',
   'Metadata storage key must follow metadata.json layout'
 );
 
@@ -76,10 +76,23 @@ assert(ALLOWED_CATEGORIES.includes('Prescription'), 'Category Taxonomy includes 
 assert(ALLOWED_CATEGORIES.includes('MRI'), 'Category Taxonomy includes MRI');
 assert(ALLOWED_CATEGORIES.includes('Discharge Summary'), 'Category Taxonomy includes Discharge Summary');
 
-console.log('----------------------------------------------------');
-console.log(`📊 Test Summary: ${passedTests}/${totalTests} tests passed.`);
-console.log('----------------------------------------------------');
+// 6. Blockchain Service Notarization Integration Tests (Phase 11)
+import { BlockchainService } from '../services/blockchain.service';
 
-if (passedTests !== totalTests) {
-  process.exit(1);
-}
+const testHash = computedHash;
+BlockchainService.notarizeDocumentHash(testHash, patientId).then((notarizeRes) => {
+  assert(notarizeRes.verified === true, 'Blockchain Notarization: Generates verified on-chain notarization proof');
+  assert(notarizeRes.txHash.length === 66, 'Blockchain Notarization: Generates valid bytes32 transaction hash');
+
+  BlockchainService.verifyOnChainHash(testHash).then((verifyRes) => {
+    assert(verifyRes.isNotarized === true, 'Blockchain Verification: Confirms on-chain notarization state');
+    
+    console.log('----------------------------------------------------');
+    console.log(`📊 Test Summary: ${passedTests}/${totalTests} tests passed.`);
+    console.log('----------------------------------------------------');
+
+    if (passedTests !== totalTests) {
+      process.exit(1);
+    }
+  });
+});

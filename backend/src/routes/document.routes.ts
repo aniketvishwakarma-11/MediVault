@@ -61,6 +61,20 @@ router.get(
 router.get('/', apiRateLimiter, authenticateJWT, DocumentController.searchDocuments);
 
 /**
+ * @route   POST /documents/:id/analyze
+ * @desc    On-demand AI Medical Intelligence Analysis / Re-analysis
+ * @access  Public / Authenticated
+ */
+router.post('/:id/analyze', DocumentController.analyzeDocument);
+
+/**
+ * @route   GET /documents/:id/file
+ * @desc    Stream raw document file directly to browser iframe/img
+ * @access  Public / Authenticated
+ */
+router.get('/:id/file', DocumentController.streamDocument);
+
+/**
  * @route   GET /documents/:id
  * @desc    Fetch single document metadata and pre-signed download URL
  * @access  Authenticated

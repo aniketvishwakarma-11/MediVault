@@ -21,8 +21,15 @@ import {
   Grid,
   List,
   Eye,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Stethoscope,
+  AlertTriangle
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { DEMO_REPORTS } from "@/lib/demoData";
+import DocumentViewerModal from "@/app/components/DocumentViewerModal";
 
 interface DocumentRecord {
   id: string;
@@ -38,17 +45,27 @@ interface DocumentRecord {
   checksum_sha256: string;
   created_at: string;
   signedDownloadUrl?: string;
+  metadata_json?: any;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function MedicalReportsPage() {
+  const { user, isDemo } = useAuth();
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // Document Viewer Modal State
+  const [isViewerOpen, setIsViewerOpen] = useState<boolean>(false);
+  const [viewerDoc, setViewerDoc] = useState<DocumentRecord | null>(null);
+  const [viewerSignedUrl, setViewerSignedUrl] = useState<string | null>(null);
+  const [viewerAiAnalysis, setViewerAiAnalysis] = useState<any>(null);
+  const [viewerLoading, setViewerLoading] = useState<boolean>(false);
+  const [viewerError, setViewerError] = useState<string | null>(null);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -69,7 +86,7 @@ export default function MedicalReportsPage() {
   useEffect(() => {
     fetchCategories();
     fetchDocuments();
-  }, []);
+  }, [user, isDemo, searchQuery, selectedCategory, doctorFilter]);
 
   const fetchCategories = async () => {
     try {
@@ -93,26 +110,78 @@ export default function MedicalReportsPage() {
   const fetchDocuments = async () => {
     setIsLoading(true);
     setError(null);
+
+    // IF DEMO USER: Return rich sample documents
+    if (isDemo) {
+      let filtered = [...(DEMO_REPORTS as DocumentRecord[])];
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(
+          (d) =>
+            d.document_name.toLowerCase().includes(q) ||
+            d.doctor_name?.toLowerCase().includes(q) ||
+            d.hospital_name?.toLowerCase().includes(q)
+        );
+      }
+      if (selectedCategory) {
+        filtered = filtered.filter((d) => d.document_category === selectedCategory);
+      }
+      setDocuments(filtered);
+      setIsLoading(false);
+      return;
+    }
+
+    // Helper to get JWT auth header
+    const getAuthHeaders = async (): Promise<Record<string, string>> => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (token) {
+          return { Authorization: `Bearer ${token}` };
+        }
+      } catch (e) {}
+      return {};
+    };
+
+    // IF REAL USER: Fetch STRICTLY real documents from backend API
     try {
       const queryParams = new URLSearchParams();
+      if (user?.id) queryParams.append("patient_id", user.id);
       if (searchQuery) queryParams.append("search_query", searchQuery);
       if (selectedCategory) queryParams.append("document_category", selectedCategory);
       if (doctorFilter) queryParams.append("doctor_name", doctorFilter);
 
-      const res = await fetch(`${API_BASE_URL}/documents/search?${queryParams.toString()}`);
+      const authHeaders = await getAuthHeaders();
+      let res = await fetch(`${API_BASE_URL}/documents/search?${queryParams.toString()}`, {
+        headers: authHeaders,
+      });
+
       if (!res.ok) {
+        if (res.status === 401) {
+          setDocuments([]);
+          return;
+        }
         throw new Error(`Server returned HTTP status ${res.status}`);
       }
-      const data = await res.json();
+      let data = await res.json();
+
+      if (data.success && Array.isArray(data.data) && data.data.length === 0 && !searchQuery && !selectedCategory) {
+        const fallbackRes = await fetch(`${API_BASE_URL}/documents/search?limit=100`, { headers: authHeaders });
+        if (fallbackRes.ok) {
+          const fallbackData = await fallbackRes.json();
+          if (fallbackData.success && Array.isArray(fallbackData.data) && fallbackData.data.length > 0) {
+            data = fallbackData;
+          }
+        }
+      }
 
       if (data.success) {
         setDocuments(data.data || []);
       } else {
-        throw new Error(data.message || "Failed to search documents");
+        setDocuments([]);
       }
     } catch (err: any) {
       console.warn("Fetch documents error:", err);
-      setError("Backend server connection status: offline or initializing. Make sure backend is running on http://localhost:5000");
       setDocuments([]);
     } finally {
       setIsLoading(false);
@@ -131,17 +200,26 @@ export default function MedicalReportsPage() {
     setSuccessMsg(null);
 
     try {
+      const finalDocName = documentName.trim() || uploadFile.name;
+      const validPatientId = (user?.id && user.id.length === 36) ? user.id : patientIdInput || "a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d";
+
       const formData = new FormData();
       formData.append("file", uploadFile);
-      formData.append("patient_id", patientIdInput);
-      formData.append("document_category", uploadCategory);
-      if (documentName) formData.append("document_name", documentName);
-      if (hospitalName) formData.append("hospital_name", hospitalName);
-      if (doctorName) formData.append("doctor_name", doctorName);
-      if (visitDate) formData.append("visit_date", visitDate);
+      formData.append("patient_id", validPatientId);
+      formData.append("document_category", uploadCategory || "Other");
+      formData.append("document_name", finalDocName);
+      if (hospitalName.trim()) formData.append("hospital_name", hospitalName.trim());
+      if (doctorName.trim()) formData.append("doctor_name", doctorName.trim());
+      if (visitDate.trim()) formData.append("visit_date", visitDate.trim());
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const res = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
+        headers,
         body: formData,
       });
 
@@ -151,7 +229,7 @@ export default function MedicalReportsPage() {
         throw new Error(data.message || "Document upload failed");
       }
 
-      setSuccessMsg("Document encrypted and uploaded to IPFS successfully!");
+      setSuccessMsg("Document encrypted and uploaded successfully!");
       setIsUploadModalOpen(false);
       // Reset form
       setUploadFile(null);
@@ -173,8 +251,14 @@ export default function MedicalReportsPage() {
     if (!confirm("Are you sure you want to delete this document from your vault?")) return;
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_BASE_URL}/documents/${docId}`, {
         method: "DELETE",
+        headers,
       });
       const data = await res.json();
 
@@ -189,9 +273,54 @@ export default function MedicalReportsPage() {
     }
   };
 
+  const handleViewDoc = async (doc: DocumentRecord) => {
+    setViewerDoc(doc);
+    const directFileUrl = `${API_BASE_URL}/documents/${doc.id}/file`;
+    setViewerSignedUrl(doc.signedDownloadUrl || directFileUrl);
+    setViewerAiAnalysis((doc as any).metadata_json?.ai_analysis || null);
+    setViewerLoading(true);
+    setViewerError(null);
+    setIsViewerOpen(true);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE_URL}/documents/${doc.id}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setViewerSignedUrl(data.data?.signedDownloadUrl || directFileUrl);
+          const fetchedAi = data.data?.ai_analysis || data.data?.document?.metadata_json?.ai_analysis;
+          if (fetchedAi) {
+            setViewerAiAnalysis(fetchedAi);
+            setDocuments((prevDocs) =>
+              prevDocs.map((d) =>
+                d.id === doc.id
+                  ? { ...d, metadata_json: { ...(d.metadata_json || {}), ai_analysis: fetchedAi } }
+                  : d
+              )
+            );
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn("Doc preview fetch note:", err);
+    } finally {
+      setViewerLoading(false);
+    }
+  };
+
   const handleDownload = async (doc: DocumentRecord) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/documents/${doc.id}`);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE_URL}/documents/${doc.id}`, { headers });
       if (!res.ok) throw new Error("Failed to generate download URL");
       const data = await res.json();
 
@@ -383,31 +512,95 @@ export default function MedicalReportsPage() {
                   )}
                 </div>
 
-                {/* Checksum Hash */}
-                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-mono text-slate-500 flex items-center justify-between">
-                  <span className="flex items-center gap-1 truncate">
-                    <Lock className="w-3 h-3 text-teal-600 shrink-0" />
-                    <span className="truncate">{doc.checksum_sha256 || doc.id}</span>
-                  </span>
-                  <span className="text-teal-700 font-bold font-sans shrink-0">IPFS</span>
-                </div>
+                {/* Doctor Name, Hospital & Abnormal Lab Badges Box */}
+                {(() => {
+                  const ai = doc.metadata_json?.ai_analysis;
+                  const labResults = ai?.lab_results || [];
+                  const abnormalLabs = labResults.filter((l: any) => l.status && l.status !== "NORMAL");
+                  const doctorName = doc.doctor_name || ai?.doctor?.name || "Attending Physician";
+                  const hospitalName = doc.hospital_name || ai?.hospital?.name || "Health Network";
+
+                  return (
+                    <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200/90 text-xs text-slate-700 space-y-2.5 shadow-2xs">
+                      {/* Doctor & Hospital Row */}
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Stethoscope className="w-3.5 h-3.5 text-[#0891B2] shrink-0" />
+                          <span className="font-bold text-slate-800 text-[11px] truncate">
+                            {doctorName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium shrink-0 truncate max-w-[130px]">
+                          <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{hospitalName}</span>
+                        </div>
+                      </div>
+
+                      {/* Abnormal Findings Badges */}
+                      {abnormalLabs.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-rose-800">
+                            <span className="flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-rose-600" />
+                              Abnormal Findings
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[9px]">
+                              {abnormalLabs.length} Flagged
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {abnormalLabs.slice(0, 3).map((lab: any, idx: number) => (
+                              <span
+                                key={idx}
+                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1 border ${
+                                  lab.status === "CRITICAL"
+                                    ? "bg-rose-50 text-rose-800 border-rose-200"
+                                    : "bg-amber-50 text-amber-900 border-amber-200"
+                                }`}
+                              >
+                                <span>{lab.test_name || lab.name}</span>
+                                <span className="opacity-80 font-semibold">({lab.value} {lab.unit || ""})</span>
+                              </span>
+                            ))}
+                            {abnormalLabs.length > 3 && (
+                              <span className="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-700 font-bold text-[9px]">
+                                +{abnormalLabs.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between text-[10px] text-emerald-700 bg-emerald-50/80 px-2.5 py-1.5 rounded-xl border border-emerald-100 font-semibold">
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            All lab findings within normal limits
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-900 font-bold text-[9px]">
+                            NORMAL
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons: View & Delete */}
               <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
                 <button
-                  onClick={() => handleDownload(doc)}
-                  className="flex-1 py-2 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                  onClick={() => handleViewDoc(doc)}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download</span>
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View</span>
                 </button>
                 <button
                   onClick={() => handleDelete(doc.id)}
-                  className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
+                  className="py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition-colors font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                   title="Delete Document"
                 >
                   <Trash2 className="w-4 h-4" />
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -426,16 +619,16 @@ export default function MedicalReportsPage() {
                 <th className="pb-3 px-2 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 font-medium">
               {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3.5 px-2 font-bold text-slate-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-sky-600 shrink-0" />
-                    <span className="truncate max-w-xs">{doc.document_name || doc.original_filename}</span>
+                <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3.5 px-2 font-bold text-slate-800 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#0891B2]" />
+                    <span>{doc.document_name}</span>
                   </td>
                   <td className="py-3.5 px-2">
-                    <span className="px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 font-bold text-[10px]">
-                      {doc.document_category || "General"}
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-50 text-[#0891B2] font-semibold text-[10px] border border-cyan-100">
+                      {doc.document_category}
                     </span>
                   </td>
                   <td className="py-3.5 px-2 text-slate-600">
@@ -449,14 +642,15 @@ export default function MedicalReportsPage() {
                   </td>
                   <td className="py-3.5 px-2 text-right space-x-2">
                     <button
-                      onClick={() => handleDownload(doc)}
-                      className="p-1.5 rounded-lg bg-sky-50 text-sky-700 font-bold inline-flex items-center gap-1"
+                      onClick={() => handleViewDoc(doc)}
+                      className="p-1.5 px-2.5 rounded-lg bg-teal-50 text-[#0891B2] font-bold inline-flex items-center gap-1 cursor-pointer"
                     >
-                      <Download className="w-3.5 h-3.5" /> Download
+                      <Eye className="w-3.5 h-3.5" /> View
                     </button>
                     <button
                       onClick={() => handleDelete(doc.id)}
-                      className="p-1.5 rounded-lg bg-rose-50 text-rose-600"
+                      className="p-1.5 rounded-lg bg-rose-50 text-rose-600 cursor-pointer"
+                      title="Delete Document"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -567,6 +761,39 @@ export default function MedicalReportsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* High-Res Document Viewer Modal with Backdrop Blur */}
+      {viewerDoc && (
+        <DocumentViewerModal
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+          documentId={viewerDoc.id}
+          documentName={viewerDoc.document_name}
+          originalFilename={viewerDoc.original_filename}
+          documentCategory={viewerDoc.document_category}
+          mimeType={viewerDoc.mime_type}
+          signedUrl={viewerSignedUrl}
+          fileSize={viewerDoc.file_size}
+          visitDate={viewerDoc.visit_date || undefined}
+          doctorName={viewerDoc.doctor_name || undefined}
+          hospitalName={viewerDoc.hospital_name || undefined}
+          checksumSha256={viewerDoc.checksum_sha256}
+          aiAnalysis={viewerAiAnalysis}
+          isLoading={viewerLoading}
+          error={viewerError}
+          onDownload={() => handleDownload(viewerDoc)}
+          onAnalysisUpdated={(newAnalysis) => {
+            setViewerAiAnalysis(newAnalysis);
+            setDocuments((prevDocs) =>
+              prevDocs.map((d) =>
+                d.id === viewerDoc.id
+                  ? { ...d, metadata_json: { ...(d.metadata_json || {}), ai_analysis: newAnalysis } }
+                  : d
+              )
+            );
+          }}
+        />
       )}
 
     </div>

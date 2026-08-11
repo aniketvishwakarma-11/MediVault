@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldCheck, Lock, HeartPulse, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Lock, HeartPulse } from "lucide-react";
 
 const footerSections = [
   {
@@ -38,34 +38,34 @@ const footerSections = [
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-900 text-slate-300 pt-16 pb-12 border-t border-slate-800">
+    <footer className="bg-[#071415] text-slate-300 pt-16 pb-12 border-t border-[#1E464D]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-10 pb-12 border-b border-slate-800">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-10 pb-12 border-b border-[#1E464D]">
           {/* Brand Info */}
           <div className="md:col-span-2 space-y-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-teal-400 text-white flex items-center justify-center shadow-md">
+            <Link href="/" className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0891B2] to-[#22D3EE] text-white flex items-center justify-center shadow-md">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <span className="font-extrabold text-xl tracking-tight text-white">
-                Medi<span className="text-sky-400">Vault</span>
+              <span className="font-heading font-extrabold text-xl tracking-tight text-white">
+                Medi<span className="text-[#22D3EE]">Vault</span>
               </span>
             </Link>
-            <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
+            <p className="text-sm text-slate-400 max-w-sm leading-relaxed font-body">
               Empowering patients with secure, decentralized, AI-driven digital health identity management. Complete ownership of your medical history.
             </p>
             {/* Compliance Badges */}
             <div className="pt-2 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700">
-                <Lock className="w-3.5 h-3.5 text-sky-400" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0F2327] text-slate-200 text-xs font-medium border border-[#1E464D]">
+                <Lock className="w-3.5 h-3.5 text-[#22D3EE]" />
                 HIPAA Compliant
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700">
-                <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0F2327] text-slate-200 text-xs font-medium border border-[#1E464D]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0891B2]" />
                 FHIR Interoperable
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700">
-                <HeartPulse className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0F2327] text-slate-200 text-xs font-medium border border-[#1E464D]">
+                <HeartPulse className="w-3.5 h-3.5 text-[#22C55E]" />
                 Zero-Knowledge Privacy
               </span>
             </div>
@@ -74,7 +74,7 @@ export default function Footer() {
           {/* Links Grid */}
           {footerSections.map((section) => (
             <div key={section.title} className="space-y-3">
-              <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              <h4 className="font-heading text-xs font-bold text-slate-200 uppercase tracking-wider">
                 {section.title}
               </h4>
               <ul className="space-y-2">
@@ -82,7 +82,7 @@ export default function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-slate-400 hover:text-sky-400 transition-colors"
+                      className="text-sm text-slate-400 hover:text-[#22D3EE] transition-colors py-1 inline-block min-h-[36px] flex items-center"
                     >
                       {link.label}
                     </a>
@@ -97,9 +97,9 @@ export default function Footer() {
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>&copy; {new Date().getFullYear()} MediVault Chain AI Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <a href="#" className="hover:text-slate-200 transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-slate-200 transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-slate-200 transition-colors">Security Disclosure</a>
+            <a href="#" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center">Privacy Policy</a>
+            <a href="#" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center">Terms of Service</a>
+            <a href="#" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center">Security Disclosure</a>
           </div>
         </div>
       </div>

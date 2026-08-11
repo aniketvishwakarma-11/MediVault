@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { DEMO_PATIENT_PROFILE } from "@/lib/demoData";
 
 export default function PatientEmergencyPage() {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, isDemo } = useAuth();
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,7 +36,23 @@ export default function PatientEmergencyPage() {
     async function fetchEmergencyProfile() {
       setIsLoading(true);
 
-      const defaultName = userProfile?.displayName || user?.user_metadata?.full_name || "Aniket Vishwakarma";
+      // IF DEMO USER: Show rich demo emergency pass data
+      if (isDemo) {
+        if (isMounted) {
+          setEmergencyData({
+            patient_name: DEMO_PATIENT_PROFILE.full_name,
+            blood_group: DEMO_PATIENT_PROFILE.blood_group,
+            allergies: DEMO_PATIENT_PROFILE.allergies,
+            conditions: DEMO_PATIENT_PROFILE.chronic_conditions,
+            emergency_contact: DEMO_PATIENT_PROFILE.emergency_contact,
+          });
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      // IF REAL USER: Fetch ONLY real patient data from Supabase
+      const defaultName = userProfile?.displayName || user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "Patient Identity");
 
       if (!user) {
         if (isMounted) {
@@ -53,7 +70,7 @@ export default function PatientEmergencyPage() {
 
       try {
         const { data: profileRow } = await supabase
-          .from("profiles")
+          .from("users_profile")
           .select("*")
           .eq("id", user.id)
           .maybeSingle();
@@ -65,12 +82,22 @@ export default function PatientEmergencyPage() {
           .maybeSingle();
 
         if (isMounted) {
+          const rawAllergies = Array.isArray(patientRow?.allergies_json) && patientRow.allergies_json.length > 0
+            ? patientRow.allergies_json.join(", ")
+            : (patientRow?.allergies || "None recorded");
+
+          const rawConditions = Array.isArray(patientRow?.chronic_conditions_json) && patientRow.chronic_conditions_json.length > 0
+            ? patientRow.chronic_conditions_json.join(", ")
+            : (patientRow?.chronic_conditions || "None recorded");
+
+          const rawContact = patientRow?.emergency_contact_name || patientRow?.emergency_contact || "Not provided - Update in Profile";
+
           setEmergencyData({
             patient_name: profileRow?.full_name || defaultName,
             blood_group: patientRow?.blood_group || "Not specified - Update in Profile",
-            allergies: patientRow?.allergies || "None recorded",
-            conditions: patientRow?.conditions || "None recorded",
-            emergency_contact: patientRow?.emergency_contact || "Not provided - Update in Profile",
+            allergies: rawAllergies,
+            conditions: rawConditions,
+            emergency_contact: rawContact,
           });
         }
       } catch (err) {
@@ -85,7 +112,7 @@ export default function PatientEmergencyPage() {
     return () => {
       isMounted = false;
     };
-  }, [user, userProfile]);
+  }, [user, userProfile, isDemo]);
 
   const emergencyUrl = `https://medivault.app/emergency/scan?id=${user?.id || "MV-PATIENT-889"}`;
 

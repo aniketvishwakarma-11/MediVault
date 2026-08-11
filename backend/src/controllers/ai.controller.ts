@@ -14,7 +14,7 @@ export class AIController {
 
       const result = await AIService.generateHealthAnswer(patientId, prompt);
 
-      return sendSuccess(res, 200, 'AI response generated successfully', result);
+      return sendSuccess(res, 200, result, 'AI response generated successfully');
     } catch (err: any) {
       return sendError(res, 500, err.message || 'AI generation failed');
     }
