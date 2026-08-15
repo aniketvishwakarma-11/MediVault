@@ -106,6 +106,6 @@ export interface DocumentSearchFilters {
 export interface AuthUser {
   id: string;
   email: string;
-  role: 'patient' | 'doctor' | 'hospital' | 'admin';
+  role: 'patient' | 'doctor' | 'hospital' | 'admin' | 'authenticated' | string;
   patient_id?: string;
 }

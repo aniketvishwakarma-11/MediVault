@@ -320,46 +320,7 @@ Instructions:
     const isBlood = cat.toLowerCase().includes('blood') || cat.toLowerCase().includes('cbc') || cat.toLowerCase().includes('lab');
     const isPrescription = cat.toLowerCase().includes('prescription');
 
-    const sampleLabResults = isBlood
-      ? [
-          {
-            test_name: 'Hemoglobin',
-            value: '10.2',
-            unit: 'g/dL',
-            reference_range: '13.5 - 17.5',
-            status: 'LOW' as const,
-            clinical_meaning: 'Indicates mild iron deficiency anemia. Iron supplementation or dietary adjustments advised.',
-            confidence: 0.96,
-          },
-          {
-            test_name: 'Total Leucocyte Count (WBC)',
-            value: '6,800',
-            unit: '/cu mm',
-            reference_range: '4,000 - 11,000',
-            status: 'NORMAL' as const,
-            clinical_meaning: 'White blood cell count is within healthy range. No active systemic infection.',
-            confidence: 0.98,
-          },
-          {
-            test_name: 'Platelet Count',
-            value: '240,000',
-            unit: '/cu mm',
-            reference_range: '150,000 - 450,000',
-            status: 'NORMAL' as const,
-            clinical_meaning: 'Platelet levels optimal. Normal blood clotting capability.',
-            confidence: 0.97,
-          },
-          {
-            test_name: 'Fasting Blood Glucose',
-            value: '108',
-            unit: 'mg/dL',
-            reference_range: '70 - 99',
-            status: 'HIGH' as const,
-            clinical_meaning: 'Slightly elevated fasting sugar. Indicates prediabetes screening recommendation.',
-            confidence: 0.95,
-          },
-        ]
-      : [];
+    const sampleLabResults: any[] = [];
 
     const sampleMedications = isPrescription
       ? [

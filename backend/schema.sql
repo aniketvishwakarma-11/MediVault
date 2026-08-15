@@ -265,34 +265,79 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_patient_type ON public.medical_knowledg
 
 -- 13. Functions & Triggers
 CREATE OR REPLACE FUNCTION public.handle_new_user_v2()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  u_role text;
+  safe_role user_role;
+  u_name text;
 BEGIN
-  INSERT INTO public.users_profile (id, email, full_name, role)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
-    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'patient'::user_role)
-  )
-  ON CONFLICT (id) DO NOTHING;
-
-  IF (COALESCE(NEW.raw_user_meta_data->>'role', 'patient') = 'patient') THEN
-    INSERT INTO public.patients (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
-  ELSIF (NEW.raw_user_meta_data->>'role' = 'doctor') THEN
-    INSERT INTO public.doctors (user_id, license_number, specialization) 
-    VALUES (NEW.id, 'DOC-' || SUBSTRING(NEW.id::text, 1, 8), 'General Physician')
-    ON CONFLICT (user_id) DO NOTHING;
-  ELSIF (NEW.raw_user_meta_data->>'role' = 'hospital') THEN
-    INSERT INTO public.hospitals (user_id, hospital_name, registration_number) 
-    VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', 'General Hospital'), 'HOSP-' || SUBSTRING(NEW.id::text, 1, 8))
-    ON CONFLICT (user_id) DO NOTHING;
+  -- Extract role
+  u_role := LOWER(COALESCE(NEW.raw_user_meta_data->>'role', 'patient'));
+  IF u_role = 'doctor' THEN
+    safe_role := 'doctor'::user_role;
+  ELSIF u_role = 'hospital' THEN
+    safe_role := 'hospital'::user_role;
+  ELSIF u_role = 'admin' THEN
+    safe_role := 'admin'::user_role;
+  ELSE
+    safe_role := 'patient'::user_role;
   END IF;
 
+  -- Extract full name from Google metadata (full_name or name or email)
+  u_name := COALESCE(
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'name',
+    NEW.email,
+    'MediVault User'
+  );
+
+  -- 1. Insert into users_profile
+  BEGIN
+    INSERT INTO public.users_profile (id, email, full_name, role)
+    VALUES (NEW.id, NEW.email, u_name, safe_role)
+    ON CONFLICT (id) DO UPDATE SET
+      email = EXCLUDED.email,
+      full_name = EXCLUDED.full_name;
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  -- 2. Insert into role table
+  BEGIN
+    IF safe_role = 'doctor' THEN
+      INSERT INTO public.doctors (user_id, specialization, hospital_affiliation, verification_status) 
+      VALUES (NEW.id, 'General Physician', 'MediVault EMR', 'VERIFIED')
+      ON CONFLICT (user_id) DO NOTHING;
+    ELSIF safe_role = 'hospital' THEN
+      INSERT INTO public.hospitals (user_id, hospital_name, registration_number) 
+      VALUES (NEW.id, u_name, 'HOSP-' || SUBSTRING(NEW.id::text, 1, 8))
+      ON CONFLICT (user_id) DO NOTHING;
+    ELSE
+      INSERT INTO public.patients (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
+GRANT ALL ON TABLE public.users_profile TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.patients TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.doctors TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.hospitals TO postgres, anon, authenticated, service_role;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP TRIGGER IF EXISTS on_auth_user_created_v2 ON auth.users;
+DROP TRIGGER IF EXISTS handle_new_user ON auth.users;
+
 CREATE TRIGGER on_auth_user_created_v2
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user_v2();

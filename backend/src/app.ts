@@ -6,6 +6,7 @@ import documentRoutes from './routes/document.routes';
 import aiRoutes from './routes/ai.routes';
 import doctorRoutes from './routes/doctor.routes';
 import timelineRoutes from './routes/timeline.routes';
+import emergencyRoutes from './routes/emergency.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -35,12 +36,15 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Mount Module Routes
 app.use('/documents', documentRoutes);
+app.use('/api/documents', documentRoutes);
 app.use('/ai', aiRoutes);
 app.use('/system/ai', aiRoutes);
 app.use('/doctor', doctorRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/timeline', timelineRoutes);
 app.use('/api/timeline', timelineRoutes);
+app.use('/emergency', emergencyRoutes);
+app.use('/api/emergency', emergencyRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {

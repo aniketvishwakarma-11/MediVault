@@ -215,6 +215,9 @@ function DoctorProfileForm() {
         );
 
         try {
+          localStorage.setItem("medivault_user_role", "doctor");
+          await supabase.auth.updateUser({ data: { role: "doctor" } }).catch(() => {});
+
           await supabase
             .from("users_profile")
             .update({
