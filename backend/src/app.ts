@@ -7,6 +7,7 @@ import aiRoutes from './routes/ai.routes';
 import doctorRoutes from './routes/doctor.routes';
 import timelineRoutes from './routes/timeline.routes';
 import emergencyRoutes from './routes/emergency.routes';
+import consentRoutes from './routes/consent.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -45,6 +46,8 @@ app.use('/timeline', timelineRoutes);
 app.use('/api/timeline', timelineRoutes);
 app.use('/emergency', emergencyRoutes);
 app.use('/api/emergency', emergencyRoutes);
+app.use('/consent', consentRoutes);
+app.use('/api/consent', consentRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {

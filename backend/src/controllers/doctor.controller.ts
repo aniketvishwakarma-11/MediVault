@@ -10,7 +10,7 @@ export class DoctorController {
    */
   public static async getProfile(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user?.uid || (req as any).user?.id || 'demo-doctor-uid';
+      const userId = req.user?.id || 'demo-doctor-uid';
       const profile = await DoctorService.getDoctorProfileByUserId(userId);
 
       if (!profile) {
@@ -49,7 +49,11 @@ export class DoctorController {
    */
   public static async requestAccess(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = (req as any).user?.uid || 'doc-jenkins-123';
+      const doctorId = req.user?.id;
+      if (!doctorId) {
+        sendError(res, 401, 'Authentication required.');
+        return;
+      }
       const { patientId, purpose } = req.body;
 
       if (!patientId || !purpose) {
@@ -70,7 +74,11 @@ export class DoctorController {
    */
   public static async emergencyAccess(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = (req as any).user?.uid || 'doc-jenkins-123';
+      const doctorId = req.user?.id;
+      if (!doctorId) {
+        sendError(res, 401, 'Authentication required.');
+        return;
+      }
       const { patientQrOrCode, reason } = req.body;
 
       if (!patientQrOrCode || !reason) {
@@ -91,7 +99,11 @@ export class DoctorController {
    */
   public static async createConsultation(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = (req as any).user?.uid || 'doc-jenkins-123';
+      const doctorId = req.user?.id;
+      if (!doctorId) {
+        sendError(res, 401, 'Authentication required.');
+        return;
+      }
       const consultationData = { ...req.body, doctorId };
 
       if (!consultationData.patientId || !consultationData.diagnosis) {
@@ -112,7 +124,11 @@ export class DoctorController {
    */
   public static async createPrescription(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = (req as any).user?.uid || 'doc-jenkins-123';
+      const doctorId = req.user?.id;
+      if (!doctorId) {
+        sendError(res, 401, 'Authentication required.');
+        return;
+      }
       const prescriptionData = { ...req.body, doctorId };
 
       if (!prescriptionData.patientId || !prescriptionData.medicines || prescriptionData.medicines.length === 0) {

@@ -200,21 +200,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const updateProfileState = (currentUser: User) => {
-    const activeRole = (localStorage.getItem("medivault_user_role") as UserRole) || "patient";
+  const updateProfileState = async (currentUser: User) => {
+    // Fetch user's authoritative role from database
+    let realRole: UserRole = "patient";
+    try {
+      const { data: prof } = await supabase
+        .from("users_profile")
+        .select("role, full_name")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      if (prof?.role) {
+        realRole = (String(prof.role).toLowerCase() as UserRole);
+      } else {
+        const { data: doc } = await supabase
+          .from("doctors")
+          .select("id")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+        if (doc?.id) {
+          realRole = "doctor";
+        } else {
+          realRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
+        }
+      }
+    } catch {
+      realRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
+    }
+
+    localStorage.setItem("medivault_user_role", realRole);
+    setRoleState(realRole);
+
     setUserProfile({
       uid: currentUser.id,
       email: currentUser.email || null,
       displayName: currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "User",
-      role: activeRole,
+      role: realRole,
     });
   };
+
 
   const setRole = (newRole: UserRole) => {
     setRoleState(newRole);
     localStorage.setItem("medivault_user_role", newRole);
     if (userProfile) {
       setUserProfile({ ...userProfile, role: newRole });
+    }
+    if (user?.id && newRole === "doctor") {
+      supabase
+        .from("users_profile")
+        .update({ role: "doctor" })
+        .eq("id", user.id)
+        .then(() => {});
+
+      supabase
+        .from("doctors")
+        .upsert(
+          {
+            user_id: user.id,
+            license_number: `DOC-${user.id.substring(0, 8).toUpperCase()}`,
+            specialization: "General Physician",
+            hospital_name: "MediVault EMR",
+            hospital_affiliation: "MediVault EMR",
+            verification_status: "VERIFIED",
+          },
+          { onConflict: "user_id" }
+        )
+        .then(() => {});
     }
   };
 

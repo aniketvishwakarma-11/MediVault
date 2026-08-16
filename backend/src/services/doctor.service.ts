@@ -17,7 +17,7 @@ export class DoctorService {
   public static async getDoctorProfileByUserId(userId: string): Promise<DoctorProfile | null> {
     try {
       let res = await query(
-        `SELECT d.*, p.full_name, p.email, p.phone, p.profile_image_url
+        `SELECT d.*, p.full_name, p.email, p.phone, p.avatar_url AS profile_image_url
          FROM public.doctors d
          JOIN public.users_profile p ON d.user_id = p.id
          WHERE d.user_id = $1`,
@@ -33,7 +33,7 @@ export class DoctorService {
         ).catch(() => {});
 
         res = await query(
-          `SELECT d.*, p.full_name, p.email, p.phone, p.profile_image_url
+          `SELECT d.*, p.full_name, p.email, p.phone, p.avatar_url AS profile_image_url
            FROM public.doctors d
            JOIN public.users_profile p ON d.user_id = p.id
            WHERE d.user_id = $1`,
@@ -60,7 +60,7 @@ export class DoctorService {
   public static async searchPatients(queryStr: string, filter?: { bloodGroup?: string; gender?: string }) {
     try {
       let sql = `
-        SELECT p.*, prof.full_name, prof.email, prof.phone, prof.profile_image_url
+        SELECT p.*, prof.full_name, prof.email, prof.phone, prof.avatar_url AS profile_image_url
         FROM public.patients p
         JOIN public.users_profile prof ON p.user_id = prof.id
         WHERE (

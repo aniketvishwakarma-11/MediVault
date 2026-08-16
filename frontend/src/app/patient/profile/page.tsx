@@ -141,7 +141,7 @@ function PatientProfileContent() {
             .maybeSingle();
 
           let rawDob = patientRow?.date_of_birth || "";
-          if (rawDob && rawDob !== "Not provided") {
+          if (rawDob && rawDob !== "Not provided" && String(rawDob).trim() !== "") {
             const parsedDob = new Date(rawDob);
             if (!isNaN(parsedDob.getTime())) {
               rawDob = parsedDob.toISOString().split("T")[0];
@@ -150,9 +150,17 @@ function PatientProfileContent() {
             rawDob = "Not provided";
           }
 
-          const vitalsObj = patientRow?.vitals_json || {};
-          const parsedHeight = vitalsObj.height ? parseValAndUnit(vitalsObj.height, "cm") : parseValAndUnit(patientRow?.height, "cm");
-          const parsedWeight = vitalsObj.weight ? parseValAndUnit(vitalsObj.weight, "kg") : parseValAndUnit(patientRow?.weight, "kg");
+          let vitalsObj: any = {};
+          if (typeof patientRow?.vitals_json === "string") {
+            try { vitalsObj = JSON.parse(patientRow.vitals_json); } catch {}
+          } else if (patientRow?.vitals_json && typeof patientRow.vitals_json === "object") {
+            vitalsObj = patientRow.vitals_json;
+          }
+
+          const rawHeight = vitalsObj.height || patientRow?.height || "";
+          const rawWeight = vitalsObj.weight || patientRow?.weight || "";
+          const parsedHeight = parseValAndUnit(rawHeight, "cm");
+          const parsedWeight = parseValAndUnit(rawWeight, "kg");
 
           const allergiesStr = Array.isArray(patientRow?.allergies_json)
             ? patientRow.allergies_json.join(", ")
@@ -162,6 +170,8 @@ function PatientProfileContent() {
             ? patientRow.chronic_conditions_json.join(", ")
             : (patientRow?.chronic_conditions || "");
 
+          const emergencyVal = patientRow?.emergency_contact_name || patientRow?.emergency_contact_phone || patientRow?.emergency_contact || "";
+
           initialData = {
             full_name: profileRow?.full_name || defaultName,
             email: profileRow?.email || defaultEmail,
@@ -169,7 +179,7 @@ function PatientProfileContent() {
             date_of_birth: rawDob,
             gender: patientRow?.gender || "Prefer not to say",
             blood_group: patientRow?.blood_group || "Not provided",
-            emergency_contact: patientRow?.emergency_contact_name || patientRow?.emergency_contact || "",
+            emergency_contact: emergencyVal,
             weight: parsedWeight.val,
             weight_unit: parsedWeight.unit,
             height: parsedHeight.val,
@@ -186,23 +196,28 @@ function PatientProfileContent() {
 
       setDbData(initialData);
 
-      // Check if user has an unsaved draft from a previous session / tab switch
+      // Check if user has an unsaved draft from a previous session
       const savedDraft = sessionStorage.getItem(draftKey);
       if (savedDraft) {
         try {
           const parsedDraft = JSON.parse(savedDraft) as PatientProfileData;
-          setProfileData(parsedDraft);
-          setHasDraft(true);
-          setIsEditing(true);
+          // Only use draft if it has actual values compared to empty
+          if (parsedDraft.blood_group && parsedDraft.blood_group !== "Not provided") {
+            setProfileData(parsedDraft);
+            setHasDraft(true);
+            setIsEditing(true);
+          } else {
+            setProfileData(initialData);
+          }
         } catch {
           setProfileData(initialData);
         }
       } else {
         setProfileData(initialData);
       }
-
       setLoading(false);
     }
+
 
     loadRealProfile();
 

@@ -387,6 +387,67 @@ export async function runAutoMigrations(): Promise<void> {
       logger.warn('[Database Migration] Emergency system migration notice:', emergencyErr.message || emergencyErr);
     }
 
+    // 13. Consent System Normalization (Migration 008)
+    try {
+      const consentMigrationPath = path.join(__dirname, '../migrations/008_consent_system.sql');
+      if (fs.existsSync(consentMigrationPath)) {
+        const consentSQL = fs.readFileSync(consentMigrationPath, 'utf8');
+        await query(consentSQL);
+        logger.info('[Database Migration] Consent system schema (008) applied successfully.');
+      } else {
+        logger.warn('[Database Migration] Migration 008_consent_system.sql not found, running inline consent setup...');
+        // Inline fallback: ensure consent_grants table exists with required columns
+        await query(`
+          CREATE TABLE IF NOT EXISTS public.consent_grants (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            patient_id UUID NOT NULL,
+            grantee_id UUID NOT NULL,
+            grantee_role VARCHAR(20) NOT NULL DEFAULT 'doctor',
+            status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+            purpose TEXT,
+            scope VARCHAR(100) DEFAULT 'Full Vault',
+            doctor_name VARCHAR(255),
+            consent_hash VARCHAR(64),
+            blockchain_tx_hash VARCHAR(128),
+            expires_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        await query(`
+          ALTER TABLE public.consent_grants
+            ADD COLUMN IF NOT EXISTS purpose TEXT,
+            ADD COLUMN IF NOT EXISTS scope VARCHAR(100) DEFAULT 'Full Vault',
+            ADD COLUMN IF NOT EXISTS doctor_name VARCHAR(255),
+            ADD COLUMN IF NOT EXISTS consent_hash VARCHAR(64),
+            ADD COLUMN IF NOT EXISTS blockchain_tx_hash VARCHAR(128),
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+        `);
+        await query(`ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_consent_grants_patient ON public.consent_grants(patient_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_consent_grants_grantee ON public.consent_grants(grantee_id);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_consent_grants_patient_grantee_status ON public.consent_grants(patient_id, grantee_id, status);`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_consent_grants_approved ON public.consent_grants(patient_id, grantee_id) WHERE status = 'APPROVED';`);
+        // Ensure consent_requests exists for backward compat
+        await query(`
+          CREATE TABLE IF NOT EXISTS public.consent_requests (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            patient_id UUID,
+            requested_by UUID,
+            doctor_name VARCHAR(255),
+            purpose TEXT,
+            scope VARCHAR(100) DEFAULT 'Full Vault',
+            status VARCHAR(20) DEFAULT 'PENDING',
+            expires_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        logger.info('[Database Migration] Inline consent system tables initialized successfully.');
+      }
+    } catch (consentErr: any) {
+      logger.warn('[Database Migration] Consent system migration notice:', consentErr.message || consentErr);
+    }
+
     logger.info('[Database Migration] All database tables initialized successfully.');
   } catch (error: any) {
     logger.warn('[Database Migration Notice] Auto-migration execution note:', error.message || error);

@@ -40,18 +40,49 @@ export default function AuthPage() {
   const { user, userProfile, isDemo, role, signInWithGoogle, setRole, setDemoUser } = useAuth();
   const router = useRouter();
 
-  // Only auto-redirect away from /auth if there is an ACTIVE real user session
-  // Do NOT hijack the page if the user is on /auth attempting to log in
+  // Auto-redirect away from /auth if there is an ACTIVE real user session based on their authoritative role
   useEffect(() => {
-    if (user && !isDemo) {
-      const activeRole = userProfile?.role || role || (localStorage.getItem("medivault_user_role") as UserRole) || "patient";
+    if (!user || isDemo) return;
+
+    let isMounted = true;
+
+    async function checkAndRedirect() {
+      let activeRole: UserRole = "patient";
+      try {
+        const { data } = await supabase
+          .from("users_profile")
+          .select("role")
+          .eq("id", user!.id)
+          .maybeSingle();
+
+        if (data?.role) {
+          activeRole = String(data.role).toLowerCase() as UserRole;
+        } else {
+          activeRole = ((localStorage.getItem("medivault_user_role") as UserRole) || "patient");
+        }
+      } catch {
+        activeRole = ((localStorage.getItem("medivault_user_role") as UserRole) || "patient");
+      }
+
+      if (!isMounted) return;
+
+      setRole(activeRole);
+      localStorage.setItem("medivault_user_role", activeRole);
+
       if (activeRole === "doctor") {
         router.push("/doctor/dashboard");
       } else {
         router.push("/patient/dashboard");
       }
     }
-  }, [user, userProfile, isDemo, role, router]);
+
+    checkAndRedirect();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, isDemo, router, setRole]);
+
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,10 +91,9 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      setRole(selectedRole);
-
       if (isLogin) {
-        const { error: authError } = await supabase.auth.signInWithPassword({
+        // ── SIGN IN: Authenticate with credentials and auto-route to user's assigned role ──
+        const { data: signInData, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -74,12 +104,42 @@ export default function AuthPage() {
 
         localStorage.removeItem("medivault_is_demo");
 
-        if (selectedRole === "doctor") {
+        // Fetch user's authoritative role from database
+        let userRole: UserRole = "patient";
+        if (signInData?.user?.id) {
+          const { data: prof } = await supabase
+            .from("users_profile")
+            .select("role")
+            .eq("id", signInData.user.id)
+            .maybeSingle();
+
+          if (prof?.role) {
+            userRole = (String(prof.role).toLowerCase() as UserRole);
+          } else {
+            const { data: doc } = await supabase
+              .from("doctors")
+              .select("id")
+              .eq("user_id", signInData.user.id)
+              .maybeSingle();
+            if (doc?.id) {
+              userRole = "doctor";
+            }
+          }
+        }
+
+        setRole(userRole);
+        localStorage.setItem("medivault_user_role", userRole);
+
+        if (userRole === "doctor") {
           router.push("/doctor/dashboard");
         } else {
           router.push("/patient/dashboard");
         }
       } else {
+        // ── REGISTER: Create new user with their chosen selectedRole ──
+        setRole(selectedRole);
+        localStorage.setItem("medivault_user_role", selectedRole);
+
         const { data, error: signUpErr } = await supabase.auth.signUp({
           email,
           password,
@@ -128,7 +188,11 @@ export default function AuthPage() {
     setMessage(null);
     setLoading(true);
     try {
-      setRole(selectedRole);
+      if (!isLogin) {
+        // When registering via Google, save intended role so onboarding/trigger picks it up
+        setRole(selectedRole);
+        localStorage.setItem("medivault_user_role", selectedRole);
+      }
       await signInWithGoogle();
     } catch (err: any) {
       console.error("Google Auth error:", err);
@@ -136,6 +200,7 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#F0FDFA] text-[#0F172A] flex flex-col font-body">
@@ -235,31 +300,36 @@ export default function AuthPage() {
 
             {/* Auth Form */}
             <form onSubmit={handleAuth} className="space-y-4">
-              {/* Role Selection */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#0F172A] uppercase tracking-wider font-heading">Account Role</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: "patient", label: "Patient", icon: User },
-                    { id: "doctor", label: "Doctor", icon: Stethoscope },
-                    { id: "admin", label: "Facility", icon: Building2 },
-                  ].map((role) => (
-                    <button
-                      key={role.id}
-                      type="button"
-                      onClick={() => setSelectedRole(role.id as UserRole)}
-                      className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all min-h-[52px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] ${
-                        selectedRole === role.id
-                          ? "bg-cyan-50 border-[#0891B2] text-[#0891B2] shadow-xs"
-                          : "bg-white border-slate-200 text-[#475569] hover:bg-slate-50"
-                      }`}
-                    >
-                      <role.icon className="w-4 h-4" />
-                      <span>{role.label}</span>
-                    </button>
-                  ))}
+              {/* Role Selection (Only shown when registering a new account) */}
+              {!isLogin && (
+                <div className="space-y-1.5 animate-in fade-in duration-200">
+                  <label className="text-xs font-bold text-[#0F172A] uppercase tracking-wider font-heading">
+                    Account Role
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "patient", label: "Patient", icon: User },
+                      { id: "doctor", label: "Doctor", icon: Stethoscope },
+                      { id: "admin", label: "Facility", icon: Building2 },
+                    ].map((role) => (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => setSelectedRole(role.id as UserRole)}
+                        className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all min-h-[52px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] ${
+                          selectedRole === role.id
+                            ? "bg-cyan-50 border-[#0891B2] text-[#0891B2] shadow-xs"
+                            : "bg-white border-slate-200 text-[#475569] hover:bg-slate-50"
+                        }`}
+                      >
+                        <role.icon className="w-4 h-4" />
+                        <span>{role.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
 
               {!isLogin && (
                 <div className="space-y-1.5">
@@ -535,33 +605,36 @@ export default function AuthPage() {
                 {/* Form */}
                 <form onSubmit={handleAuth} className="space-y-3">
                   
-                  {/* Account Role Buttons */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-extrabold text-[#475569] uppercase tracking-wider font-heading">
-                      Select Role
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { id: "patient", label: "Patient", icon: User },
-                        { id: "doctor", label: "Doctor", icon: Stethoscope },
-                        { id: "admin", label: "Facility", icon: Building2 },
-                      ].map((role) => (
-                        <button
-                          key={role.id}
-                          type="button"
-                          onClick={() => setSelectedRole(role.id as UserRole)}
-                          className={`py-2 px-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] cursor-pointer ${
-                            selectedRole === role.id
-                              ? "bg-cyan-50 border-[#0891B2] text-[#0891B2] shadow-xs"
-                              : "bg-white border-slate-200 text-[#475569] hover:bg-slate-50"
-                          }`}
-                        >
-                          <role.icon className="w-3.5 h-3.5" />
-                          <span>{role.label}</span>
-                        </button>
-                      ))}
+                  {/* Account Role Buttons (Only shown when registering a new account) */}
+                  {!isLogin && (
+                    <div className="space-y-1 animate-in fade-in duration-200">
+                      <label className="text-[10px] font-extrabold text-[#475569] uppercase tracking-wider font-heading">
+                        Select Role
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: "patient", label: "Patient", icon: User },
+                          { id: "doctor", label: "Doctor", icon: Stethoscope },
+                          { id: "admin", label: "Facility", icon: Building2 },
+                        ].map((role) => (
+                          <button
+                            key={role.id}
+                            type="button"
+                            onClick={() => setSelectedRole(role.id as UserRole)}
+                            className={`py-2 px-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] cursor-pointer ${
+                              selectedRole === role.id
+                                ? "bg-cyan-50 border-[#0891B2] text-[#0891B2] shadow-xs"
+                                : "bg-white border-slate-200 text-[#475569] hover:bg-slate-50"
+                            }`}
+                          >
+                            <role.icon className="w-3.5 h-3.5" />
+                            <span>{role.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
 
                   {!isLogin && (
                     <div className="space-y-1">
