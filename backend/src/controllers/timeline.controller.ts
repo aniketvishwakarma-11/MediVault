@@ -11,13 +11,21 @@ import { logger } from '../utils/logger';
  * Enforces authorization at the middleware layer (authenticateJWT + validatePatientAccess).
  */
 export class TimelineController {
+  private static getEffectivePatientId(req: Request): string | null {
+    if (req.user?.role === 'doctor' || req.user?.role === 'hospital' || req.user?.role === 'admin') {
+      const qId = (req.query.patient_id || req.params.patientId || req.query.patientId) as string;
+      if (qId) return qId;
+    }
+    return req.user?.patient_id || req.user?.id || null;
+  }
+
   /**
    * GET /timeline/summary
    * Health snapshot + record gaps + notable changes.
    */
   public static async getSummary(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -37,7 +45,7 @@ export class TimelineController {
    */
   public static async getEvents(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -68,7 +76,7 @@ export class TimelineController {
    */
   public static async getEpisodes(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -88,7 +96,7 @@ export class TimelineController {
    */
   public static async rebuildEpisodes(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -107,7 +115,7 @@ export class TimelineController {
    */
   public static async getLabTrends(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -126,7 +134,7 @@ export class TimelineController {
    */
   public static async getLabTrend(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -156,7 +164,7 @@ export class TimelineController {
    */
   public static async getMedications(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -175,7 +183,7 @@ export class TimelineController {
    */
   public static async getConditions(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;
@@ -195,7 +203,7 @@ export class TimelineController {
    */
   public static async getInsights(req: Request, res: Response): Promise<void> {
     try {
-      const patientId = req.user?.patient_id;
+      const patientId = TimelineController.getEffectivePatientId(req);
       if (!patientId) {
         sendError(res, 401, 'Patient identity not established.');
         return;

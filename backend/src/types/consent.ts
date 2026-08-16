@@ -68,7 +68,9 @@ export interface PatientMinimalProfile {
   emergencyContact?: string;
   phone?: string;
   email?: string;
-  bmi?: number;
+  height?: string;
+  weight?: string;
+  bmi?: string | number;
 }
 
 export interface AuditEvent {

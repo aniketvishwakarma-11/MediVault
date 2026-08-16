@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -23,7 +23,8 @@ import {
   Activity,
   Cpu,
   Check,
-  ShieldAlert
+  ShieldAlert,
+  Loader2
 } from "lucide-react";
 
 export default function AuthPage() {
@@ -37,16 +38,20 @@ export default function AuthPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { user, userProfile, isDemo, role, signInWithGoogle, setRole, setDemoUser } = useAuth();
+  const { user, userProfile, isDemo, role, loading: authLoading, signInWithGoogle, setRole, setDemoUser } = useAuth();
   const router = useRouter();
+  const isRedirectingRef = useRef(false);
 
   // Auto-redirect away from /auth if there is an ACTIVE real user session based on their authoritative role
   useEffect(() => {
-    if (!user || isDemo) return;
+    if (authLoading || !user || isDemo || isRedirectingRef.current) return;
 
     let isMounted = true;
 
     async function checkAndRedirect() {
+      if (isRedirectingRef.current) return;
+      isRedirectingRef.current = true;
+
       let activeRole: UserRole = "patient";
       try {
         const { data } = await supabase
@@ -69,10 +74,13 @@ export default function AuthPage() {
       setRole(activeRole);
       localStorage.setItem("medivault_user_role", activeRole);
 
-      if (activeRole === "doctor") {
-        router.push("/doctor/dashboard");
+      const target = activeRole === "doctor" ? "/doctor/dashboard" : "/patient/dashboard";
+
+      // If URL has OAuth hash (#access_token=...), wipe hash and perform clean client replace
+      if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+        window.location.replace(target);
       } else {
-        router.push("/patient/dashboard");
+        router.replace(target);
       }
     }
 
@@ -81,7 +89,7 @@ export default function AuthPage() {
     return () => {
       isMounted = false;
     };
-  }, [user, isDemo, router, setRole]);
+  }, [user, isDemo, authLoading, router, setRole]);
 
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -127,14 +135,12 @@ export default function AuthPage() {
           }
         }
 
+        isRedirectingRef.current = true;
         setRole(userRole);
         localStorage.setItem("medivault_user_role", userRole);
 
-        if (userRole === "doctor") {
-          router.push("/doctor/dashboard");
-        } else {
-          router.push("/patient/dashboard");
-        }
+        const target = userRole === "doctor" ? "/doctor/dashboard" : "/patient/dashboard";
+        router.replace(target);
       } else {
         // ── REGISTER: Create new user with their chosen selectedRole ──
         setRole(selectedRole);
@@ -156,9 +162,11 @@ export default function AuthPage() {
         localStorage.removeItem("medivault_is_demo");
 
         if (selectedRole === "doctor") {
-          router.push("/doctor/auth/signup");
+          isRedirectingRef.current = true;
+          router.replace("/doctor/auth/signup");
         } else if (data.session) {
-          router.push("/patient/dashboard");
+          isRedirectingRef.current = true;
+          router.replace("/patient/dashboard");
         } else {
           setMessage("Registration successful! Please check your email to confirm your account.");
         }
@@ -172,14 +180,15 @@ export default function AuthPage() {
   };
 
   const handleDemoLogin = (demoRole: UserRole) => {
+    isRedirectingRef.current = true;
     setSelectedRole(demoRole);
     setEmail(demoRole === "patient" ? "patient@medivault.local" : "dr.jenkins@medivault.org");
     setPassword("password123");
     setDemoUser(demoRole);
     if (demoRole === "doctor") {
-      router.push("/doctor/dashboard");
+      router.replace("/doctor/dashboard");
     } else {
-      router.push("/patient/dashboard");
+      router.replace("/patient/dashboard");
     }
   };
 

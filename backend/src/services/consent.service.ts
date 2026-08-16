@@ -163,6 +163,37 @@ export class ConsentService {
         ? JSON.parse(row.vitals_json || '{}')
         : (row.vitals_json || {});
 
+      // Calculate BMI from vitals height & weight if available
+      let calculatedBmi: string | undefined = undefined;
+      if (vitals.height && vitals.weight) {
+        const cleanH = String(vitals.height).trim();
+        const cleanW = String(vitals.weight).trim();
+        const hMatch = cleanH.match(/([0-9.]+)/);
+        const wMatch = cleanW.match(/([0-9.]+)/);
+        if (hMatch && wMatch) {
+          const hVal = parseFloat(hMatch[1]);
+          const wVal = parseFloat(wMatch[1]);
+          if (!isNaN(hVal) && !isNaN(wVal) && hVal > 0 && wVal > 0) {
+            let hMeters = hVal;
+            if (cleanH.toLowerCase().includes('cm')) hMeters = hVal / 100;
+            else if (cleanH.toLowerCase().includes('ft')) hMeters = hVal * 0.3048;
+            else if (hVal > 3) hMeters = hVal / 100;
+            let wKg = wVal;
+            if (cleanW.toLowerCase().includes('lbs')) wKg = wVal * 0.453592;
+            const num = wKg / (hMeters * hMeters);
+            if (!isNaN(num) && isFinite(num)) {
+              let status = 'Healthy';
+              if (num < 18.5) status = 'Underweight';
+              else if (num >= 25 && num <= 29.9) status = 'Overweight';
+              else if (num >= 30) status = 'Obese';
+              calculatedBmi = `${num.toFixed(1)} (${status})`;
+            }
+          }
+        }
+      } else if (vitals.bmi) {
+        calculatedBmi = String(vitals.bmi);
+      }
+
       const profile: PatientMinimalProfile = {
         id: row.id,
         uhid: `MV-PAT-${row.id.substring(0, 5).toUpperCase()}`,
@@ -184,7 +215,9 @@ export class ConsentService {
             : undefined,
           phone: row.phone,
           email: row.email,
-          bmi: vitals.bmi || undefined,
+          height: vitals.height,
+          weight: vitals.weight,
+          bmi: calculatedBmi,
         }),
       };
 

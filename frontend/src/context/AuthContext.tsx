@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileCompleted, setIsProfileCompleted] = useState<boolean | null>(null);
 
-  const checkProfileCompletion = async (currentUser: User): Promise<boolean> => {
+  const checkProfileCompletion = useCallback(async (currentUser: User): Promise<boolean> => {
     try {
       const activeRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
 
@@ -115,9 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsProfileCompleted(true);
       return true;
     }
-  };
+  }, []);
 
-  const refreshProfileCompletion = async (): Promise<boolean> => {
+  const refreshProfileCompletion = useCallback(async (): Promise<boolean> => {
     if (isDemo) {
       setIsProfileCompleted(true);
       return true;
@@ -127,7 +127,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false;
     }
     return checkProfileCompletion(user);
-  };
+  }, [isDemo, user, checkProfileCompletion]);
+
+  const updateProfileState = useCallback(async (currentUser: User) => {
+    // Fetch user's authoritative role from database
+    let realRole: UserRole = "patient";
+    try {
+      const { data: prof } = await supabase
+        .from("users_profile")
+        .select("role, full_name")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+
+      if (prof?.role) {
+        realRole = (String(prof.role).toLowerCase() as UserRole);
+      } else {
+        const { data: doc } = await supabase
+          .from("doctors")
+          .select("id")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+        if (doc?.id) {
+          realRole = "doctor";
+        } else {
+          realRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
+        }
+      }
+    } catch {
+      realRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
+    }
+
+    localStorage.setItem("medivault_user_role", realRole);
+    setRoleState(realRole);
+
+    setUserProfile({
+      uid: currentUser.id,
+      email: currentUser.email || null,
+      displayName: currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "User",
+      role: realRole,
+    });
+  }, []);
 
   useEffect(() => {
     // Read saved role & demo state
@@ -198,54 +237,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [checkProfileCompletion, updateProfileState]);
 
-  const updateProfileState = async (currentUser: User) => {
-    // Fetch user's authoritative role from database
-    let realRole: UserRole = "patient";
-    try {
-      const { data: prof } = await supabase
-        .from("users_profile")
-        .select("role, full_name")
-        .eq("id", currentUser.id)
-        .maybeSingle();
-
-      if (prof?.role) {
-        realRole = (String(prof.role).toLowerCase() as UserRole);
-      } else {
-        const { data: doc } = await supabase
-          .from("doctors")
-          .select("id")
-          .eq("user_id", currentUser.id)
-          .maybeSingle();
-        if (doc?.id) {
-          realRole = "doctor";
-        } else {
-          realRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
-        }
-      }
-    } catch {
-      realRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
-    }
-
-    localStorage.setItem("medivault_user_role", realRole);
-    setRoleState(realRole);
-
-    setUserProfile({
-      uid: currentUser.id,
-      email: currentUser.email || null,
-      displayName: currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "User",
-      role: realRole,
-    });
-  };
-
-
-  const setRole = (newRole: UserRole) => {
+  const setRole = useCallback((newRole: UserRole) => {
     setRoleState(newRole);
     localStorage.setItem("medivault_user_role", newRole);
-    if (userProfile) {
-      setUserProfile({ ...userProfile, role: newRole });
-    }
+    setUserProfile((prev) => (prev ? { ...prev, role: newRole } : null));
+
     if (user?.id && newRole === "doctor") {
       supabase
         .from("users_profile")
@@ -268,9 +266,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         )
         .then(() => {});
     }
-  };
+  }, [user?.id]);
 
-  const setDemoUser = (demoRole: UserRole) => {
+  const setDemoUser = useCallback((demoRole: UserRole) => {
     setIsDemo(true);
     setRoleState(demoRole);
     localStorage.setItem("medivault_is_demo", "true");
@@ -282,9 +280,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: demoRole,
     });
     setIsProfileCompleted(true);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
     } catch (err) {
@@ -298,9 +296,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.location.href = "/";
     }
-  };
+  }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     localStorage.removeItem("medivault_is_demo");
     setIsDemo(false);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -310,26 +308,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     if (error) throw error;
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    user,
+    session,
+    userProfile,
+    loading,
+    isDemo,
+    isProfileCompleted,
+    setIsProfileCompleted,
+    refreshProfileCompletion,
+    logout,
+    signInWithGoogle,
+    setRole,
+    setDemoUser,
+    role,
+  }), [
+    user,
+    session,
+    userProfile,
+    loading,
+    isDemo,
+    isProfileCompleted,
+    refreshProfileCompletion,
+    logout,
+    signInWithGoogle,
+    setRole,
+    setDemoUser,
+    role,
+  ]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        userProfile,
-        loading,
-        isDemo,
-        isProfileCompleted,
-        setIsProfileCompleted,
-        refreshProfileCompletion,
-        logout,
-        signInWithGoogle,
-        setRole,
-        setDemoUser,
-        role,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

@@ -56,7 +56,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
       }
     }
     if (!isDemo && isProfileCompleted === false && pathname !== "/doctor/profile") {
-      router.push("/doctor/profile?required=true");
+      router.replace("/doctor/profile?required=true");
     }
   }, [isProfileCompleted, isDemo, pathname, router, user]);
 

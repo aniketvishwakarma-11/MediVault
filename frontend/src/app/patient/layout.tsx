@@ -46,7 +46,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
   // For DEMO users, NEVER force redirect to profile page.
   React.useEffect(() => {
     if (user && !isDemo && isProfileCompleted === false && pathname !== "/patient/profile") {
-      router.push("/patient/profile?required=true");
+      router.replace("/patient/profile?required=true");
     }
   }, [user, isProfileCompleted, isDemo, pathname, router]);
 
