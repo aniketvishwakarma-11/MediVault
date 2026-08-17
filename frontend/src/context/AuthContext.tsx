@@ -243,30 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleState(newRole);
     localStorage.setItem("medivault_user_role", newRole);
     setUserProfile((prev) => (prev ? { ...prev, role: newRole } : null));
-
-    if (user?.id && newRole === "doctor") {
-      supabase
-        .from("users_profile")
-        .update({ role: "doctor" })
-        .eq("id", user.id)
-        .then(() => {});
-
-      supabase
-        .from("doctors")
-        .upsert(
-          {
-            user_id: user.id,
-            license_number: `DOC-${user.id.substring(0, 8).toUpperCase()}`,
-            specialization: "General Physician",
-            hospital_name: "MediVault EMR",
-            hospital_affiliation: "MediVault EMR",
-            verification_status: "VERIFIED",
-          },
-          { onConflict: "user_id" }
-        )
-        .then(() => {});
-    }
-  }, [user?.id]);
+  }, []);
 
   const setDemoUser = useCallback((demoRole: UserRole) => {
     setIsDemo(true);

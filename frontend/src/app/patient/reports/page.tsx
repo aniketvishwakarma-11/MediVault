@@ -362,7 +362,7 @@ export default function MedicalReportsPage() {
             setVisitDate(new Date().toISOString().split("T")[0]);
             setIsUploadModalOpen(true);
           }}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-teal-600 text-white font-bold text-xs shadow-md shadow-sky-600/20 hover:shadow-lg hover:shadow-sky-600/30 transition-all"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Upload Medical Record</span>
@@ -371,50 +371,52 @@ export default function MedicalReportsPage() {
 
       {/* Notifications */}
       {error && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3">
+        <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-xs flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-sky-600 shrink-0" />
             <span>{error}</span>
           </div>
-          <button onClick={fetchDocuments} className="px-3 py-1 rounded-xl bg-amber-100 text-amber-800 font-bold hover:bg-amber-200 text-[11px] flex items-center gap-1">
+          <button onClick={fetchDocuments} className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 text-[11px] flex items-center gap-1 cursor-pointer">
             <RefreshCw className="w-3 h-3" /> Refresh
           </button>
         </div>
       )}
 
       {successMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-3.5 rounded-lg bg-sky-50 border border-sky-200 text-sky-900 text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {/* Search & Category Controls Bar */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3.5">
         <div className="flex flex-col md:flex-row items-center gap-3">
           {/* Search Input */}
           <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
               type="text"
               placeholder="Search by document name, doctor, or hospital..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:bg-white focus:ring-1 focus:ring-sky-500 focus:border-sky-500 transition-colors"
             />
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 shrink-0">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200 shrink-0">
             <button
               onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-xl text-xs ${viewMode === "grid" ? "bg-white text-sky-600 shadow-xs font-bold" : "text-slate-500"}`}
+              className={`p-1.5 rounded-md text-xs transition-colors cursor-pointer ${viewMode === "grid" ? "bg-white text-sky-600 shadow-xs font-bold" : "text-slate-500 hover:text-slate-800"}`}
+              title="Grid View"
             >
               <Grid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`p-2 rounded-xl text-xs ${viewMode === "list" ? "bg-white text-sky-600 shadow-xs font-bold" : "text-slate-500"}`}
+              className={`p-1.5 rounded-md text-xs transition-colors cursor-pointer ${viewMode === "list" ? "bg-white text-sky-600 shadow-xs font-bold" : "text-slate-500 hover:text-slate-800"}`}
+              title="List View"
             >
               <List className="w-4 h-4" />
             </button>
@@ -422,13 +424,13 @@ export default function MedicalReportsPage() {
         </div>
 
         {/* Category Pills Bar */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
           <button
             onClick={() => setSelectedCategory("")}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               selectedCategory === ""
                 ? "bg-sky-600 text-white shadow-xs"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
             All Records
@@ -437,10 +439,10 @@ export default function MedicalReportsPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                 selectedCategory === cat
                   ? "bg-sky-600 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               {cat}
@@ -472,185 +474,225 @@ export default function MedicalReportsPage() {
         </div>
       ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {documents.map((doc) => (
-            <div
-              key={doc.id}
-              className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="px-2.5 py-1 rounded-full bg-sky-50 text-sky-700 text-[10px] font-bold border border-sky-200">
-                    {doc.document_category || "General"}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                    {formatBytes(doc.file_size)}
-                  </span>
-                </div>
+        {documents.map((doc) => {
+              const ai = doc.metadata_json?.ai_analysis;
+              const labResults = ai?.lab_results || [];
+              const abnormalLabs = labResults.filter((l: any) => l.status && l.status !== "NORMAL");
+              const hasAbnormal = abnormalLabs.length > 0;
+              const cardDoctorName = doc.doctor_name || ai?.doctor?.name || "Attending Physician";
+              const cardHospitalName = doc.hospital_name || ai?.hospital?.name || "Verified Facility";
 
-                <h3 className="font-bold text-slate-900 text-base leading-snug line-clamp-2">
-                  {doc.document_name || doc.original_filename}
-                </h3>
-
-                <div className="space-y-1.5 text-xs text-slate-500">
-                  {doc.doctor_name && (
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{doc.doctor_name}</span>
+              return (
+                <div
+                  key={doc.id}
+                  className="h-[340px] bg-white rounded-xl border border-slate-200 shadow-xs hover:border-sky-300 hover:shadow-sm transition-all flex flex-col justify-between overflow-hidden"
+                >
+                  {/* Top Header Section */}
+                  <div className="p-4 pb-2 space-y-2">
+                    {/* Category badge + File size */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                        {doc.document_category || "General Record"}
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-400 tabular-nums">
+                        {formatBytes(doc.file_size)}
+                      </span>
                     </div>
-                  )}
-                  {doc.hospital_name && (
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{doc.hospital_name}</span>
-                    </div>
-                  )}
-                  {doc.visit_date && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{doc.visit_date}</span>
-                    </div>
-                  )}
-                </div>
 
-                {/* Doctor Name, Hospital & Abnormal Lab Badges Box */}
-                {(() => {
-                  const ai = doc.metadata_json?.ai_analysis;
-                  const labResults = ai?.lab_results || [];
-                  const abnormalLabs = labResults.filter((l: any) => l.status && l.status !== "NORMAL");
-                  const doctorName = doc.doctor_name || ai?.doctor?.name || "Attending Physician";
-                  const hospitalName = doc.hospital_name || ai?.hospital?.name || "Health Network";
+                    {/* Document Title */}
+                    <h3 className="font-heading font-bold text-slate-900 text-sm truncate" title={doc.document_name || doc.original_filename}>
+                      {doc.document_name || doc.original_filename}
+                    </h3>
 
-                  return (
-                    <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200/90 text-xs text-slate-700 space-y-2.5 shadow-2xs">
-                      {/* Doctor & Hospital Row */}
-                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <Stethoscope className="w-3.5 h-3.5 text-[#0891B2] shrink-0" />
-                          <span className="font-bold text-slate-800 text-[11px] truncate">
-                            {doctorName}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium shrink-0 truncate max-w-[130px]">
-                          <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span className="truncate">{hospitalName}</span>
-                        </div>
+                    {/* Physician & Facility Meta */}
+                    <div className="flex items-center justify-between text-xs text-slate-500 pt-0.5 gap-2">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Stethoscope className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                        <span className="truncate text-slate-700 font-medium">{cardDoctorName}</span>
                       </div>
+                      <div className="flex items-center gap-1 truncate text-[11px] text-slate-400 shrink-0 max-w-[120px]">
+                        <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{cardHospitalName}</span>
+                      </div>
+                    </div>
+                  </div>
 
-                      {/* Abnormal Findings Badges */}
-                      {abnormalLabs.length > 0 ? (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-rose-800">
-                            <span className="flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3 text-rose-600" />
-                              Abnormal Findings
+                  {/* Fixed-Height Biomarkers Box (Strict White & Blue) */}
+                  <div className="px-4 py-1 flex-1 flex flex-col justify-center">
+                    <div className="h-[125px] rounded-lg bg-slate-50 border border-slate-200 p-2.5 flex flex-col justify-between">
+                      {hasAbnormal ? (
+                        <>
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                            <span className="flex items-center gap-1.5">
+                              <AlertCircle className="w-3.5 h-3.5 text-sky-600" />
+                              Clinical Findings
                             </span>
-                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[9px]">
+                            <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-mono font-semibold">
                               {abnormalLabs.length} Flagged
                             </span>
                           </div>
-                          <div className="flex flex-wrap gap-1">
-                            {abnormalLabs.slice(0, 3).map((lab: any, idx: number) => (
-                              <span
+                          <div className="space-y-1">
+                            {abnormalLabs.slice(0, 2).map((lab: any, idx: number) => (
+                              <div
                                 key={idx}
-                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1 border ${
-                                  lab.status === "CRITICAL"
-                                    ? "bg-rose-50 text-rose-800 border-rose-200"
-                                    : "bg-amber-50 text-amber-900 border-amber-200"
-                                }`}
+                                className="flex items-center justify-between px-2 py-1 rounded bg-white border border-slate-200/80 text-[11px]"
                               >
-                                <span>{lab.test_name || lab.name}</span>
-                                <span className="opacity-80 font-semibold">({lab.value} {lab.unit || ""})</span>
-                              </span>
+                                <span className="font-medium text-slate-800 truncate max-w-[150px]">
+                                  {lab.test_name || lab.name}
+                                </span>
+                                <span className="font-mono font-semibold text-sky-700 shrink-0">
+                                  {lab.value} {lab.unit || ""}
+                                </span>
+                              </div>
                             ))}
-                            {abnormalLabs.length > 3 && (
-                              <span className="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-700 font-bold text-[9px]">
-                                +{abnormalLabs.length - 3} more
-                              </span>
-                            )}
                           </div>
-                        </div>
+                          <div className="text-[10px] text-slate-400 font-mono text-right">
+                            {abnormalLabs.length > 2 ? `+${abnormalLabs.length - 2} more markers` : "AI Analysis Verified"}
+                          </div>
+                        </>
+                      ) : labResults.length > 0 ? (
+                        <>
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
+                              Clinical Findings
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-mono font-semibold">
+                              Optimal
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {labResults.slice(0, 2).map((lab: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between px-2 py-1 rounded bg-white border border-slate-200/80 text-[11px]"
+                              >
+                                <span className="font-medium text-slate-800 truncate max-w-[150px]">
+                                  {lab.test_name || lab.name}
+                                </span>
+                                <span className="font-mono font-semibold text-sky-700 shrink-0">
+                                  {lab.value} {lab.unit || ""}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono text-right">
+                            All values within normal range
+                          </div>
+                        </>
                       ) : (
-                        <div className="flex items-center justify-between text-[10px] text-emerald-700 bg-emerald-50/80 px-2.5 py-1.5 rounded-xl border border-emerald-100 font-semibold">
-                          <span className="flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            All lab findings within normal limits
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-900 font-bold text-[9px]">
-                            NORMAL
-                          </span>
-                        </div>
+                        <>
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                            <span className="flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5 text-sky-600" />
+                              Encrypted Document
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-mono font-semibold">
+                              IPFS Vault
+                            </span>
+                          </div>
+                          <div className="px-2 py-2 rounded bg-white border border-slate-200/80 text-[11px] text-slate-600 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span>Security:</span>
+                              <span className="font-mono font-semibold text-sky-700">AES-256 GCM</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Storage:</span>
+                              <span className="font-mono text-slate-500">Decentralized</span>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono text-right">
+                            Ready for clinical review
+                          </div>
+                        </>
                       )}
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
 
-              {/* Action Buttons: View & Delete */}
-              <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-                <button
-                  onClick={() => handleViewDoc(doc)}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>View</span>
-                </button>
-                <button
-                  onClick={() => handleDelete(doc.id)}
-                  className="py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition-colors font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                  title="Delete Document"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete</span>
-                </button>
-              </div>
-            </div>
-          ))}
+                  {/* Action Bar (White & Blue) */}
+                  <div className="p-4 pt-2 border-t border-slate-100 bg-white flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => handleViewDoc(doc)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View</span>
+                    </button>
+                    <a
+                      href={`/patient/ai-copilot?docId=${doc.id}&docName=${encodeURIComponent(doc.document_name)}`}
+                      className="inline-flex items-center justify-center gap-1 h-9 px-3 rounded-lg border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                      title="Chat with this document in AI Copilot"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Chat</span>
+                    </a>
+                    <button
+                      onClick={() => handleDelete(doc.id)}
+                      className="inline-flex items-center justify-center h-9 px-3 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer"
+                      title="Delete Record"
+                      aria-label="Delete Record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
         </div>
       ) : (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs overflow-x-auto">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-100 text-slate-400 uppercase font-bold text-[10px]">
-                <th className="pb-3 px-2">Document Name</th>
-                <th className="pb-3 px-2">Category</th>
-                <th className="pb-3 px-2">Doctor / Hospital</th>
-                <th className="pb-3 px-2">Visit Date</th>
-                <th className="pb-3 px-2">Size</th>
-                <th className="pb-3 px-2 text-right">Actions</th>
+              <tr className="border-b border-slate-200 text-slate-400 uppercase font-semibold text-[10px] tracking-wider">
+                <th className="pb-3 px-3">Document Name</th>
+                <th className="pb-3 px-3">Category</th>
+                <th className="pb-3 px-3">Physician / Facility</th>
+                <th className="pb-3 px-3">Date</th>
+                <th className="pb-3 px-3">Size</th>
+                <th className="pb-3 px-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-2 font-bold text-slate-800 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#0891B2]" />
+                <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="py-3 px-3 font-semibold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-sky-600" />
                     <span>{doc.document_name}</span>
                   </td>
-                  <td className="py-3.5 px-2">
-                    <span className="px-2 py-0.5 rounded-full bg-cyan-50 text-[#0891B2] font-semibold text-[10px] border border-cyan-100">
+                  <td className="py-3 px-3">
+                    <span className="px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-700 font-medium text-[11px] border border-sky-200">
                       {doc.document_category}
                     </span>
                   </td>
-                  <td className="py-3.5 px-2 text-slate-600">
+                  <td className="py-3 px-3 text-slate-600">
                     {doc.doctor_name || doc.hospital_name || "—"}
                   </td>
-                  <td className="py-3.5 px-2 text-slate-500">
+                  <td className="py-3 px-3 text-slate-500 font-mono tabular-nums">
                     {doc.visit_date || "—"}
                   </td>
-                  <td className="py-3.5 px-2 font-mono text-slate-400">
+                  <td className="py-3 px-3 font-mono text-slate-400 tabular-nums">
                     {formatBytes(doc.file_size)}
                   </td>
-                  <td className="py-3.5 px-2 text-right space-x-2">
+                  <td className="py-3 px-3 text-right space-x-1.5">
                     <button
                       onClick={() => handleViewDoc(doc)}
-                      className="p-1.5 px-2.5 rounded-lg bg-teal-50 text-[#0891B2] font-bold inline-flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-1.5 rounded-md bg-sky-600 hover:bg-sky-700 text-white font-medium inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" /> View
                     </button>
+                    <a
+                      href={`/patient/ai-copilot?docId=${doc.id}&docName=${encodeURIComponent(doc.document_name)}`}
+                      className="px-2.5 py-1.5 rounded-md bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 font-medium inline-flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
+                      title="Chat with AI Copilot"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-sky-600" /> Chat
+                    </a>
                     <button
                       onClick={() => handleDelete(doc.id)}
-                      className="p-1.5 rounded-lg bg-rose-50 text-rose-600 cursor-pointer"
-                      title="Delete Document"
+                      className="p-1.5 rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-white cursor-pointer transition-colors"
+                      title="Delete Record"
+                      aria-label="Delete Record"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -664,11 +706,11 @@ export default function MedicalReportsPage() {
 
       {/* Upload Modal Dialog */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-5 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
+                <div className="p-2 rounded-lg bg-sky-50 text-sky-600">
                   <Upload className="w-5 h-5" />
                 </div>
                 <h2 className="text-lg font-extrabold text-slate-900">Upload Encrypted Record</h2>

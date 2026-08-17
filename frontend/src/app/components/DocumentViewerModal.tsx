@@ -30,7 +30,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  ExternalLink
+  ExternalLink,
+  Bot,
+  MessageSquare
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -506,6 +508,17 @@ export default function DocumentViewerModal({
                 <span>Supporting Evidence</span>
               </button>
             </div>
+
+            {documentId && (
+              <a
+                href={`/patient/ai-copilot?docId=${documentId}&docName=${encodeURIComponent(documentName)}`}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white shadow-md shadow-sky-600/20"
+                title="Ask AI Copilot questions about this specific document"
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>Chat with AI</span>
+              </a>
+            )}
 
             <button
               onClick={onClose}

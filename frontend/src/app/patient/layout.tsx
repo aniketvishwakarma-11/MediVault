@@ -55,11 +55,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#F0FDFA] text-[#0F172A] relative font-body flex flex-col">
-      {/* Background Ambient Mesh */}
-      <div className="fixed inset-0 grid-pattern opacity-50 pointer-events-none" />
-      <div className="fixed -top-40 -left-40 w-96 h-96 rounded-full bg-cyan-200/40 blur-3xl pointer-events-none -z-10" />
-      <div className="fixed -bottom-40 -right-40 w-96 h-96 rounded-full bg-teal-200/30 blur-3xl pointer-events-none -z-10" />
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-body flex flex-col">
 
       {/* Mobile Header Bar */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white/95 border-b border-slate-200 backdrop-blur-md sticky top-0 z-50 shadow-xs">
@@ -80,7 +76,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
 
       {/* FIXED Light Sidebar Navigation */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r border-slate-200/90 shadow-sm flex flex-col justify-between p-5 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-5 px-4 transition-transform duration-300 ease-in-out ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -115,13 +111,16 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
                   key={item.name}
                   href={item.href}
                   onClick={() => setIsMobileSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] ${
+                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] ${
                     isActive
-                      ? "bg-cyan-50 text-[#0891B2] border border-cyan-200/80 shadow-xs font-bold font-heading"
-                      : "text-[#475569] hover:text-[#0F172A] hover:bg-slate-100/80 border border-transparent"
+                      ? "bg-cyan-50 text-[#0891B2] font-semibold"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-[#0891B2]" : "text-slate-400"}`} />
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[#0891B2] rounded-r-full" />
+                  )}
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-[#0891B2]" : "text-slate-400"}`} />
                   <span>{item.name}</span>
                 </Link>
               );
@@ -156,7 +155,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
       </aside>
 
       {/* Main Content Wrapper with Top Bar */}
-      <div className="md:pl-72 min-h-screen flex flex-col w-full relative z-10">
+      <div className="md:pl-64 min-h-screen flex flex-col w-full">
         {/* Desktop Top Header Bar */}
         <header className="hidden md:flex items-center justify-between h-16 px-8 bg-white/90 border-b border-slate-200/80 backdrop-blur-md sticky top-0 z-30">
           <div className="flex items-center gap-3 w-96">

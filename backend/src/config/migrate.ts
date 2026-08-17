@@ -449,6 +449,39 @@ export async function runAutoMigrations(): Promise<void> {
     }
 
     logger.info('[Database Migration] All database tables initialized successfully.');
+
+    // 9. AI Copilot Chat Tables
+    try {
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.chat_sessions (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          patient_id UUID NOT NULL,
+          title VARCHAR(255) DEFAULT 'New Conversation',
+          mode VARCHAR(20) DEFAULT 'general',
+          context_document_id UUID,
+          is_archived BOOLEAN DEFAULT FALSE,
+          message_count INT DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.chat_messages (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          session_id UUID NOT NULL REFERENCES public.chat_sessions(id) ON DELETE CASCADE,
+          role VARCHAR(10) NOT NULL,
+          content TEXT NOT NULL,
+          sources JSONB DEFAULT '[]',
+          metadata JSONB DEFAULT '{}',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await query(`CREATE INDEX IF NOT EXISTS idx_chat_sessions_patient ON public.chat_sessions(patient_id, updated_at DESC);`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON public.chat_messages(session_id, created_at ASC);`);
+      logger.info('[Database Migration] AI Copilot chat tables (chat_sessions, chat_messages) initialized successfully.');
+    } catch (chatErr: any) {
+      logger.warn('[Database Migration] AI Copilot chat tables migration notice:', chatErr.message || chatErr);
+    }
   } catch (error: any) {
     logger.warn('[Database Migration Notice] Auto-migration execution note:', error.message || error);
   }

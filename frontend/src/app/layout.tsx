@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/context/AuthContext";
+import { MotionConfig } from "motion/react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,14 +27,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full font-sans" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-        />
-      </head>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <MotionConfig reducedMotion="user">
+            {children}
+          </MotionConfig>
+        </AuthProvider>
       </body>
     </html>
   );

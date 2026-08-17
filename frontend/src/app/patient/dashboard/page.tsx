@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
 import { 
   FileText, 
   Upload, 
   ShieldCheck, 
   CheckCircle2, 
   ArrowUpRight, 
-  Sparkles,
   Bot,
   Key,
   ShieldAlert,
@@ -18,8 +18,10 @@ import {
   Heart,
   TrendingUp,
   Download,
-  Plus
+  Plus,
+  Activity
 } from "lucide-react";
+import { BloodPressureChart, RecordsActivityChart } from "@/app/components/ClinicalCharts";
 
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -292,37 +294,42 @@ export default function PatientDashboard() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 font-body">
+    <motion.div
+      className="space-y-6 font-body"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+    >
       
       {/* ================= GREETING HEADER ================= */}
-      <div className="bg-gradient-to-r from-[#0891B2] via-[#0e7490] to-[#22D3EE] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-cyan-900/10 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-2xl z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/20">
-            <Sparkles className="w-3.5 h-3.5 text-[#22D3EE]" />
-            <span>Health Vault Online • Zero-Knowledge Active</span>
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-l-4 border-l-[#0891B2]">
+        <div className="space-y-1.5 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-[#0891B2] text-[11px] font-bold uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+            <span>Health Vault Online · Zero-Knowledge Active</span>
           </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
             Welcome to Your MediVault Portal
           </h1>
-          <p className="text-cyan-100 text-xs sm:text-sm leading-relaxed">
+          <p className="text-slate-500 text-sm leading-relaxed">
             Your medical records are fully encrypted and synchronized with IPFS storage and ZKP verification proofs.
           </p>
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3 z-10 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto shrink-0">
           <Link
             href="/patient/reports"
-            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#22C55E] hover:bg-[#16a34a] text-white font-bold text-xs shadow-md transition-all min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[#22C55E] hover:bg-[#16a34a] text-white font-semibold text-sm shadow-xs transition-colors min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#22C55E]"
           >
             <Upload className="w-4 h-4" />
             <span>Upload Record</span>
           </Link>
           <Link
             href="/patient/emergency"
-            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-sm transition-colors min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
           >
-            <ShieldAlert className="w-4 h-4 text-[#22D3EE]" />
+            <ShieldAlert className="w-4 h-4 text-[#0891B2]" />
             <span>Emergency QR Pass</span>
           </Link>
         </div>
@@ -347,7 +354,7 @@ export default function PatientDashboard() {
       {/* ================= METRIC CARDS ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Metric 1 */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3 hover:shadow-sm hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Total Records</span>
             <div className="p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
@@ -355,7 +362,7 @@ export default function PatientDashboard() {
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{stats.totalDocuments}</span>
+            <span className="tabular text-2xl sm:text-3xl font-bold text-[#0F172A]">{stats.totalDocuments}</span>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
               <TrendingUp className="w-3 h-3 text-[#22C55E]" /> Live Sync
             </span>
@@ -364,7 +371,7 @@ export default function PatientDashboard() {
         </div>
 
         {/* Metric 2 */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3 hover:shadow-sm hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Verified Proofs</span>
             <div className="p-2.5 rounded-2xl bg-teal-50 text-[#0891B2] border border-teal-100">
@@ -372,7 +379,7 @@ export default function PatientDashboard() {
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{stats.verifiedBlockchain}</span>
+            <span className="tabular text-2xl sm:text-3xl font-bold text-[#0F172A]">{stats.verifiedBlockchain}</span>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200">
               <CheckCircle2 className="w-3 h-3 text-[#0891B2]" /> ZKP Active
             </span>
@@ -380,34 +387,34 @@ export default function PatientDashboard() {
           <p className="text-[11px] text-[#475569]">Polygon Blockchain Verified</p>
         </div>
 
-        {/* Metric 3 */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
+        {/* Metric 3 — Active Consents (brand teal, not indigo) */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3 hover:shadow-sm hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Active Consents</span>
-            <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <div className="p-2.5 rounded-xl bg-slate-50 text-[#0891B2] border border-slate-200">
               <Key className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{stats.activeConsents}</span>
-            <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+            <span className="tabular text-2xl sm:text-3xl font-bold text-[#0F172A]">{stats.activeConsents}</span>
+            <span className="text-[11px] font-bold text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-md border border-cyan-200">
               {stats.activeConsents} Active
             </span>
           </div>
-          <p className="text-[11px] text-[#475569]">Doctor Access Permissions</p>
+          <p className="text-[11px] text-[#475569] font-mono tabular-nums">Doctor Access Permissions</p>
         </div>
 
-        {/* Metric 4 */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
+        {/* Metric 4 — AI Copilot */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3 hover:shadow-sm hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">AI Copilot</span>
-            <div className="p-2.5 rounded-2xl bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
+            <div className="p-2.5 rounded-xl bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
               <Bot className="w-5 h-5 text-[#22C55E]" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">Ready</span>
-            <span className="text-[11px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
+            <span className="font-heading text-2xl sm:text-3xl font-bold text-[#0F172A]">Ready</span>
+            <span className="text-[11px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-md border border-[#A7F3D0]">
               Active
             </span>
           </div>
@@ -416,10 +423,10 @@ export default function PatientDashboard() {
       </div>
 
       {/* ================= VITALS & QUICK ASSIST ================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Vitals Overview Tile */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
+        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
@@ -460,20 +467,22 @@ export default function PatientDashboard() {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="p-3.5 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] font-medium">
-              <span className="font-heading font-bold text-[#92400E]">Known Allergies: </span>
-              <span>{patientVitals?.allergies || "No known allergies reported"}</span>
+          <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            {/* Allergies — amber semantic token (correct) */}
+            <div className="p-3.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] font-medium">
+              <span className="font-heading font-bold text-[#92400E] text-xs uppercase tracking-wide block mb-1">Known Allergies</span>
+              <span className="text-xs">{patientVitals?.allergies || "No known allergies reported"}</span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-100 text-purple-900 font-medium">
-              <span className="font-heading font-bold text-purple-900">Chronic Conditions: </span>
-              <span>{patientVitals?.chronic_conditions || "None reported"}</span>
+            {/* Chronic Conditions — neutral slate (not purple) */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-medium">
+              <span className="font-heading font-bold text-slate-600 text-xs uppercase tracking-wide block mb-1">Chronic Conditions</span>
+              <span className="text-xs">{patientVitals?.chronic_conditions || "None reported"}</span>
             </div>
           </div>
         </div>
 
         {/* AI Copilot Quick Assistant Card */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-cyan-50 to-teal-50/70 p-6 rounded-3xl border border-cyan-200/80 shadow-xs space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -495,15 +504,53 @@ export default function PatientDashboard() {
             href="/patient/ai-copilot"
             className="w-full py-3.5 rounded-2xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
           >
-            <Sparkles className="w-4 h-4 text-[#22D3EE]" />
+            <Bot className="w-4 h-4 text-[#22D3EE]" />
             <span>Open AI Chat Assistant</span>
           </Link>
         </div>
 
       </div>
 
+      {/* ================= CLINICAL TREND CHARTS ================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {/* Blood Pressure Trend */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-cyan-50 border border-cyan-100">
+                <Activity className="w-4 h-4 text-[#0891B2]" />
+              </div>
+              <h3 className="font-heading font-bold text-[#0F172A] text-sm">Blood Pressure Trend</h3>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-slate-400 font-mono">
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#0891B2] inline-block" /> Systolic</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#22C55E] inline-block border-dashed" /> Diastolic</span>
+            </div>
+          </div>
+          <BloodPressureChart />
+          <p className="text-[10px] text-slate-400 font-mono tabular-nums text-right">Last 6 months · Sample data</p>
+        </div>
+
+        {/* Monthly Records Activity */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200">
+                <FileText className="w-4 h-4 text-[#0891B2]" />
+              </div>
+              <h3 className="font-heading font-bold text-[#0F172A] text-sm">Records Activity</h3>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono">Uploads / month</span>
+          </div>
+          <RecordsActivityChart />
+          <p className="text-[10px] text-slate-400 font-mono tabular-nums text-right">Last 6 months · Sample data</p>
+        </div>
+
+      </div>
+
       {/* ================= RECENT MEDICAL RECORDS TABLE ================= */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <h3 className="font-heading font-bold text-[#0F172A] text-lg">Recent Medical Documents</h3>
@@ -588,6 +635,6 @@ export default function PatientDashboard() {
         )}
       </div>
 
-    </div>
+    </motion.div>
   );
 }

@@ -276,20 +276,15 @@ function PatientProfileContent() {
       const formattedHeightStr = `${profileData.height.trim()} ${profileData.height_unit || "cm"}`;
       const formattedWeightStr = `${profileData.weight.trim()} ${profileData.weight_unit || "kg"}`;
 
-      // Upsert users_profile table with conflict resolution & explicit error checking
+      // Update users_profile table with explicit error checking
       const { error: profileErr } = await supabase
         .from("users_profile")
-        .upsert(
-          {
-            id: user.id,
-            email: user.email || profileData.email,
-            full_name: profileData.full_name.trim(),
-            phone: profileData.phone.trim(),
-            role: "patient",
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
+        .update({
+          full_name: profileData.full_name.trim(),
+          phone: profileData.phone.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
 
       if (profileErr) {
         console.error("Profiles save error:", profileErr);
