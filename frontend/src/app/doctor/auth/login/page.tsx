@@ -65,8 +65,8 @@ export default function DoctorLoginPage() {
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#22D3EE]" />
               <span>{error}</span>
             </div>
           )}

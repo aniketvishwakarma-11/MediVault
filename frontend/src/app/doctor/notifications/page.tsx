@@ -74,9 +74,9 @@ export default function DoctorNotificationsPage() {
             }`}
           >
             <div className="p-2.5 rounded-xl bg-cyan-50 text-[#0891B2] border border-cyan-200 shrink-0">
-              {n.type === "CONSENT_APPROVED" && <ShieldCheck className="w-5 h-5 text-[#22C55E]" />}
-              {n.type === "CRITICAL_ALERT" && <AlertTriangle className="w-5 h-5 text-rose-600" />}
-              {n.type === "EMERGENCY_ACCESS" && <Key className="w-5 h-5 text-amber-600" />}
+              {n.type === "CONSENT_APPROVED" && <ShieldCheck className="w-5 h-5 text-[#0891B2]" />}
+              {n.type === "CRITICAL_ALERT" && <AlertTriangle className="w-5 h-5 text-[#0891B2]" />}
+              {n.type === "EMERGENCY_ACCESS" && <Key className="w-5 h-5 text-[#0891B2]" />}
               {n.type === "FOLLOW_UP" && <Clock className="w-5 h-5 text-[#0891B2]" />}
             </div>
 

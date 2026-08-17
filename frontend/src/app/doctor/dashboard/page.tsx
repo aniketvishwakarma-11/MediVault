@@ -10,6 +10,7 @@ import {
   Search,
   ShieldAlert,
   FilePlus,
+  FileSpreadsheet,
   Pill,
   Bot,
   ArrowRight,
@@ -210,19 +211,17 @@ export default function DoctorDashboardPage() {
             </span>
           </div>
           <p className="text-[11px] text-[#475569]">Active EMR Consent Granted</p>
-        </div>
-
-        {/* Metric 2 */}
+        </div>        {/* Metric 2 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Critical Cases</span>
-            <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
+            <div className="p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-rose-600">{criticalCases.length}</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0891B2]">{criticalCases.length}</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200">
               Attention Needed
             </span>
           </div>
@@ -233,13 +232,13 @@ export default function DoctorDashboardPage() {
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Pending Reports</span>
-            <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100">
+            <div className="p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
               <FileClock className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">3</span>
-            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+            <span className="text-[11px] font-bold text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200">
               Unread Labs
             </span>
           </div>
@@ -288,12 +287,12 @@ export default function DoctorDashboardPage() {
 
           <Link
             href="/doctor/emergency"
-            className="p-4 rounded-2xl bg-rose-50/60 hover:bg-rose-100/80 border border-rose-200/70 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
+            className="p-4 rounded-2xl bg-cyan-50 hover:bg-cyan-100/80 border border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
           >
-            <div className="p-2.5 rounded-xl bg-rose-600 text-white shadow-xs group-hover:scale-110 transition-transform">
+            <div className="p-2.5 rounded-xl bg-[#0891B2] text-white shadow-xs group-hover:scale-110 transition-transform">
               <ShieldAlert className="w-5 h-5" />
             </div>
-            <span className="text-xs font-bold text-rose-900">Emergency Scan</span>
+            <span className="text-xs font-bold text-[#0891B2]">Emergency Scan</span>
           </Link>
 
           <Link
@@ -301,69 +300,62 @@ export default function DoctorDashboardPage() {
             className="p-4 rounded-2xl bg-slate-50 hover:bg-cyan-50/80 border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
           >
             <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs group-hover:scale-110 transition-transform">
-              <FilePlus className="w-5 h-5" />
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
-            <span className="text-xs font-bold text-[#0F172A]">New Consultation</span>
+            <span className="text-xs font-bold text-[#0F172A]">Consultations</span>
           </Link>
 
           <Link
             href="/doctor/prescriptions"
-            className="p-4 rounded-2xl bg-slate-50 hover:bg-indigo-50/80 border border-slate-200/70 hover:border-indigo-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
+            className="p-4 rounded-2xl bg-slate-50 hover:bg-cyan-50/80 border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
           >
-            <div className="p-2.5 rounded-xl bg-white text-indigo-600 shadow-xs group-hover:scale-110 transition-transform">
+            <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs group-hover:scale-110 transition-transform">
               <Pill className="w-5 h-5" />
             </div>
-            <span className="text-xs font-bold text-[#0F172A]">Create Prescription</span>
+            <span className="text-xs font-bold text-[#0F172A]">Prescriptions</span>
           </Link>
 
           <Link
             href="/doctor/copilot"
-            className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-gradient-to-br from-cyan-50 to-teal-50 border border-cyan-200 hover:border-[#0891B2] transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
+            className="p-4 rounded-2xl bg-gradient-to-br from-cyan-50 to-teal-50 hover:from-cyan-100 hover:to-teal-100 border border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px] col-span-2 sm:col-span-1"
           >
             <div className="p-2.5 rounded-xl bg-[#0891B2] text-white shadow-xs group-hover:scale-110 transition-transform">
               <Bot className="w-5 h-5" />
             </div>
-            <span className="text-xs font-bold text-[#0891B2]">Open AI Copilot</span>
+            <span className="text-xs font-bold text-[#0891B2] flex items-center gap-1">
+              AI Copilot <Sparkles className="w-3 h-3 text-[#22D3EE]" />
+            </span>
           </Link>
         </div>
       </div>
 
-      {/* ================= MAIN DASHBOARD CONTENT GRID ================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* ================= MAIN DASHBOARD BODY (2 COLUMNS) ================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Active Patient Directory */}
+        {/* Left Column: Active Consented Patients List */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-heading font-bold text-[#0F172A] text-lg">Active Patient Directory</h3>
-                <p className="text-xs text-[#475569]">Patients with active clinical consent or scheduled visits</p>
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-[#0891B2]" />
+                <h3 className="font-heading font-bold text-[#0F172A] text-base">Active Consented Patients</h3>
               </div>
-              <Link
-                href="/doctor/patients"
-                className="text-xs font-bold text-[#0891B2] hover:text-[#0e7490] flex items-center gap-1 min-h-[36px] px-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
-              >
-                <span>View All Directory</span>
-                <ChevronRight className="w-4 h-4" />
+              <Link href="/doctor/patients" className="text-xs text-[#0891B2] font-bold hover:underline flex items-center gap-1">
+                <span>View Directory</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             {loading ? (
-              <div className="py-12 text-center text-slate-400 text-xs animate-pulse">
-                Loading active patient records...
+              <div className="p-12 text-center text-xs text-[#0891B2] font-bold animate-pulse">
+                Loading Consented Patient Directory...
               </div>
             ) : patients.length === 0 ? (
-              <div className="py-12 text-center space-y-3">
-                <Users className="w-12 h-12 text-slate-300 mx-auto" />
-                <p className="font-heading text-sm font-semibold text-[#0F172A]">No active patient cases recorded</p>
-                <p className="text-xs text-[#475569] max-w-sm mx-auto">
-                  Patients who grant access through ZKP consents or emergency overrides will appear here automatically.
-                </p>
-                <Link
-                  href="/doctor/patients"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white text-xs font-bold shadow-xs transition-all min-h-[44px]"
-                >
-                  <Search className="w-4 h-4" /> Search Patient Roster
+              <div className="p-10 text-center space-y-2">
+                <Users className="w-10 h-10 text-slate-300 mx-auto" />
+                <p className="text-xs text-slate-500 font-medium">No patient records accessed yet.</p>
+                <Link href="/doctor/patients" className="inline-block mt-2 px-4 py-2 rounded-xl bg-[#0891B2] text-white text-xs font-bold">
+                  Search Registry
                 </Link>
               </div>
             ) : (
@@ -371,12 +363,13 @@ export default function DoctorDashboardPage() {
                 {patients.map((patient) => (
                   <div
                     key={patient.id}
-                    className="p-4 rounded-2xl bg-slate-50/70 hover:bg-cyan-50/40 border border-slate-200/80 hover:border-cyan-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-4 rounded-2xl bg-slate-50/70 hover:bg-white border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
                   >
                     <div className="flex items-start gap-3.5">
-                      <div className="w-11 h-11 rounded-2xl bg-slate-200 overflow-hidden shrink-0 border border-slate-300/80 shadow-xs">
-                        <img src={patient.avatarUrl} alt={patient.fullName} className="w-full h-full object-cover" />
+                      <div className="w-11 h-11 rounded-2xl bg-[#0891B2] text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0 font-heading">
+                        {patient.fullName.charAt(0)}
                       </div>
+
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-heading font-bold text-sm text-[#0F172A]">{patient.fullName}</h4>
@@ -384,7 +377,7 @@ export default function DoctorDashboardPage() {
                             {patient.uhid}
                           </span>
                           {patient.riskBadge === "HIGH_RISK" && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-[#0891B2] border border-cyan-200">
                               HIGH RISK
                             </span>
                           )}
@@ -397,7 +390,7 @@ export default function DoctorDashboardPage() {
 
                         <div className="text-xs text-[#475569] flex items-center gap-2.5 flex-wrap">
                           <span>{patient.age} yrs • {patient.gender}</span>
-                          <span>• Blood: <strong className="text-rose-600 font-bold">{patient.bloodGroup}</strong></span>
+                          <span>• Blood: <strong className="text-[#0891B2] font-bold">{patient.bloodGroup}</strong></span>
                           <span>• Last Visit: {patient.lastVisit}</span>
                         </div>
 
@@ -458,20 +451,20 @@ export default function DoctorDashboardPage() {
           </div>
 
           {/* Critical Lab & Clinical Alerts Tile */}
-          <div className="bg-white p-6 rounded-3xl border border-rose-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-rose-100">
-              <h3 className="font-heading font-bold text-rose-900 text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-600" /> Critical Clinical Flags
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-heading font-bold text-[#0F172A] text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[#0891B2]" /> Critical Clinical Flags
               </h3>
-              <span className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2.5 py-0.5 rounded-full border border-rose-200">
+              <span className="text-[10px] font-bold bg-cyan-50 text-[#0891B2] px-2.5 py-0.5 rounded-full border border-cyan-200">
                 1 HIGH PRIORITY
               </span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-200/60 space-y-2 text-xs">
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="flex justify-between items-center font-bold text-[#0F172A]">
                 <span>Alex Morgan (PAT-1001)</span>
-                <span className="text-rose-600 font-bold font-mono">Hb 10.2 g/dL</span>
+                <span className="text-[#0891B2] font-bold font-mono">Hb 10.2 g/dL</span>
               </div>
               <p className="text-[11px] text-[#475569] leading-relaxed">
                 CBC lab registered low Hemoglobin. Mild iron deficiency anemia flagged by automated lab analyzer.

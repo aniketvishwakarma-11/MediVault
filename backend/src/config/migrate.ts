@@ -482,6 +482,86 @@ export async function runAutoMigrations(): Promise<void> {
     } catch (chatErr: any) {
       logger.warn('[Database Migration] AI Copilot chat tables migration notice:', chatErr.message || chatErr);
     }
+
+    // ─── Doctor AI Copilot Tables ────────────────────────────────────────────
+    try {
+      await query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.doctor_copilot_sessions (
+          id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          doctor_id     UUID NOT NULL,
+          patient_id    UUID NOT NULL,
+          title         VARCHAR(255) NOT NULL DEFAULT 'Clinical Consultation',
+          mode          VARCHAR(50)  NOT NULL DEFAULT 'clinical',
+          is_archived   BOOLEAN      NOT NULL DEFAULT FALSE,
+          message_count INT          NOT NULL DEFAULT 0,
+          created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+          updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+        );
+      `);
+      await query(`CREATE INDEX IF NOT EXISTS idx_dcs_doctor_patient ON public.doctor_copilot_sessions (doctor_id, patient_id);`);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.doctor_copilot_messages (
+          id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          session_id  UUID         NOT NULL REFERENCES public.doctor_copilot_sessions(id) ON DELETE CASCADE,
+          role        VARCHAR(20)  NOT NULL,
+          content     TEXT         NOT NULL,
+          sources     JSONB        NOT NULL DEFAULT '[]',
+          tools_used  JSONB        NOT NULL DEFAULT '[]',
+          metadata    JSONB        NOT NULL DEFAULT '{}',
+          created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+        );
+      `);
+      await query(`CREATE INDEX IF NOT EXISTS idx_dcm_session ON public.doctor_copilot_messages (session_id, created_at ASC);`);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.doctor_patient_briefs (
+          id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          doctor_id    UUID        NOT NULL,
+          patient_id   UUID        NOT NULL,
+          brief_json   JSONB       NOT NULL,
+          generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          expires_at   TIMESTAMPTZ,
+          UNIQUE (doctor_id, patient_id)
+        );
+      `);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.ai_clinical_alerts (
+          id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          doctor_id     UUID        NOT NULL,
+          patient_id    UUID        NOT NULL,
+          alert_type    VARCHAR(100) NOT NULL,
+          severity      VARCHAR(20)  NOT NULL DEFAULT 'info',
+          title         TEXT         NOT NULL,
+          body          TEXT         NOT NULL,
+          is_dismissed  BOOLEAN      NOT NULL DEFAULT FALSE,
+          dismissed_at  TIMESTAMPTZ,
+          created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+        );
+      `);
+      await query(`CREATE INDEX IF NOT EXISTS idx_aca_doctor_patient ON public.ai_clinical_alerts (doctor_id, patient_id, is_dismissed);`);
+
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.ai_tool_audit_log (
+          id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          doctor_id       UUID         NOT NULL,
+          patient_id      UUID         NOT NULL,
+          tool_name       VARCHAR(100) NOT NULL,
+          input_params    JSONB        NOT NULL DEFAULT '{}',
+          output_summary  TEXT,
+          execution_ms    INT,
+          created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      logger.info('[Database Migration] Doctor AI Copilot tables initialized successfully.');
+    } catch (doctorCopilotErr: any) {
+      logger.warn('[Database Migration] Doctor AI Copilot tables migration notice:', doctorCopilotErr.message || doctorCopilotErr);
+    }
+
   } catch (error: any) {
     logger.warn('[Database Migration Notice] Auto-migration execution note:', error.message || error);
   }

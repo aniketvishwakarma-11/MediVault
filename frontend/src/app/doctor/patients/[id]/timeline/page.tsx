@@ -160,9 +160,9 @@ export default function DoctorPatientTimelinePage() {
                 <div
                   className={`absolute -left-[31px] top-2 w-4 h-4 rounded-full ring-4 ring-white shadow-xs ${
                     event.severity === "CRITICAL"
-                      ? "bg-rose-500"
+                      ? "bg-[#0891B2]"
                       : event.severity === "MONITOR" || event.severity === "HIGH"
-                      ? "bg-amber-500"
+                      ? "bg-slate-400"
                       : "bg-[#0891B2]"
                   }`}
                 />
@@ -178,7 +178,7 @@ export default function DoctorPatientTimelinePage() {
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                             event.severity === "CRITICAL"
-                              ? "bg-rose-100 text-rose-800 border border-rose-200"
+                              ? "bg-cyan-100 text-[#0891B2] border border-cyan-300"
                               : "bg-cyan-50 text-[#0891B2] border border-cyan-200"
                           }`}
                         >

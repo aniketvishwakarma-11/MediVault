@@ -171,7 +171,7 @@ export default function DoctorConsultationsPage() {
           <div className="space-y-6">
             <div className="p-6 rounded-3xl bg-white border border-slate-200/80 space-y-4 shadow-xs">
               <h2 className="font-heading font-bold text-base text-[#0F172A] flex items-center gap-2">
-                <HeartPulse className="w-4 h-4 text-rose-600" /> Vital Signs Recorder
+                <HeartPulse className="w-4 h-4 text-[#0891B2]" /> Vital Signs Recorder
               </h2>
 
               <div className="space-y-3 text-xs">

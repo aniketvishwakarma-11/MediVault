@@ -249,7 +249,7 @@ export default function DoctorReportsComparePage() {
                     {report.entities.map((ent: any, idx: number) => (
                       <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs flex justify-between">
                         <span className="text-[#0F172A] font-medium">{ent.key}</span>
-                        <strong className={ent.status === "LOW" ? "text-rose-700" : ent.status === "HIGH" ? "text-amber-700" : "text-[#065F46]"}>
+                        <strong className="text-[#0891B2] font-bold">
                           {ent.value} ({ent.status})
                         </strong>
                       </div>
@@ -281,8 +281,8 @@ export default function DoctorReportsComparePage() {
                       {report.category}
                     </span>
                     {report.isAbnormal && (
-                      <span className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2.5 py-0.5 rounded-full border border-rose-200">
-                        ABNORMAL
+                      <span className="text-[10px] font-bold bg-cyan-50 text-[#0891B2] px-2.5 py-0.5 rounded-full border border-cyan-200">
+                        ATTENTION
                       </span>
                     )}
                   </div>
@@ -335,7 +335,7 @@ export default function DoctorReportsComparePage() {
                     {activeReport.entities.map((ent: any, idx: number) => (
                       <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 flex justify-between items-center">
                         <span className="text-[#475569] font-medium">{ent.key}</span>
-                        <span className={`font-bold ${ent.status === "LOW" ? "text-rose-700" : ent.status === "HIGH" ? "text-amber-700" : "text-[#065F46]"}`}>
+                        <span className="font-bold text-[#0891B2]">
                           {ent.value}
                         </span>
                       </div>

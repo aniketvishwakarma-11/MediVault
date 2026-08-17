@@ -279,7 +279,7 @@ export default function DoctorPrescriptionsPage() {
                       <button
                         type="button"
                         onClick={() => removeMedicine(idx)}
-                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

@@ -208,8 +208,8 @@ export default function DoctorPatientSearchPage() {
     }
     if (status === "DENIED") {
       return (
-        <span className="text-xs text-rose-700 font-semibold flex items-center gap-1.5 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
-          <XCircle className="w-3.5 h-3.5 text-rose-600" /> Access Denied
+        <span className="text-xs text-slate-600 font-semibold flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+          <XCircle className="w-3.5 h-3.5 text-slate-500" /> Access Denied
         </span>
       );
     }
@@ -222,8 +222,8 @@ export default function DoctorPatientSearchPage() {
     }
     if (status === "EXPIRED") {
       return (
-        <span className="text-xs text-orange-700 font-semibold flex items-center gap-1.5 bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
-          <AlertCircle className="w-3.5 h-3.5 text-orange-600" /> Consent Expired
+        <span className="text-xs text-slate-600 font-semibold flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+          <AlertCircle className="w-3.5 h-3.5 text-slate-500" /> Consent Expired
         </span>
       );
     }
@@ -254,9 +254,9 @@ export default function DoctorPatientSearchPage() {
 
         <Link
           href="/doctor/emergency"
-          className="self-start md:self-auto px-4 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all shadow-xs flex items-center gap-2 min-h-[44px]"
+          className="self-start md:self-auto px-4 py-2.5 rounded-2xl bg-cyan-50 hover:bg-cyan-100 text-[#0891B2] border border-cyan-200 text-xs font-bold transition-all shadow-xs flex items-center gap-2 min-h-[44px]"
         >
-          <ShieldAlert className="w-4 h-4 text-rose-600" />
+          <ShieldAlert className="w-4 h-4 text-[#0891B2]" />
           <span>Bypass via Emergency QR Terminal</span>
         </Link>
       </div>
@@ -320,8 +320,8 @@ export default function DoctorPatientSearchPage() {
 
       {/* Error State */}
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+        <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-slate-800 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-slate-600 shrink-0" />
           <span>{error}</span>
           <button onClick={loadPatients} className="ml-auto font-bold underline">Retry</button>
         </div>
@@ -375,7 +375,7 @@ export default function DoctorPatientSearchPage() {
                 </div>
                 <div>
                   <span className="text-[#475569] block text-[10px] font-semibold">Blood Group</span>
-                  <strong className="text-rose-600 font-bold">{patient.bloodGroup}</strong>
+                  <strong className="text-[#0891B2] font-bold">{patient.bloodGroup}</strong>
                 </div>
               </div>
 
@@ -512,8 +512,8 @@ export default function DoctorPatientSearchPage() {
                 </div>
 
                 {requestError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-slate-600 shrink-0" />
                     <span>{requestError}</span>
                   </div>
                 )}

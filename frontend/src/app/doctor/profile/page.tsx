@@ -325,8 +325,8 @@ function DoctorProfileForm() {
       )}
 
       {errorMsg && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-bold">
-          <AlertCircle className="w-4 h-4 text-rose-600" />
+        <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-slate-800 text-xs flex items-center gap-2 font-bold">
+          <AlertCircle className="w-4 h-4 text-slate-600" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -580,7 +580,7 @@ function DoctorProfileForm() {
                       type="button"
                       onClick={() => setSatClosed(!satClosed)}
                       className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        satClosed ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]"
+                        satClosed ? "bg-slate-100 text-slate-600 border border-slate-200" : "bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]"
                       }`}
                     >
                       {satClosed ? "CLOSED" : "AVAILABLE"}
@@ -636,7 +636,7 @@ function DoctorProfileForm() {
                       type="button"
                       onClick={() => setSunClosed(!sunClosed)}
                       className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        sunClosed ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]"
+                        sunClosed ? "bg-slate-100 text-slate-600 border border-slate-200" : "bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]"
                       }`}
                     >
                       {sunClosed ? "CLOSED" : "AVAILABLE"}

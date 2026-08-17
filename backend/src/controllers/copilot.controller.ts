@@ -72,8 +72,8 @@ export class CopilotController {
       const result = await CopilotService.chat({
         patientId,
         prompt: prompt.trim(),
-        sessionId: session_id,
-        documentId: docId,
+        sessionId: session_id as string | undefined,
+        documentId: String(docId || ''),
       });
 
       return sendSuccess(res, 200, {
@@ -138,9 +138,10 @@ export class CopilotController {
   public static async getSession(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      if (!id) return sendError(res, 400, 'Session ID is required.');
+      const idStr = String(id || '');
+      if (!idStr) return sendError(res, 400, 'Session ID is required.');
 
-      const result = await CopilotService.getSessionWithMessages(id);
+      const result = await CopilotService.getSessionWithMessages(idStr);
       if (!result) return sendError(res, 404, 'Chat session not found.');
 
       return sendSuccess(res, 200, result, 'Chat session retrieved with messages.');
@@ -157,9 +158,10 @@ export class CopilotController {
   public static async deleteSession(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      if (!id) return sendError(res, 400, 'Session ID is required.');
+      const idStr = String(id || '');
+      if (!idStr) return sendError(res, 400, 'Session ID is required.');
 
-      const success = await CopilotService.archiveSession(id);
+      const success = await CopilotService.archiveSession(idStr);
       if (!success) return sendError(res, 404, 'Chat session not found or already archived.');
 
       return sendSuccess(res, 200, { archived: true }, 'Chat session archived successfully.');

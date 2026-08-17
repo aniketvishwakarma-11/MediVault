@@ -166,7 +166,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
                     <span>{item.name}</span>
                   </div>
                   {item.badge && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 animate-pulse">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-[#0891B2] border border-cyan-200">
                       {item.badge}
                     </span>
                   )}
@@ -183,7 +183,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
         <div className="pt-4 border-t border-slate-100 space-y-2">
           <Link
             href="/doctor/emergency"
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-all min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-xs transition-all min-h-[44px]"
           >
             <ShieldAlert className="w-4 h-4" />
             <span>EMERGENCY ACCESS SCAN</span>
@@ -191,7 +191,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
 
           <button
             onClick={logout}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-[#0891B2] hover:bg-cyan-50 transition-colors"
           >
             <span className="flex items-center gap-2">
               <LogOut className="w-4 h-4" /> Sign Out Portal
@@ -222,9 +222,9 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
             {/* Quick Emergency Scanner Button */}
             <Link
               href="/doctor/emergency"
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all min-h-[38px]"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-50 hover:bg-cyan-100/80 text-[#0891B2] border border-cyan-200 text-xs font-bold transition-all min-h-[38px]"
             >
-              <ShieldAlert className="w-4 h-4 text-rose-600" />
+              <ShieldAlert className="w-4 h-4 text-[#0891B2]" />
               <span>Emergency Scanner</span>
             </Link>
 

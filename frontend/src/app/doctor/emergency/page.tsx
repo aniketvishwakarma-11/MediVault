@@ -30,6 +30,7 @@ import {
   ExternalLink,
   Calendar,
   Camera,
+  Upload,
   Flame,
   Zap,
   Radio,
@@ -37,6 +38,7 @@ import {
   HeartPulse,
   Thermometer,
   AlertOctagon,
+  Bot,
   Sparkles,
   Search,
   KeyRound,
@@ -47,6 +49,7 @@ import {
   AlertCircle,
   FlaskConical,
 } from "lucide-react";
+import jsQR from "jsqr";
 import { useAuth } from "@/context/AuthContext";
 import {
   emergencyApi,
@@ -151,7 +154,7 @@ function SessionTimerHUD({
     <div
       className={`p-4 sm:p-5 rounded-3xl border transition-all ${
         critical
-          ? "bg-rose-950/80 border-rose-500/80 text-rose-100 shadow-lg shadow-rose-900/30 animate-pulse"
+          ? "bg-slate-900 border-cyan-500/80 text-white shadow-lg shadow-cyan-900/20 animate-pulse"
           : "bg-slate-900/90 border-slate-800 text-slate-100 shadow-md"
       }`}
     >
@@ -159,7 +162,7 @@ function SessionTimerHUD({
         <div className="flex items-center gap-3">
           <div
             className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-              critical ? "bg-rose-600 text-white" : "bg-[#0891B2]/20 text-[#22D3EE] border border-[#0891B2]/30"
+              critical ? "bg-[#0891B2] text-white" : "bg-[#0891B2]/20 text-[#22D3EE] border border-[#0891B2]/30"
             }`}
           >
             <Timer className="w-5 h-5" />
@@ -172,7 +175,7 @@ function SessionTimerHUD({
               <span
                 className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
                   critical
-                    ? "bg-rose-600 text-white animate-bounce"
+                    ? "bg-[#0891B2] text-white animate-bounce"
                     : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                 }`}
               >
@@ -189,7 +192,7 @@ function SessionTimerHUD({
           <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Time Remaining</div>
           <div
             className={`text-2xl font-black font-mono tracking-tight ${
-              critical ? "text-rose-400" : "text-[#22D3EE]"
+              critical ? "text-[#22D3EE]" : "text-[#22D3EE]"
             }`}
           >
             {remaining || "--:--"}
@@ -200,9 +203,7 @@ function SessionTimerHUD({
       {/* Progress Telemetry Bar */}
       <div className="mt-3.5 h-2 rounded-full bg-slate-800 overflow-hidden relative">
         <div
-          className={`h-full rounded-full transition-all duration-1000 ${
-            critical ? "bg-gradient-to-r from-rose-500 to-red-600" : "bg-gradient-to-r from-[#0891B2] to-[#22D3EE]"
-          }`}
+          className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-[#0891B2] to-[#22D3EE]"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -211,44 +212,48 @@ function SessionTimerHUD({
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Interactive Camera / QR Scan HUD Component
+// Helper: Extract clean emergency token from QR text or URL
 // ─────────────────────────────────────────────────────────────────
 
-function CameraScannerHUD({
+function extractEmergencyToken(raw: string): string {
+  let cleaned = raw.trim();
+  if (cleaned.includes("/e/")) {
+    const parts = cleaned.split("/e/");
+    cleaned = parts[parts.length - 1].split("?")[0].split("#")[0];
+  } else if (cleaned.includes("token=")) {
+    const match = cleaned.match(/token=([a-zA-Z0-9_-]+)/);
+    if (match) cleaned = match[1];
+  }
+  return cleaned;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Interactive Live Camera & QR Scanning Modal
+// ─────────────────────────────────────────────────────────────────
+
+function LiveScannerModal({
+  isOpen,
+  onClose,
   onTokenScanned,
-  onQuickDemoLoad,
 }: {
+  isOpen: boolean;
+  onClose: () => void;
   onTokenScanned: (token: string) => void;
-  onQuickDemoLoad: () => void;
 }) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scannedSuccess, setScannedSuccess] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  const startCamera = async () => {
-    setCameraError(null);
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
-        setCameraActive(true);
-      } else {
-        throw new Error("Camera API not supported on this browser.");
-      }
-    } catch (err: any) {
-      setCameraError(err.message || "Unable to access device camera. Please enter token manually.");
-      setCameraActive(false);
-    }
-  };
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const modalFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const stopCamera = () => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -256,112 +261,215 @@ function CameraScannerHUD({
     setCameraActive(false);
   };
 
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+  const startCamera = async () => {
+    setCameraError(null);
+    setScannedSuccess(false);
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute("playsinline", "true");
+          await videoRef.current.play();
+        }
+        setCameraActive(true);
+        startScanningLoop();
+      } else {
+        throw new Error("Camera API not supported on this browser.");
       }
+    } catch (err: any) {
+      setCameraError(err.message || "Unable to access camera. Please allow camera permissions or upload an image.");
+      setCameraActive(false);
+    }
+  };
+
+  const startScanningLoop = () => {
+    const scan = () => {
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+        const video = videoRef.current;
+        if (!canvasRef.current) {
+          canvasRef.current = document.createElement("canvas");
+        }
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          });
+
+          if (code && code.data) {
+            const token = extractEmergencyToken(code.data);
+            if (token) {
+              setScannedSuccess(true);
+              stopCamera();
+              onTokenScanned(token);
+              setTimeout(() => {
+                onClose();
+              }, 600);
+              return;
+            }
+          }
+        }
+      }
+      animFrameRef.current = requestAnimationFrame(scan);
     };
-  }, []);
+
+    animFrameRef.current = requestAnimationFrame(scan);
+  };
+
+  const handleModalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code && code.data) {
+            const token = extractEmergencyToken(code.data);
+            setScannedSuccess(true);
+            stopCamera();
+            onTokenScanned(token);
+            setTimeout(() => {
+              onClose();
+            }, 600);
+          } else {
+            setCameraError("No QR code detected in the selected image. Please try another image.");
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
-    <div className="p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl space-y-5 flex flex-col justify-between relative overflow-hidden">
-      {/* Background ambient medical grid */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1E293B_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="max-w-md w-full rounded-3xl bg-slate-900 border border-slate-800 text-white shadow-2xl p-6 space-y-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(#1E293B_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
 
-      <div className="relative z-10 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-            <span className="text-xs font-black text-rose-400 uppercase tracking-wider font-mono">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0891B2] animate-ping" />
+            <span className="text-xs font-black text-[#22D3EE] uppercase tracking-wider font-mono">
               Live Scanner Telemetry
             </span>
           </div>
-          <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
-            256-Bit ZKP Verified
-          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Scan Frame */}
-        <div className="relative aspect-square max-h-64 sm:max-h-72 w-full mx-auto rounded-2xl bg-slate-950 border-2 border-rose-500/40 overflow-hidden flex flex-col items-center justify-center p-4 group">
+        {/* Scan Viewport */}
+        <div className="relative aspect-square max-h-72 w-full mx-auto rounded-2xl bg-slate-950 border-2 border-cyan-500/40 overflow-hidden flex flex-col items-center justify-center p-4 group">
           {cameraActive ? (
             <div className="relative w-full h-full">
               <video ref={videoRef} className="w-full h-full object-cover rounded-xl" autoPlay playsInline muted />
-              {/* Animated Laser Sweep */}
-              <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent shadow-[0_0_15px_#f43f5e] animate-[bounce_2s_infinite]" />
-              <button
-                type="button"
-                onClick={stopCamera}
-                className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/80 text-slate-300 hover:text-white border border-slate-700 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              
+              {/* Corner Targets */}
+              <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-cyan-400 pointer-events-none" />
+              <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-cyan-400 pointer-events-none" />
+              <div className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-cyan-400 pointer-events-none" />
+              <div className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-cyan-400 pointer-events-none" />
+
+              {/* Laser Sweep */}
+              <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#22D3EE] to-transparent shadow-[0_0_15px_#22d3ee] animate-[bounce_2s_infinite] pointer-events-none" />
+
+              {scannedSuccess && (
+                <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-xs rounded-xl flex flex-col items-center justify-center space-y-2 animate-in zoom-in-95">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-400 animate-bounce" />
+                  <span className="text-sm font-black text-emerald-200">QR CODE RECOGNIZED</span>
+                  <span className="text-xs text-emerald-300 font-mono">Attaching emergency token...</span>
+                </div>
+              )}
             </div>
           ) : (
             <>
-              {/* Laser Grid Animation */}
-              <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent shadow-[0_0_12px_#f43f5e] animate-pulse" />
-
-              {/* Corner Targets */}
-              <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-rose-400" />
-              <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-rose-400" />
-              <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-rose-400" />
-              <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-rose-400" />
-
-              <QrCode className="w-20 h-20 text-rose-400/70 group-hover:scale-105 transition-transform" />
+              <QrCode className="w-20 h-20 text-cyan-400/70 group-hover:scale-105 transition-transform" />
               <div className="mt-3 text-center space-y-1">
-                <span className="text-[11px] font-mono text-rose-300 font-bold bg-rose-950/80 px-3 py-1 rounded-full border border-rose-500/30 uppercase tracking-wider block">
-                  Optical / RFID Sensor Ready
+                <span className="text-[11px] font-mono text-cyan-300 font-bold bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-500/30 uppercase tracking-wider block">
+                  Optical Scanner Standby
                 </span>
-                <p className="text-[10px] text-slate-400">Position patient emergency badge or bracelet in front of lens</p>
+                <p className="text-[10px] text-slate-400">Position emergency QR code inside frame</p>
               </div>
             </>
           )}
         </div>
 
         {cameraError && (
-          <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-200 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-700 text-slate-300 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#22D3EE] shrink-0" />
             <span>{cameraError}</span>
           </div>
         )}
-      </div>
 
-      <div className="relative z-10 space-y-2.5 pt-2">
-        <div className="grid grid-cols-2 gap-2">
-          {!cameraActive ? (
+        <div className="relative z-10 space-y-2 pt-1">
+          <input
+            type="file"
+            ref={modalFileInputRef}
+            accept="image/*"
+            className="hidden"
+            onChange={handleModalImageUpload}
+          />
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={startCamera}
-              className="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-rose-900/30 cursor-pointer"
+              onClick={() => {
+                if (cameraActive) stopCamera();
+                else startCamera();
+              }}
+              className="py-2.5 px-3 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Camera className="w-4 h-4" />
-              <span>Launch Camera</span>
+              <span>{cameraActive ? "Restart Lens" : "Start Camera"}</span>
             </button>
-          ) : (
+
             <button
               type="button"
-              onClick={stopCamera}
-              className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              onClick={() => modalFileInputRef.current?.click()}
+              className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#22D3EE] border border-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <X className="w-4 h-4" />
-              <span>Stop Camera</span>
+              <Upload className="w-4 h-4 text-[#22D3EE]" />
+              <span>Upload QR File</span>
             </button>
-          )}
+          </div>
 
-          <button
-            type="button"
-            onClick={onQuickDemoLoad}
-            className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#22D3EE] border border-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <Zap className="w-4 h-4 text-amber-400" />
-            <span>Load Active ER Patient</span>
-          </button>
+          <p className="text-[10px] text-slate-400 text-center font-mono pt-1">
+            Real-time automated QR detection via camera or uploaded image file.
+          </p>
         </div>
-
-        <p className="text-[10px] text-slate-400 text-center font-mono">
-          Camera scanning requires HTTPS and device camera permissions.
-        </p>
       </div>
     </div>
   );
@@ -378,12 +486,12 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Patient Hero Crash Card */}
-      <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-rose-950/60 to-slate-900 text-white border border-rose-500/30 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="p-6 md:p-8 rounded-3xl bg-slate-900 text-white border border-cyan-500/30 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#0891B2]/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-500 text-white font-black text-3xl flex items-center justify-center border-2 border-rose-300/40 shadow-lg shadow-rose-900/40 shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-[#0891B2] text-white font-black text-3xl flex items-center justify-center border-2 border-cyan-300/40 shadow-lg shadow-cyan-900/40 shrink-0">
               {profile.patientDisplayName?.charAt(0) || "P"}
             </div>
             <div className="space-y-1">
@@ -410,14 +518,14 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
           </div>
 
           {/* Blood Group Triage Callout */}
-          <div className="flex items-center gap-3 bg-slate-950/80 p-3.5 rounded-2xl border border-rose-500/40 shrink-0 shadow-md">
+          <div className="flex items-center gap-3 bg-slate-950/80 p-3.5 rounded-2xl border border-cyan-500/40 shrink-0 shadow-md">
             <div className="text-right">
-              <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest block font-mono">
+              <span className="text-[10px] font-black text-[#22D3EE] uppercase tracking-widest block font-mono">
                 Blood Group
               </span>
               <span className="text-xs text-slate-300 font-bold">Transfusion Match</span>
             </div>
-            <div className="px-5 py-2.5 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 text-white font-black text-2xl font-mono border border-red-400 shadow-inner">
+            <div className="px-5 py-2.5 rounded-xl bg-[#0891B2] text-white font-black text-2xl font-mono border border-cyan-400 shadow-inner">
               {profile.bloodGroup || "N/A"}
             </div>
           </div>
@@ -427,13 +535,13 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
       {/* Main Clinical Triage Matrix */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Critical Allergies Card */}
-        <div className="p-6 rounded-3xl bg-white border border-rose-200/80 shadow-xs space-y-3 relative overflow-hidden">
+        <div className="p-6 rounded-3xl bg-white border border-cyan-200/80 shadow-xs space-y-3 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-black text-rose-900 uppercase tracking-wider flex items-center gap-2 font-heading">
-              <AlertTriangle className="w-4.5 h-4.5 text-rose-600" />
+            <div className="text-xs font-black text-[#0F172A] uppercase tracking-wider flex items-center gap-2 font-heading">
+              <AlertTriangle className="w-4.5 h-4.5 text-[#0891B2]" />
               Critical Allergies & Anaphylaxis Warnings
             </div>
-            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 font-mono">
+            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-cyan-100 text-[#0891B2] border border-cyan-200 font-mono">
               {profile.allergies?.length || 0} DOCUMENTED
             </span>
           </div>
@@ -443,9 +551,9 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
               {profile.allergies.map((a, i) => (
                 <div
                   key={i}
-                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 text-white font-black text-xs shadow-sm flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 rounded-xl bg-[#0891B2] text-white font-black text-xs shadow-sm flex items-center gap-1.5"
                 >
-                  <AlertOctagon className="w-3.5 h-3.5 text-rose-200" />
+                  <AlertOctagon className="w-3.5 h-3.5 text-cyan-200" />
                   {a}
                 </div>
               ))}
@@ -459,13 +567,13 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
         </div>
 
         {/* Chronic Diagnoses Card */}
-        <div className="p-6 rounded-3xl bg-white border border-violet-200/80 shadow-xs space-y-3">
+        <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-black text-violet-900 uppercase tracking-wider flex items-center gap-2 font-heading">
-              <Activity className="w-4.5 h-4.5 text-violet-600" />
+            <div className="text-xs font-black text-[#0F172A] uppercase tracking-wider flex items-center gap-2 font-heading">
+              <Activity className="w-4.5 h-4.5 text-[#0891B2]" />
               Chronic Conditions & Medical History
             </div>
-            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200 font-mono">
+            <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-mono">
               {profile.chronicConditions?.length || 0} ACTIVE
             </span>
           </div>
@@ -475,9 +583,9 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
               {profile.chronicConditions.map((c, i) => (
                 <div
                   key={i}
-                  className="px-3 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-violet-900 font-bold text-xs flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-[#0F172A] font-bold text-xs flex items-center gap-1.5"
                 >
-                  <span className="w-2 h-2 rounded-full bg-violet-600" />
+                  <span className="w-2 h-2 rounded-full bg-[#0891B2]" />
                   {c}
                 </div>
               ))}
@@ -580,7 +688,7 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
       {/* Emergency Physician Action Bar */}
       <div className="p-5 rounded-3xl bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl border border-slate-800">
         <div className="flex items-center gap-3 text-xs font-medium">
-          <div className="w-8 h-8 rounded-xl bg-rose-600/20 text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
+          <div className="w-8 h-8 rounded-xl bg-cyan-600/20 text-[#22D3EE] flex items-center justify-center shrink-0 border border-cyan-500/30">
             <ShieldAlert className="w-4 h-4" />
           </div>
           <span>Need to issue emergency medication or consult AI diagnostics for this trauma intake?</span>
@@ -597,17 +705,17 @@ function EmergencyTriageView({ profile }: { profile: PublicEmergencyProfile }) {
           )}
           <Link
             href="/doctor/prescriptions"
-            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm min-h-[38px]"
+            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm min-h-[38px]"
           >
             <Pill className="w-3.5 h-3.5" />
             STAT Prescription
           </Link>
           <Link
             href="/doctor/copilot"
-            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm min-h-[38px]"
+            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[#22D3EE] border border-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm min-h-[38px]"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            Emergency AI Copilot
+            <Bot className="w-3.5 h-3.5" />
+            AI Diagnostic Copilot
           </Link>
         </div>
       </div>
@@ -694,7 +802,7 @@ function EmergencyScopeViewer({
           onClick={() => setActiveTab("triage")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeTab === "triage"
-              ? "bg-rose-600 text-white shadow-sm"
+              ? "bg-[#0891B2] text-white shadow-sm"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
           }`}
         >
@@ -707,7 +815,7 @@ function EmergencyScopeViewer({
           onClick={() => setActiveTab("documents")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeTab === "documents"
-              ? "bg-rose-600 text-white shadow-sm"
+              ? "bg-[#0891B2] text-white shadow-sm"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
           }`}
         >
@@ -720,7 +828,7 @@ function EmergencyScopeViewer({
           onClick={() => setActiveTab("timeline")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeTab === "timeline"
-              ? "bg-rose-600 text-white shadow-sm"
+              ? "bg-[#0891B2] text-white shadow-sm"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
           }`}
         >
@@ -733,7 +841,7 @@ function EmergencyScopeViewer({
           onClick={() => setActiveTab("labs")}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeTab === "labs"
-              ? "bg-rose-600 text-white shadow-sm"
+              ? "bg-[#0891B2] text-white shadow-sm"
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
           }`}
         >
@@ -777,7 +885,7 @@ function EmergencyScopeViewer({
                 <div key={doc.id} className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3.5 hover:border-slate-300 transition-all">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 shrink-0">
+                      <div className="p-3 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-200 shrink-0">
                         <FileText className="w-5 h-5" />
                       </div>
                       <div>
@@ -797,7 +905,7 @@ function EmergencyScopeViewer({
                     <button
                       type="button"
                       onClick={() => setSelectedDoc(doc)}
-                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View Report & AI Analysis
@@ -839,8 +947,8 @@ function EmergencyScopeViewer({
       {/* Tab 3: Timeline View */}
       {activeTab === "timeline" && (
         <div className="space-y-4 animate-in fade-in duration-300">
-          <div className="p-4 rounded-2xl bg-violet-50 border border-violet-200 text-xs text-violet-900 flex items-center gap-2 font-semibold shadow-xs">
-            <Activity className="w-4 h-4 text-violet-600 shrink-0" />
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-[#0F172A] flex items-center gap-2 font-semibold shadow-xs">
+            <Activity className="w-4 h-4 text-[#0891B2] shrink-0" />
             <span>Longitudinal Clinical Event Stream — Medical Procedures, Diagnoses & Consultations</span>
           </div>
 
@@ -848,11 +956,11 @@ function EmergencyScopeViewer({
             <div className="space-y-3 relative before:absolute before:inset-0 before:left-4 before:w-0.5 before:bg-slate-200">
               {timelineEvents.map((evt, idx) => (
                 <div key={evt.id || idx} className="relative pl-9 space-y-1">
-                  <div className="absolute left-2 top-2.5 w-4 h-4 rounded-full bg-rose-600 border-2 border-white shadow-xs" />
+                  <div className="absolute left-2 top-2.5 w-4 h-4 rounded-full bg-[#0891B2] border-2 border-white shadow-xs" />
                   <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 font-mono">
+                        <span className="text-[10px] font-black text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200 font-mono">
                           {evt.event_type || evt.type || "CLINICAL EVENT"}
                         </span>
                         <h4 className="text-sm font-bold text-slate-900">{evt.title}</h4>
@@ -888,8 +996,8 @@ function EmergencyScopeViewer({
       {/* Tab 4: Lab Biomarkers View */}
       {activeTab === "labs" && (
         <div className="space-y-4 animate-in fade-in duration-300">
-          <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-xs text-sky-900 flex items-center gap-2 font-semibold shadow-xs">
-            <FlaskConical className="w-4 h-4 text-sky-600 shrink-0" />
+          <div className="p-4 rounded-2xl bg-cyan-50 border border-cyan-200 text-xs text-cyan-900 flex items-center gap-2 font-semibold shadow-xs">
+            <FlaskConical className="w-4 h-4 text-[#0891B2] shrink-0" />
             <span>Emergency Lab Biomarker Screening Results & Metabolic Values</span>
           </div>
 
@@ -906,8 +1014,8 @@ function EmergencyScopeViewer({
                         lab.status === "NORMAL"
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : lab.status === "CRITICAL"
-                          ? "bg-rose-100 text-rose-800 border border-rose-300 animate-pulse"
-                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                          ? "bg-slate-200 text-slate-900 border border-slate-300"
+                          : "bg-cyan-50 text-[#0891B2] border border-cyan-200"
                       }`}
                     >
                       {lab.status || "NORMAL"}
@@ -988,16 +1096,16 @@ function DoctorEmergencyTerminalContent() {
   ]);
   const [durationHours, setDurationHours] = useState<0.25 | 1 | 4>(1);
 
+  // Scanner Modal & QR Upload State
+  const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
+  const [qrSuccessNotice, setQrSuccessNotice] = useState<string | null>(null);
+  const qrFileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Auto-populate from URL query
   useEffect(() => {
     const tokenQuery = searchParams?.get("token");
     if (tokenQuery) {
-      let val = tokenQuery.trim();
-      if (val.includes("/e/")) {
-        const parts = val.split("/e/");
-        val = parts[parts.length - 1].split("?")[0].split("#")[0];
-      }
-      setCredentialToken(val);
+      setCredentialToken(extractEmergencyToken(tokenQuery));
     }
   }, [searchParams]);
 
@@ -1017,6 +1125,42 @@ function DoctorEmergencyTerminalContent() {
     setCredentialToken("b2d74172151286f993464d535c40108ef8c4f39fff7f7fdfde961b44cb93f574");
     setReasonCode("PATIENT_UNCONSCIOUS");
     setReasonText("Patient unconscious following severe road traffic trauma. Immediate blood group, allergy, and critical records required.");
+    setQrSuccessNotice("Active ER demo patient credentials loaded.");
+    setTimeout(() => setQrSuccessNotice(null), 4000);
+  };
+
+  const handleMainQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code && code.data) {
+            const token = extractEmergencyToken(code.data);
+            setCredentialToken(token);
+            setQrSuccessNotice("QR image recognized! Patient emergency token attached.");
+            setTimeout(() => setQrSuccessNotice(null), 5000);
+          } else {
+            setError("No valid QR code found in the selected image. Please try another image or scan via camera.");
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    // Reset file input value so same file can be re-selected if needed
+    e.target.value = "";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1024,7 +1168,7 @@ function DoctorEmergencyTerminalContent() {
     setError("");
 
     if (!credentialToken.trim()) {
-      setError("Emergency credential token is required. Scan patient QR code or enter token manually.");
+      setError("Emergency credential token is required. Scan patient QR code, upload QR image, or paste token.");
       return;
     }
     if (reasonText.trim().length < 10) {
@@ -1072,6 +1216,7 @@ function DoctorEmergencyTerminalContent() {
     setDurationHours(1);
     setResponse(null);
     setError("");
+    setQrSuccessNotice(null);
   };
 
   const handleSessionExpire = () => {
@@ -1081,18 +1226,18 @@ function DoctorEmergencyTerminalContent() {
   return (
     <div className="space-y-6 font-body pb-12 animate-in fade-in duration-500">
       {/* Top Clinical Command Header */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-950 via-rose-950 to-slate-950 text-white border border-rose-900/60 shadow-2xl relative overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-rose-600/15 blur-3xl pointer-events-none" />
+      <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-[#0891B2]/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-[#0891B2]/15 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs font-bold uppercase tracking-wider font-mono">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-cyan-500/40 text-[#22D3EE] text-xs font-bold uppercase tracking-wider font-mono">
+              <span className="w-2 h-2 rounded-full bg-[#0891B2] animate-ping" />
               Level 1 Trauma Emergency Terminal
             </div>
             <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight flex items-center gap-3 text-white">
-              <ShieldAlert className="w-7 h-7 sm:w-8 h-8 text-rose-500 shrink-0" />
+              <ShieldAlert className="w-7 h-7 sm:w-8 h-8 text-[#22D3EE] shrink-0" />
               Break-Glass Emergency OverRide
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
@@ -1116,83 +1261,133 @@ function DoctorEmergencyTerminalContent() {
       </div>
 
       {/* ═════════════════════════════════════════════════════════════
-          STEP 1: INPUT & TOKEN CAPTURE
+          STEP 1: FULL-WIDTH BREAK-GLASS INPUT & PROTOCOL SIDEBAR
       ═════════════════════════════════════════════════════════════ */}
       {step === "input" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Interactive QR & Scanner Telemetry (5 cols) */}
-          <div className="lg:col-span-5">
-            <CameraScannerHUD
-              onTokenScanned={(t) => setCredentialToken(t)}
-              onQuickDemoLoad={handleQuickDemoLoad}
-            />
-          </div>
-
-          {/* Right Column: Emergency Justification & Authorization Form (7 cols) */}
-          <div className="lg:col-span-7 p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-6">
-            <div className="space-y-1 border-b border-slate-100 pb-4">
-              <h2 className="font-heading font-black text-lg text-slate-900 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-600" />
+        <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-6 items-start animate-in zoom-in-95 duration-200">
+          {/* Main Left Column: Emergency Authorization Form (8 cols) */}
+          <div className="xl:col-span-8 p-6 sm:p-9 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-7">
+            <div className="space-y-1.5 border-b border-slate-100 pb-4">
+              <h2 className="font-heading font-black text-xl text-slate-900 flex items-center gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-[#0891B2]" />
                 Emergency Access Authorization Protocol
               </h2>
               <p className="text-xs text-slate-500">
-                Supply the patient&apos;s emergency credential token and document the clinical justification.
+                Supply the patient&apos;s emergency credential token or scan the QR code to proceed with statutory emergency override.
               </p>
             </div>
 
+            {/* Error Notification */}
             {error && (
-              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 font-semibold flex items-start gap-2.5 animate-in fade-in">
-                <XCircle className="w-4.5 h-4.5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-800 font-semibold flex items-start gap-2.5 animate-in fade-in">
+                <XCircle className="w-4.5 h-4.5 text-slate-600 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Emergency Credential Token Input */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-900">
-                    Emergency Credential Token <span className="text-rose-600">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleQuickDemoLoad}
-                    className="text-[11px] font-bold text-[#0891B2] hover:text-[#0e7490] cursor-pointer"
-                  >
-                    Paste Demo Token
-                  </button>
+            {/* Success QR Notification */}
+            {qrSuccessNotice && (
+              <div className="p-3.5 rounded-2xl bg-cyan-50 border border-cyan-200 text-xs text-[#0891B2] font-bold flex items-center gap-2.5 animate-in fade-in">
+                <CheckCircle2 className="w-4.5 h-4.5 text-[#0891B2] shrink-0" />
+                <span>{qrSuccessNotice}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* SECTION 1: Patient Emergency Credential Token & QR */}
+              <div className="space-y-2.5 p-5 rounded-2xl bg-slate-50/80 border border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900">
+                      Emergency Credential Token or QR <span className="text-[#0891B2]">*</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400">Scan bracelet/badge, upload QR image, or enter token</span>
+                  </div>
+
+                  {/* Action Buttons Row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setIsScannerModalOpen(true)}
+                      className="px-3.5 py-2 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Scan with Camera</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => qrFileInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-cyan-50 text-[#0891B2] border border-cyan-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload QR Image</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleQuickDemoLoad}
+                      className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-[#0891B2]" />
+                      <span>Demo Token</span>
+                    </button>
+
+                    {/* Hidden QR File Input */}
+                    <input
+                      type="file"
+                      ref={qrFileInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleMainQrUpload}
+                    />
+                  </div>
                 </div>
 
-                <div className="relative">
+                {/* Main Token Input Field */}
+                <div className="relative mt-2">
                   <KeyRound className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
                   <input
                     type="text"
                     value={credentialToken}
                     onChange={(e) => {
-                      let val = e.target.value.trim();
-                      if (val.includes("/e/")) {
-                        const parts = val.split("/e/");
-                        val = parts[parts.length - 1].split("?")[0].split("#")[0];
-                      }
-                      setCredentialToken(val);
+                      setCredentialToken(extractEmergencyToken(e.target.value));
                     }}
-                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 font-mono text-xs focus:border-rose-500 focus:bg-white focus:outline-none min-h-[44px] transition-colors"
-                    placeholder="Scan QR or paste token (e.g. b2d74172151286f993464d535c40108e...)"
+                    className="w-full pl-10 pr-10 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 font-mono text-xs focus:border-[#0891B2] focus:bg-white focus:outline-none min-h-[44px] transition-colors shadow-2xs"
+                    placeholder="Scan QR, upload image, or paste 64-char hex hash..."
                     required
                   />
+                  {credentialToken && (
+                    <button
+                      type="button"
+                      onClick={() => setCredentialToken("")}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
+
+                {credentialToken && (
+                  <div className="pt-1 flex items-center justify-between text-[11px] font-mono text-slate-500">
+                    <span className="flex items-center gap-1 text-[#0891B2] font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Attached Token
+                    </span>
+                    <span className="truncate max-w-xs">{credentialToken.substring(0, 24)}...{credentialToken.substring(credentialToken.length - 8)}</span>
+                  </div>
+                )}
               </div>
 
-              {/* Triage Reason Code */}
-              <div className="space-y-1.5">
+              {/* SECTION 2: Triage Classification */}
+              <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-900">
-                  Emergency Triage Classification <span className="text-rose-600">*</span>
+                  Emergency Triage Classification <span className="text-[#0891B2]">*</span>
                 </label>
                 <div className="relative">
                   <select
                     value={reasonCode}
                     onChange={(e) => setReasonCode(e.target.value as BreakGlassReasonCode)}
-                    className="w-full px-3.5 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:border-rose-500 focus:bg-white focus:outline-none min-h-[44px] appearance-none cursor-pointer"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:border-[#0891B2] focus:bg-white focus:outline-none min-h-[44px] appearance-none cursor-pointer"
                   >
                     {REASON_CODES.map((r) => (
                       <option key={r.code} value={r.code}>
@@ -1204,17 +1399,22 @@ function DoctorEmergencyTerminalContent() {
                 </div>
               </div>
 
-              {/* Clinical Justification */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-900">
-                  Clinical Justification & Notes <span className="text-rose-600">*</span>
-                </label>
+              {/* SECTION 3: Clinical Justification */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-900">
+                    Clinical Justification & Medical Notes <span className="text-[#0891B2]">*</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {reasonText.length} chars (min 10)
+                  </span>
+                </div>
                 <textarea
                   rows={3}
                   value={reasonText}
                   onChange={(e) => setReasonText(e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:border-rose-500 focus:bg-white focus:outline-none resize-none leading-relaxed"
-                  placeholder="Detail the patient presentation, trauma status, or urgent diagnostic reason requiring immediate records..."
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:border-[#0891B2] focus:bg-white focus:outline-none resize-none leading-relaxed"
+                  placeholder="Detail the trauma presentation, unconscious state, or urgent diagnostic justification requiring emergency override..."
                   required
                   minLength={10}
                 />
@@ -1226,7 +1426,7 @@ function DoctorEmergencyTerminalContent() {
                       key={i}
                       type="button"
                       onClick={() => setReasonText(q)}
-                      className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2.5 py-1 rounded-lg transition-colors text-left truncate max-w-xs cursor-pointer"
+                      className="text-[10px] bg-slate-100 hover:bg-cyan-50 hover:text-[#0891B2] hover:border-cyan-200 border border-transparent text-slate-700 font-medium px-2.5 py-1 rounded-lg transition-colors text-left truncate max-w-xs cursor-pointer"
                     >
                       + {q.substring(0, 38)}...
                     </button>
@@ -1234,12 +1434,12 @@ function DoctorEmergencyTerminalContent() {
                 </div>
               </div>
 
-              {/* Scope Selection Matrix */}
+              {/* SECTION 4: Scope Selection Matrix */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-900">
                   Requested Clinical Scopes
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {SCOPE_OPTIONS.map((opt) => {
                     const Icon = opt.icon;
                     const isSelected = selectedScope.includes(opt.value);
@@ -1249,7 +1449,7 @@ function DoctorEmergencyTerminalContent() {
                         key={opt.value}
                         className={`flex items-start gap-2.5 p-3 rounded-2xl border transition-all cursor-pointer ${
                           isSelected
-                            ? "bg-rose-50/80 border-rose-300 text-rose-950 shadow-2xs"
+                            ? "bg-cyan-50/80 border-cyan-300 text-[#0F172A] shadow-2xs"
                             : "bg-slate-50/60 border-slate-200 text-slate-600 hover:border-slate-300"
                         } ${opt.required ? "cursor-not-allowed opacity-90" : ""}`}
                       >
@@ -1258,14 +1458,14 @@ function DoctorEmergencyTerminalContent() {
                           checked={isSelected}
                           onChange={() => toggleScope(opt.value)}
                           disabled={opt.required}
-                          className="mt-0.5 w-3.5 h-3.5 accent-rose-600 shrink-0"
+                          className="mt-0.5 w-3.5 h-3.5 accent-[#0891B2] shrink-0"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold flex items-center gap-1.5">
-                            <Icon className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            <Icon className="w-3.5 h-3.5 text-[#0891B2] shrink-0" />
                             <span className="truncate">{opt.label}</span>
                             {opt.required && (
-                              <span className="text-[9px] text-rose-700 font-extrabold uppercase">(Req)</span>
+                              <span className="text-[9px] text-[#0891B2] font-extrabold uppercase">(Req)</span>
                             )}
                           </div>
                           <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{opt.description}</p>
@@ -1276,10 +1476,10 @@ function DoctorEmergencyTerminalContent() {
                 </div>
               </div>
 
-              {/* Access Duration Matrix */}
+              {/* SECTION 5: Access Duration Window */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-900">Access Duration Window</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2.5">
                   {DURATION_OPTIONS.map((d) => {
                     const isSelected = durationHours === d.value;
 
@@ -1290,15 +1490,15 @@ function DoctorEmergencyTerminalContent() {
                         onClick={() => setDurationHours(d.value)}
                         className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
                           isSelected
-                            ? "bg-rose-600 border-rose-600 text-white shadow-sm"
-                            : "bg-slate-50 border-slate-200 text-slate-700 hover:border-rose-300"
+                            ? "bg-[#0891B2] border-[#0891B2] text-white shadow-sm"
+                            : "bg-slate-50 border-slate-200 text-slate-700 hover:border-cyan-300"
                         }`}
                       >
-                        <span className={`text-[9px] font-black uppercase tracking-wider block ${isSelected ? "text-rose-200" : "text-slate-400"}`}>
+                        <span className={`text-[9px] font-black uppercase tracking-wider block ${isSelected ? "text-cyan-200" : "text-slate-400"}`}>
                           {d.badge}
                         </span>
                         <div className="text-sm font-black mt-0.5">{d.label}</div>
-                        <div className={`text-[10px] mt-0.5 ${isSelected ? "text-rose-100" : "text-slate-400"}`}>
+                        <div className={`text-[10px] mt-0.5 ${isSelected ? "text-cyan-100" : "text-slate-400"}`}>
                           {d.sublabel}
                         </div>
                       </button>
@@ -1310,13 +1510,132 @@ function DoctorEmergencyTerminalContent() {
               {/* Submit Action */}
               <button
                 type="submit"
-                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-sm shadow-lg shadow-rose-600/20 transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
+                className="w-full py-4 px-6 rounded-2xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-black text-sm shadow-lg shadow-cyan-600/20 transition-all flex items-center justify-center gap-2 min-h-[50px] cursor-pointer"
               >
+                <Lock className="w-4 h-4" />
                 <span>Proceed to Break-Glass Authorization</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           </div>
+
+          {/* Right Column: Statutory Protocol & Safeguards Sidebar (4 cols) */}
+          <div className="xl:col-span-4 space-y-5">
+            {/* Card 1: Attending Physician Clearance */}
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Attending Physician
+                </span>
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  VERIFIED CLINICIAN
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#0891B2]/10 text-[#0891B2] flex items-center justify-center font-black shrink-0">
+                  <Stethoscope className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 truncate">
+                    {userProfile?.displayName || user?.email || "Dr. Attending Physician"}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    Emergency Medicine · Trauma ICU
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-500">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase">License Status</span>
+                  <span className="font-bold text-slate-900">Active / Good Standing</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase">Hospital Station</span>
+                  <span className="font-bold text-slate-900">General Trauma ER</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Statutory Safeguards & Legal Protocol */}
+            <div className="p-6 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#0891B2]/15 blur-2xl pointer-events-none" />
+
+              <div className="relative z-10 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#22D3EE]" />
+                <h3 className="font-heading font-black text-sm text-white">
+                  Statutory Protocol Safeguards
+                </h3>
+              </div>
+
+              <div className="relative z-10 space-y-3 text-xs text-slate-300">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-white block">Cryptographic Audit Chaining</span>
+                    <span className="text-slate-400 text-[11px]">Every unmasking event is logged to the SHA-256 ledger.</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-white block">Instant Patient Dispatch</span>
+                    <span className="text-slate-400 text-[11px]">Real-time SMS & email dispatched to the patient or proxy.</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-white block">Time-Bound Key Purge</span>
+                    <span className="text-slate-400 text-[11px]">Temporary decryption keys self-destruct upon session expiry.</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-white block">HIPAA / GDPR Compliant</span>
+                    <span className="text-slate-400 text-[11px]">Operates under Section 164.512(j) emergency care exemption.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Quick Optical Scanner Launcher */}
+            <div className="p-6 rounded-3xl bg-cyan-50/70 border border-cyan-200 space-y-3.5">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-[#0891B2]" />
+                <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
+                  Optical Lens Quick Scanner
+                </h4>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Scan patient wristbands or emergency badges directly with device camera for instantaneous token ingestion.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsScannerModalOpen(true)}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Launch Camera Scanner</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Live Camera Scanner Modal Triggered on Click */}
+          <LiveScannerModal
+            isOpen={isScannerModalOpen}
+            onClose={() => setIsScannerModalOpen(false)}
+            onTokenScanned={(token) => {
+              setCredentialToken(token);
+              setQrSuccessNotice("QR code scanned & emergency token attached!");
+              setTimeout(() => setQrSuccessNotice(null), 5000);
+            }}
+          />
         </div>
       )}
 
@@ -1324,10 +1643,10 @@ function DoctorEmergencyTerminalContent() {
           STEP 2: CONSENT OVERRIDE VERIFICATION
       ═════════════════════════════════════════════════════════════ */}
       {step === "consent" && (
-        <div className="max-w-2xl mx-auto animate-in zoom-in-95 duration-200">
-          <div className="p-8 sm:p-10 rounded-3xl bg-white border border-rose-300 shadow-2xl space-y-6">
+        <div className="max-w-4xl mx-auto animate-in zoom-in-95 duration-200">
+          <div className="p-8 sm:p-10 rounded-3xl bg-white border border-cyan-300 shadow-2xl space-y-6">
             <div className="text-center space-y-2">
-              <div className="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 border-2 border-rose-300 flex items-center justify-center mx-auto shadow-md">
+              <div className="w-16 h-16 rounded-3xl bg-cyan-100 text-[#0891B2] border-2 border-cyan-300 flex items-center justify-center mx-auto shadow-md">
                 <Lock className="w-8 h-8" />
               </div>
               <h2 className="font-heading font-black text-2xl text-slate-900">
@@ -1338,9 +1657,9 @@ function DoctorEmergencyTerminalContent() {
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-rose-50 border border-rose-200 space-y-3 text-xs text-rose-950">
-              <div className="font-black text-sm text-rose-900 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
+            <div className="p-5 rounded-2xl bg-cyan-50/70 border border-cyan-200 space-y-3 text-xs text-slate-800">
+              <div className="font-black text-sm text-[#0891B2] flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-[#0891B2]" />
                 Legal & Audit Notification
               </div>
               <p className="leading-relaxed">
@@ -1371,7 +1690,7 @@ function DoctorEmergencyTerminalContent() {
                   <span className="text-slate-400 text-[10px] block">SCOPES UNMASKED</span>
                   <div className="flex flex-wrap gap-1 mt-1 font-sans">
                     {selectedScope.map((s) => (
-                      <span key={s} className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold">
+                      <span key={s} className="px-2 py-0.5 rounded-md bg-cyan-100 text-[#0891B2] text-[10px] font-bold">
                         {s}
                       </span>
                     ))}
@@ -1393,7 +1712,7 @@ function DoctorEmergencyTerminalContent() {
                 type="button"
                 onClick={handleConfirmAccess}
                 disabled={loading}
-                className="flex-1 py-3.5 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs transition-all flex items-center justify-center gap-2 min-h-[46px] shadow-lg shadow-rose-600/30 disabled:opacity-60 cursor-pointer"
+                className="flex-1 py-3.5 px-4 rounded-2xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-black text-xs transition-all flex items-center justify-center gap-2 min-h-[46px] shadow-lg shadow-cyan-600/30 disabled:opacity-60 cursor-pointer"
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 {loading ? "Notarizing & Granting..." : "AUTHORIZE EMERGENCY ACCESS"}
@@ -1436,7 +1755,7 @@ function DoctorEmergencyTerminalContent() {
             <button
               type="button"
               onClick={handleReset}
-              className="text-xs font-bold px-4 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-700 transition-colors flex items-center justify-center gap-1.5 self-end sm:self-auto cursor-pointer"
+              className="text-xs font-bold px-4 py-2 rounded-xl bg-slate-100 hover:bg-cyan-50 hover:text-[#0891B2] text-slate-700 transition-colors flex items-center justify-center gap-1.5 self-end sm:self-auto cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
               Conclude Emergency Session
@@ -1462,7 +1781,7 @@ function DoctorEmergencyTerminalContent() {
       ═════════════════════════════════════════════════════════════ */}
       {step === "expired" && (
         <div className="max-w-md mx-auto py-16 text-center space-y-6 animate-in fade-in">
-          <div className="w-20 h-20 rounded-3xl bg-rose-100 text-rose-600 border-2 border-rose-300 flex items-center justify-center mx-auto shadow-md">
+          <div className="w-20 h-20 rounded-3xl bg-slate-100 text-[#0891B2] border-2 border-slate-300 flex items-center justify-center mx-auto shadow-md">
             <Clock className="w-10 h-10" />
           </div>
           <div className="space-y-1">

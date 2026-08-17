@@ -168,9 +168,9 @@ function ConsentGate({
         )}
         <Link
           href="/doctor/emergency"
-          className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1.5 min-h-[40px]"
+          className="px-4 py-2.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-[#0891B2] border border-cyan-200 text-xs font-bold transition-all flex items-center gap-1.5 min-h-[40px]"
         >
-          <ShieldAlert className="w-3.5 h-3.5" /> Emergency Access
+          <ShieldAlert className="w-3.5 h-3.5 text-[#0891B2]" /> Emergency Access
         </Link>
       </div>
     </div>
@@ -236,8 +236,8 @@ function AccessRequestModal({
             </h3>
 
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-slate-600 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
@@ -579,13 +579,13 @@ export default function DoctorPatientOverviewPage() {
               </div>
               <p className="text-xs text-[#475569]">
                 {patient.age} yrs · {patient.gender} · Blood Group:{" "}
-                <strong className="text-rose-600">{patient.bloodGroup}</strong>
+                <strong className="text-[#0891B2] font-bold">{patient.bloodGroup}</strong>
                 {patient.height && <span> · Height: <strong className="text-slate-800">{patient.height}</strong></span>}
                 {patient.weight && <span> · Weight: <strong className="text-slate-800">{patient.weight}</strong></span>}
               </p>
               <p className="text-xs text-slate-500 font-mono">
                 BMI: <strong className="text-[#0891B2] font-bold">{computedBmi}</strong> · Emergency:{" "}
-                <span className="text-rose-600 font-medium">{patient.emergencyContact || "Not recorded"}</span>
+                <span className="text-slate-700 font-medium">{patient.emergencyContact || "Not recorded"}</span>
               </p>
             </div>
           </div>
@@ -723,9 +723,9 @@ export default function DoctorPatientOverviewPage() {
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
                             lab.status === "CRITICAL"
-                              ? "bg-rose-100 text-rose-800 border border-rose-300"
+                              ? "bg-slate-200 text-slate-900 border border-slate-300"
                               : lab.status === "HIGH"
-                              ? "bg-amber-100 text-amber-800 border border-amber-300"
+                              ? "bg-cyan-100 text-[#0891B2] border border-cyan-300"
                               : lab.status === "LOW"
                               ? "bg-sky-100 text-sky-800 border border-sky-300"
                               : "bg-emerald-100 text-emerald-800 border border-emerald-300"
@@ -753,16 +753,16 @@ export default function DoctorPatientOverviewPage() {
 
             {/* Allergies & Chronic Conditions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2">
-                <h3 className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" /> Allergies
+              <div className="p-4 rounded-2xl bg-cyan-50/50 border border-cyan-200/80 space-y-2">
+                <h3 className="text-xs font-bold text-[#0891B2] flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-[#0891B2]" /> Allergies
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
                   {patient.allergies && patient.allergies.length > 0 ? (
                     patient.allergies.map((a: string, idx: number) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 bg-white border border-amber-200 text-amber-900 text-xs font-bold rounded-lg shadow-2xs"
+                        className="px-2.5 py-1 bg-white border border-cyan-200 text-[#0891B2] text-xs font-bold rounded-lg shadow-2xs"
                       >
                         {a}
                       </span>
@@ -773,16 +773,16 @@ export default function DoctorPatientOverviewPage() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-200/80 space-y-2">
-                <h3 className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
-                  <Activity className="w-4 h-4 text-rose-600" /> Chronic Conditions
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <h3 className="text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-[#0891B2]" /> Chronic Conditions
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
                   {patient.chronicConditions && patient.chronicConditions.length > 0 ? (
                     patient.chronicConditions.map((c: string, idx: number) => (
                       <span
                         key={idx}
-                        className="px-2.5 py-1 bg-white border border-rose-200 text-rose-900 text-xs font-bold rounded-lg shadow-2xs"
+                        className="px-2.5 py-1 bg-white border border-slate-200 text-[#0F172A] text-xs font-bold rounded-lg shadow-2xs"
                       >
                         {c}
                       </span>
@@ -883,9 +883,9 @@ export default function DoctorPatientOverviewPage() {
                       <div
                         className={`w-3 h-3 rounded-full mt-1.5 shrink-0 shadow-xs ${
                           isCritical
-                            ? "bg-rose-500 ring-4 ring-rose-100"
+                            ? "bg-[#0891B2] ring-4 ring-cyan-100"
                             : isMonitor
-                            ? "bg-amber-500 ring-4 ring-amber-100"
+                            ? "bg-slate-400 ring-4 ring-slate-100"
                             : "bg-[#0891B2] ring-4 ring-cyan-100"
                         }`}
                       />
@@ -902,16 +902,16 @@ export default function DoctorPatientOverviewPage() {
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 isCritical
-                                  ? "bg-rose-100 text-rose-800"
+                                  ? "bg-cyan-100 text-[#0891B2]"
                                   : isMonitor
-                                  ? "bg-amber-100 text-amber-800"
+                                  ? "bg-slate-200 text-slate-700"
                                   : "bg-cyan-100 text-[#0891B2]"
                               }`}
                             >
                               {event.event_type || event.severity || "EVENT"}
                             </span>
                             {event.is_milestone && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-[#0891B2] border border-cyan-200">
                                 MILESTONE
                               </span>
                             )}
