@@ -645,6 +645,50 @@ export class ConsentService {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // 10b. Doctor — Get All Consented (APPROVED) Patients Only
+  // ─────────────────────────────────────────────────────────────
+
+  public static async getConsentedPatientsForDoctor(
+    doctorUserId: string
+  ): Promise<PatientSearchResult[]> {
+    try {
+      const res = await query(
+        `SELECT DISTINCT ON (p.id)
+                p.id, p.blood_group, p.gender, p.date_of_birth,
+                prof.full_name, prof.email, prof.avatar_url,
+                cg.id as consent_id, cg.scope, cg.expires_at
+         FROM public.consent_grants cg
+         JOIN public.patients p ON cg.patient_id = p.id
+         JOIN public.users_profile prof ON p.user_id = prof.id
+         WHERE (cg.grantee_id = $1 OR cg.grantee_id IN (SELECT user_id FROM public.doctors WHERE id::text = $1 OR user_id::text = $1))
+           AND cg.status = 'APPROVED'
+           AND (cg.expires_at IS NULL OR cg.expires_at > NOW())
+         ORDER BY p.id, prof.full_name ASC`,
+        [doctorUserId]
+      );
+
+      return res.rows.map((row: any) => {
+        const dob = row.date_of_birth ? new Date(row.date_of_birth) : null;
+        const age = dob ? new Date().getFullYear() - dob.getFullYear() : 0;
+        return {
+          id: row.id,
+          uhid: `MV-PAT-${row.id.substring(0, 5).toUpperCase()}`,
+          fullName: row.full_name || row.email?.split('@')[0] || 'Patient',
+          age,
+          gender: row.gender || 'Not recorded',
+          bloodGroup: row.blood_group || 'Not recorded',
+          consentStatus: 'APPROVED' as const,
+          consentId: row.consent_id,
+        };
+      });
+    } catch (err: any) {
+      if (isConnectionError(err)) return [];
+      logger.error('[ConsentService.getConsentedPatientsForDoctor]', err);
+      return [];
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // 11. Verify Consent Hash (integrity check)
   // ─────────────────────────────────────────────────────────────
 

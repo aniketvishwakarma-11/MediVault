@@ -562,6 +562,37 @@ export async function runAutoMigrations(): Promise<void> {
       logger.warn('[Database Migration] Doctor AI Copilot tables migration notice:', doctorCopilotErr.message || doctorCopilotErr);
     }
 
+    // 14. Prescription Ecosystem (Migration 010: Drug Catalog, Prescriptions, Adherence, Refills, Dispensing)
+    try {
+      await query(`
+        ALTER TABLE public.prescriptions
+          ADD COLUMN IF NOT EXISTS consultation_id UUID,
+          ADD COLUMN IF NOT EXISTS diagnosis_code VARCHAR(50),
+          ADD COLUMN IF NOT EXISTS diagnosis_text TEXT,
+          ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'ACTIVE',
+          ADD COLUMN IF NOT EXISTS notes TEXT,
+          ADD COLUMN IF NOT EXISTS recommended_tests TEXT[] DEFAULT '{}',
+          ADD COLUMN IF NOT EXISTS qr_code_hash VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS digital_signature TEXT,
+          ADD COLUMN IF NOT EXISTS blockchain_tx_hash VARCHAR(128),
+          ADD COLUMN IF NOT EXISTS ai_explanation JSONB DEFAULT '{}'::jsonb,
+          ADD COLUMN IF NOT EXISTS validity_days INTEGER DEFAULT 30,
+          ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + INTERVAL '30 days');
+
+        ALTER TABLE public.prescriptions
+          ALTER COLUMN medications_json DROP NOT NULL;
+      `);
+
+      const rxMigrationPath = path.join(__dirname, '../migrations/010_prescription_ecosystem.sql');
+      if (fs.existsSync(rxMigrationPath)) {
+        const rxSQL = fs.readFileSync(rxMigrationPath, 'utf8');
+        await query(rxSQL);
+        logger.info('[Database Migration] Prescription ecosystem schema (010) applied successfully.');
+      }
+    } catch (rxErr: any) {
+      logger.warn('[Database Migration] Prescription ecosystem migration notice:', rxErr.message || rxErr);
+    }
+
   } catch (error: any) {
     logger.warn('[Database Migration Notice] Auto-migration execution note:', error.message || error);
   }

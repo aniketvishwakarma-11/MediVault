@@ -10,6 +10,7 @@ import emergencyRoutes from './routes/emergency.routes';
 import consentRoutes from './routes/consent.routes';
 import copilotRoutes from './routes/copilot.routes';
 import doctorCopilotRoutes from './routes/doctor-copilot.routes';
+import prescriptionRoutes from './routes/prescription.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -53,6 +54,8 @@ app.use('/api/consent', consentRoutes);
 app.use('/copilot', copilotRoutes);
 app.use('/api/copilot', copilotRoutes);
 app.use('/api/doctor/copilot', doctorCopilotRoutes);
+app.use('/prescriptions', prescriptionRoutes);
+app.use('/api/prescriptions', prescriptionRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {

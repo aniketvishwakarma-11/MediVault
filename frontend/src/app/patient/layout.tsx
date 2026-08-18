@@ -17,7 +17,8 @@ import {
   LogOut,
   Bell,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  Pill
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -28,6 +29,7 @@ interface PatientLayoutProps {
 const navItems = [
   { name: "Dashboard", href: "/patient/dashboard", icon: LayoutDashboard },
   { name: "Medical Records", href: "/patient/reports", icon: FileText },
+  { name: "Prescriptions", href: "/patient/prescriptions", icon: Pill },
   { name: "Timeline", href: "/patient/timeline", icon: Clock },
   { name: "AI Copilot", href: "/patient/ai-copilot", icon: Bot },
   { name: "Emergency ID", href: "/patient/emergency", icon: ShieldAlert },

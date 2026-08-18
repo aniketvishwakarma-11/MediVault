@@ -110,8 +110,8 @@ export class ClinicalEventService {
     }
 
     // ── 2. Diagnoses ─────────────────────────────────────────────
-    for (const diagnosis of analysis.diagnosis) {
-      if (!diagnosis.trim()) continue;
+    for (const diagnosis of (analysis.diagnosis || [])) {
+      if (!diagnosis || !diagnosis.trim()) continue;
       events.push({
         patient_id: patientId,
         document_id: documentId,
@@ -126,8 +126,8 @@ export class ClinicalEventService {
         facility_name: facilityName,
         department,
         structured_data: {
-          diagnoses: analysis.diagnosis,
-          symptoms: analysis.symptoms,
+          diagnoses: analysis.diagnosis || [],
+          symptoms: analysis.symptoms || [],
         },
         is_milestone: true,
         idempotency_key: this.makeKey(scopeId, 'DIAGNOSIS', eventDate, diagnosis.trim()),
@@ -135,7 +135,7 @@ export class ClinicalEventService {
     }
 
     // ── 3. Lab Tests ─────────────────────────────────────────────
-    if (analysis.lab_results.length > 0) {
+    if ((analysis.lab_results || []).length > 0) {
       // Determine severity of the overall lab panel
       const hasCritical = analysis.lab_results.some((l) => l.status === 'CRITICAL');
       const hasAbnormal = analysis.lab_results.some((l) => l.status !== 'NORMAL');
@@ -150,7 +150,7 @@ export class ClinicalEventService {
         analysis_id: analysisId,
         event_type: 'LAB_TEST',
         event_date: labDate,
-        title: `${analysis.document.document_type || 'Laboratory'} Results`,
+        title: `${analysis.document?.document_type || 'Laboratory'} Results`,
         summary: `${analysis.lab_results.length} test${analysis.lab_results.length !== 1 ? 's' : ''} reported. ${hasAbnormal ? 'Abnormal values detected.' : 'All values within reference range.'}`,
         severity,
         status: 'UNKNOWN',
@@ -190,7 +190,7 @@ export class ClinicalEventService {
     }
 
     // ── 5. Medications / Prescriptions ───────────────────────────
-    if (analysis.medications.length > 0) {
+    if ((analysis.medications || []).length > 0) {
       // Check if any medication was explicitly changed
       const hasMedChange = analysis.medications.some((m) => m.status === 'changed' || m.status === 'modified');
       events.push({
@@ -215,8 +215,8 @@ export class ClinicalEventService {
     }
 
     // ── 6. Procedures ────────────────────────────────────────────
-    for (const procedure of analysis.procedures) {
-      if (!procedure.trim()) continue;
+    for (const procedure of (analysis.procedures || [])) {
+      if (!procedure || !procedure.trim()) continue;
       events.push({
         patient_id: patientId,
         document_id: documentId,
@@ -230,15 +230,16 @@ export class ClinicalEventService {
         doctor_name: doctorName,
         facility_name: facilityName,
         department,
-        structured_data: { procedure, surgeries: analysis.surgeries },
+        structured_data: { procedure, surgeries: analysis.surgeries || [] },
         is_milestone: true,
         idempotency_key: this.makeKey(scopeId, 'PROCEDURE', eventDate, procedure.trim()),
       });
     }
 
     // ── 7. Vaccinations ──────────────────────────────────────────
-    for (const vaccine of analysis.vaccinations) {
-      if (!vaccine.trim()) continue;
+    const vaccineList = analysis.vaccinations || (analysis as any).immunizations || [];
+    for (const vaccine of vaccineList) {
+      if (!vaccine || !vaccine.trim()) continue;
       events.push({
         patient_id: patientId,
         document_id: documentId,

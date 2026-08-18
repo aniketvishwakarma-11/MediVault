@@ -177,6 +177,23 @@ export const ConsentAPI = {
     ),
 
   /**
+   * Get all patients who have active APPROVED consent for this doctor.
+   */
+  getConsentedPatients: async (): Promise<PatientSearchResult[]> => {
+    try {
+      // 1. Search all patients via canonical consent directory
+      const { patients } = await ConsentAPI.searchPatients('', undefined, 1, 100);
+      if (patients && patients.length > 0) {
+        return patients.filter((p) => p.consentStatus === 'APPROVED');
+      }
+      return [];
+    } catch (err) {
+      console.error('[ConsentAPI.getConsentedPatients] Error:', err);
+      return [];
+    }
+  },
+
+  /**
    * Get all of the doctor's own consent requests.
    */
   getDoctorRequests: () => apiGet<ConsentGrant[]>('/consent/doctor/consent-requests'),
