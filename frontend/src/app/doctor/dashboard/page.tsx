@@ -10,7 +10,6 @@ import {
   Search,
   ShieldAlert,
   FilePlus,
-  FileSpreadsheet,
   Pill,
   Bot,
   ArrowRight,
@@ -32,14 +31,13 @@ import {
   Eye,
   UserCheck
 } from "lucide-react";
-import { mockDoctorProfile, mockDoctorPatients, mockDoctorConsultations } from "@/lib/doctorDemoData";
+import { mockDoctorProfile, mockDoctorPatients } from "@/lib/doctorDemoData";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
 export default function DoctorDashboardPage() {
   const { user, userProfile, isDemo } = useAuth();
   const [patients, setPatients] = useState<any[]>(isDemo ? mockDoctorPatients : []);
-  const [consultations, setConsultations] = useState<any[]>(isDemo ? mockDoctorConsultations : []);
   const [loading, setLoading] = useState<boolean>(!isDemo);
 
   const doctorName = isDemo
@@ -53,7 +51,6 @@ export default function DoctorDashboardPage() {
   useEffect(() => {
     if (isDemo) {
       setPatients(mockDoctorPatients);
-      setConsultations(mockDoctorConsultations);
       setLoading(false);
       return;
     }
@@ -274,7 +271,7 @@ export default function DoctorDashboardPage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Link
             href="/doctor/patients"
             className="p-4 rounded-2xl bg-slate-50 hover:bg-cyan-50/80 border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
@@ -296,16 +293,6 @@ export default function DoctorDashboardPage() {
           </Link>
 
           <Link
-            href="/doctor/consultations"
-            className="p-4 rounded-2xl bg-slate-50 hover:bg-cyan-50/80 border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
-          >
-            <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs group-hover:scale-110 transition-transform">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-bold text-[#0F172A]">Consultations</span>
-          </Link>
-
-          <Link
             href="/doctor/prescriptions"
             className="p-4 rounded-2xl bg-slate-50 hover:bg-cyan-50/80 border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
           >
@@ -317,7 +304,7 @@ export default function DoctorDashboardPage() {
 
           <Link
             href="/doctor/copilot"
-            className="p-4 rounded-2xl bg-gradient-to-br from-cyan-50 to-teal-50 hover:from-cyan-100 hover:to-teal-100 border border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px] col-span-2 sm:col-span-1"
+            className="p-4 rounded-2xl bg-gradient-to-br from-cyan-50 to-teal-50 hover:from-cyan-100 hover:to-teal-100 border border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
           >
             <div className="p-2.5 rounded-xl bg-[#0891B2] text-white shadow-xs group-hover:scale-110 transition-transform">
               <Bot className="w-5 h-5" />
@@ -476,31 +463,6 @@ export default function DoctorDashboardPage() {
                   <ChevronRight className="w-3 h-3" />
                 </Link>
               </div>
-            </div>
-          </div>
-
-          {/* Recent Consultations Feed */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-heading font-bold text-[#0F172A] text-sm flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[#0891B2]" /> Recent Consultations
-              </h3>
-              <Link href="/doctor/consultations" className="text-xs font-bold text-[#0891B2] hover:underline">
-                + New Note
-              </Link>
-            </div>
-
-            <div className="space-y-3">
-              {consultations.map((c) => (
-                <div key={c.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1.5 text-xs">
-                  <div className="flex justify-between font-bold text-[#0F172A]">
-                    <span>{c.patientName}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">{c.date}</span>
-                  </div>
-                  <p className="text-xs text-[#0891B2] font-bold">{c.diagnosis}</p>
-                  <p className="text-[11px] text-[#475569] line-clamp-2">{c.treatmentPlan}</p>
-                </div>
-              ))}
             </div>
           </div>
 

@@ -455,10 +455,10 @@ export async function runAutoMigrations(): Promise<void> {
       await query(`
         CREATE TABLE IF NOT EXISTS public.chat_sessions (
           id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          patient_id UUID NOT NULL,
+          patient_id VARCHAR(255) NOT NULL,
           title VARCHAR(255) DEFAULT 'New Conversation',
           mode VARCHAR(20) DEFAULT 'general',
-          context_document_id UUID,
+          context_document_id VARCHAR(255),
           is_archived BOOLEAN DEFAULT FALSE,
           message_count INT DEFAULT 0,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -476,6 +476,11 @@ export async function runAutoMigrations(): Promise<void> {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      // Relax UUID type constraints if table already exists
+      try {
+        await query(`ALTER TABLE public.chat_sessions ALTER COLUMN patient_id TYPE VARCHAR(255);`);
+        await query(`ALTER TABLE public.chat_sessions ALTER COLUMN context_document_id TYPE VARCHAR(255);`);
+      } catch (alterErr) {}
       await query(`CREATE INDEX IF NOT EXISTS idx_chat_sessions_patient ON public.chat_sessions(patient_id, updated_at DESC);`);
       await query(`CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON public.chat_messages(session_id, created_at ASC);`);
       logger.info('[Database Migration] AI Copilot chat tables (chat_sessions, chat_messages) initialized successfully.');

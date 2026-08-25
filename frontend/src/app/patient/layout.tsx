@@ -15,7 +15,6 @@ import {
   Menu,
   X,
   LogOut,
-  Bell,
   Search,
   CheckCircle2,
   Pill
@@ -42,7 +41,6 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
   const router = useRouter();
   const { user, userProfile, isDemo, isProfileCompleted, logout } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   // Global Route Guard: For REAL users, if profile is not completed, redirect to /patient/profile
   // For DEMO users, NEVER force redirect to profile page.
@@ -172,36 +170,6 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
           </div>
 
           <div className="flex items-center gap-4 relative">
-            <button 
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all min-h-[40px] min-w-[40px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] cursor-pointer"
-              aria-label="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="w-2 h-2 rounded-full bg-[#0891B2] absolute top-1.5 right-1.5 ring-2 ring-white" />
-            </button>
-
-            {/* Notifications Dropdown */}
-            {showNotifications && (
-              <div className="absolute right-12 top-12 w-80 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 space-y-3 z-50 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="font-heading text-xs font-bold text-[#0F172A]">Notifications</span>
-                  <span className="text-[10px] text-[#0891B2] font-semibold">2 New</span>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div className="p-2.5 rounded-xl bg-cyan-50/70 border border-cyan-100 space-y-0.5">
-                    <div className="font-bold text-[#0891B2] text-[11px]">Vault Security Verified</div>
-                    <div className="text-[#475569] text-[10px]">Zero-Knowledge Proof checksum synchronized.</div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100 space-y-0.5">
-                    <div className="font-bold text-[#065F46] text-[11px]">Identity Encryption Active</div>
-                    <div className="text-[#475569] text-[10px]">AES-256 client keys intact.</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="h-6 w-px bg-slate-200" />
             <Link href="/patient/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2] rounded-lg p-1">
               <div className="w-8 h-8 rounded-lg bg-cyan-100 text-[#0891B2] font-bold text-xs flex items-center justify-center border border-cyan-200 font-heading">
                 {initial}

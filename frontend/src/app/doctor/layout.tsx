@@ -8,10 +8,8 @@ import {
   LayoutDashboard,
   Users,
   ShieldAlert,
-  FileSpreadsheet,
   Pill,
   Bot,
-  Bell,
   UserCheck,
   Menu,
   X,
@@ -34,10 +32,8 @@ const navItems = [
   { name: "Dashboard", href: "/doctor/dashboard", icon: LayoutDashboard },
   { name: "Patients & Access", href: "/doctor/patients", icon: Users },
   { name: "Emergency Terminal", href: "/doctor/emergency", icon: ShieldAlert, badge: "LIVE" },
-  { name: "Consultations", href: "/doctor/consultations", icon: FileSpreadsheet },
   { name: "Prescriptions", href: "/doctor/prescriptions", icon: Pill },
   { name: "AI Medical Copilot", href: "/doctor/copilot", icon: Bot, highlight: true },
-  { name: "Notifications", href: "/doctor/notifications", icon: Bell },
   { name: "Profile & Security", href: "/doctor/profile", icon: UserCheck },
 ];
 
@@ -226,15 +222,6 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
             >
               <ShieldAlert className="w-4 h-4 text-[#0891B2]" />
               <span>Emergency Scanner</span>
-            </Link>
-
-            {/* Notifications Button */}
-            <Link
-              href="/doctor/notifications"
-              className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all relative min-h-[38px] min-w-[38px] flex items-center justify-center"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#0891B2] ring-2 ring-white" />
             </Link>
 
             {/* AI Assistant Quick Launcher */}

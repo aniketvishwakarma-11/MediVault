@@ -36,7 +36,6 @@ import {
 import {
   mockDoctorPatients,
   mockDoctorTimelineEvents,
-  mockDoctorConsultations,
   mockDoctorPrescriptions,
 } from "@/lib/doctorDemoData";
 import { useAuth } from "@/context/AuthContext";
@@ -319,12 +318,11 @@ export default function DoctorPatientOverviewPage() {
   const [consentStatus, setConsentStatus] = useState<ConsentStatusResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"brief" | "documents" | "timeline" | "consultations">("brief");
+  const [activeTab, setActiveTab] = useState<"brief" | "documents" | "timeline">("brief");
 
   // Real Data states
   const [timelineEvents, setTimelineEvents] = useState<ClinicalEvent[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
-  const [consultations, setConsultations] = useState<any[]>([]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
 
   // Document Viewer Modal State
@@ -405,7 +403,6 @@ export default function DoctorPatientOverviewPage() {
           : "NONE",
       });
       setTimelineEvents(mockDoctorTimelineEvents.filter((e) => e.patientId === demoPatient.id) as any);
-      setConsultations(mockDoctorConsultations.filter((c) => c.patientId === demoPatient.id));
       setPrescriptions(mockDoctorPrescriptions.filter((p) => p.patientId === demoPatient.id));
       setLoading(false);
       return;
@@ -592,12 +589,6 @@ export default function DoctorPatientOverviewPage() {
 
           <div className="flex flex-wrap gap-2">
             <Link
-              href={`/doctor/consultations?patientId=${patient.id}&patientName=${encodeURIComponent(patient.fullName)}`}
-              className="px-4 py-2.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all min-h-[40px]"
-            >
-              <Activity className="w-3.5 h-3.5" /> New Consultation
-            </Link>
-            <Link
               href={`/doctor/prescriptions?patientId=${patient.id}&patientName=${encodeURIComponent(patient.fullName)}`}
               className="px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold text-xs flex items-center gap-1.5 transition-all min-h-[40px]"
             >
@@ -639,7 +630,6 @@ export default function DoctorPatientOverviewPage() {
           { id: "brief", label: "AI Brief" },
           { id: "documents", label: `Medical Documents (${documents.length})` },
           { id: "timeline", label: `Clinical Timeline (${timelineEvents.length})` },
-          { id: "consultations", label: `Consultations (${consultations.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -974,62 +964,6 @@ export default function DoctorPatientOverviewPage() {
             <div className="py-10 text-center text-xs text-[#475569]">
               <Clock className="w-8 h-8 text-slate-200 mx-auto mb-2" />
               No timeline events available for this patient.
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═════════════════════════════════════════════════════════════════════
-          TAB 4: CONSULTATIONS & PRESCRIPTIONS
-      ═════════════════════════════════════════════════════════════════════ */}
-      {activeTab === "consultations" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {consultations.length > 0 ? (
-            consultations.map((c) => (
-              <div key={c.id} className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-heading font-bold text-sm text-[#0F172A]">{c.diagnosis}</h3>
-                  <span className="text-xs text-slate-400 font-mono">{c.date}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2 bg-slate-50 rounded-xl">
-                    <span className="text-[#475569]">BP</span>
-                    <strong className="block text-[#0F172A]">{c.vitals?.bloodPressure || "—"}</strong>
-                  </div>
-                  <div className="p-2 bg-slate-50 rounded-xl">
-                    <span className="text-[#475569]">HR</span>
-                    <strong className="block text-[#0F172A]">{c.vitals?.heartRate ? `${c.vitals.heartRate} bpm` : "—"}</strong>
-                  </div>
-                  <div className="p-2 bg-slate-50 rounded-xl">
-                    <span className="text-[#475569]">SpO2</span>
-                    <strong className="block text-[#0F172A]">{c.vitals?.spO2 ? `${c.vitals.spO2}%` : "—"}</strong>
-                  </div>
-                  <div className="p-2 bg-slate-50 rounded-xl">
-                    <span className="text-[#475569]">Temp</span>
-                    <strong className="block text-[#0F172A]">{c.vitals?.temperature ? `${c.vitals.temperature}°F` : "—"}</strong>
-                  </div>
-                </div>
-                <p className="text-xs text-[#475569] line-clamp-2">{c.treatmentPlan}</p>
-                {c.followUpDate && (
-                  <p className="text-xs text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
-                    Follow-up: {c.followUpDate}
-                  </p>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="col-span-2 py-12 text-center bg-white rounded-3xl border border-slate-200/80 space-y-3">
-              <Activity className="w-8 h-8 text-slate-300 mx-auto" />
-              <h3 className="font-bold text-sm text-slate-700">No Past Consultations Recorded</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Begin a new clinical consultation for this patient to record vital signs, SOAP clinical notes, and prescriptions.
-              </p>
-              <Link
-                href={`/doctor/consultations?patientId=${patient.id}&patientName=${encodeURIComponent(patient.fullName)}`}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0891B2] text-white font-bold text-xs hover:bg-[#0e7490] transition-all shadow-xs"
-              >
-                <Activity className="w-3.5 h-3.5" /> Start New Consultation
-              </Link>
             </div>
           )}
         </div>
