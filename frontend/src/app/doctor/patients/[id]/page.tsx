@@ -900,6 +900,15 @@ export default function DoctorPatientOverviewPage() {
                             >
                               {event.event_type || event.severity || "EVENT"}
                             </span>
+                            {/* Provenance badge for external patient-uploaded prescriptions */}
+                            {(event.structured_data?.source_type === "PATIENT_UPLOADED" ||
+                              event.title?.toLowerCase().includes("external prescription") ||
+                              event.summary?.toLowerCase().includes("external prescription") ||
+                              event.summary?.toLowerCase().includes("patient uploaded")) && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-200 flex items-center gap-1">
+                                <Pill className="w-3 h-3 text-violet-600" /> EXTERNAL (PATIENT UPLOADED)
+                              </span>
+                            )}
                             {event.is_milestone && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-[#0891B2] border border-cyan-200">
                                 MILESTONE

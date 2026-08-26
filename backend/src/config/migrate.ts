@@ -598,6 +598,80 @@ export async function runAutoMigrations(): Promise<void> {
       logger.warn('[Database Migration] Prescription ecosystem migration notice:', rxErr.message || rxErr);
     }
 
+    // ── Migration 011 — Offline Prescription Intelligence System ─────────────
+    try {
+      // 1. Add provenance source_type to prescriptions table
+      await query(`
+        ALTER TABLE public.prescriptions
+          ADD COLUMN IF NOT EXISTS source_type VARCHAR(30) DEFAULT 'MEDIVAULT_DOCTOR';
+      `);
+      // Add CHECK constraint separately (idempotent-safe)
+      await query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.check_constraints
+            WHERE constraint_name = 'prescriptions_source_type_check'
+          ) THEN
+            ALTER TABLE public.prescriptions
+              ADD CONSTRAINT prescriptions_source_type_check
+              CHECK (source_type IN ('MEDIVAULT_DOCTOR', 'EXTERNAL_DOCTOR', 'PATIENT_UPLOADED'));
+          END IF;
+        END $$;
+      `).catch(() => {});
+
+      await query(`
+        ALTER TABLE public.prescriptions
+          ADD COLUMN IF NOT EXISTS offline_doctor_name VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS original_document_id UUID;
+      `);
+
+      // 2. Async OCR job tracking table
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.prescription_upload_jobs (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          patient_id UUID NOT NULL,
+          document_id UUID,
+          status VARCHAR(30) DEFAULT 'UPLOADED',
+          error_message TEXT,
+          model_name VARCHAR(200) DEFAULT 'chinmays18/medical-prescription-ocr',
+          processing_time_ms INTEGER,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await query(`CREATE INDEX IF NOT EXISTS idx_upload_jobs_patient ON public.prescription_upload_jobs(patient_id, created_at DESC);`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_upload_jobs_status ON public.prescription_upload_jobs(status);`);
+
+      // 3. OCR results — raw / structured / confidence / verified
+      await query(`
+        CREATE TABLE IF NOT EXISTS public.prescription_ocr_results (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          job_id UUID NOT NULL,
+          document_id UUID,
+          patient_id UUID NOT NULL,
+          raw_ocr_text TEXT,
+          chinmay_model_output JSONB DEFAULT '{}'::jsonb,
+          structured_extraction JSONB DEFAULT '{}'::jsonb,
+          confidence_scores JSONB DEFAULT '{}'::jsonb,
+          verified_data JSONB,
+          prescription_id UUID,
+          model_name VARCHAR(200),
+          model_version VARCHAR(100),
+          processing_time_ms INTEGER,
+          image_quality_score NUMERIC(4,3),
+          quality_issues TEXT[] DEFAULT '{}',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await query(`CREATE INDEX IF NOT EXISTS idx_ocr_results_job ON public.prescription_ocr_results(job_id);`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_ocr_results_patient ON public.prescription_ocr_results(patient_id, created_at DESC);`);
+
+      logger.info('[Database Migration] Offline Prescription Intelligence schema (011) applied successfully.');
+    } catch (m011Err: any) {
+      logger.warn('[Database Migration] Migration 011 notice:', m011Err.message || m011Err);
+    }
+
   } catch (error: any) {
     logger.warn('[Database Migration Notice] Auto-migration execution note:', error.message || error);
   }

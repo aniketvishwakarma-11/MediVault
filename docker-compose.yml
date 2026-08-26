@@ -1,0 +1,35 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: medivault_minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  # Optional Python AI Microservice for chinmays18/medical-prescription-ocr
+  # Start with: docker compose --profile ai up prescription-ai
+  prescription-ai:
+    profiles: ["ai"]
+    build: ./services/prescription-ai
+    container_name: medivault_prescription_ocr
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - PRESCRIPTION_OCR_MODEL=chinmays18/medical-prescription-ocr
+      - PORT=8001
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+
+volumes:
+  minio_data:
+    driver: local
+  hf_cache:
+    driver: local

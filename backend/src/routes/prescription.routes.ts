@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { PrescriptionController } from '../controllers/prescription.controller';
+import { PrescriptionOCRController } from '../controllers/prescription-ocr.controller';
+import { handleSingleFileUpload } from '../middleware/upload';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -52,5 +54,38 @@ router.post('/adherence/log', optionalAuth, PrescriptionController.logAdherence)
 
 // 7. Refill Requests
 router.post('/refill/request', optionalAuth, PrescriptionController.requestRefill);
+
+// ══════════════════════════════════════════════════════════════════
+// 8. Patient Prescription Intelligence System — Offline Upload Flow
+// ══════════════════════════════════════════════════════════════════
+
+// 8a. OCR Service Health (developer/admin)
+router.get('/ocr/service-health', PrescriptionOCRController.getOcrServiceHealth);
+
+// 8b. Upload offline prescription image → initiates background OCR job
+router.post(
+  '/upload-offline',
+  optionalAuth,
+  handleSingleFileUpload('file'),
+  PrescriptionOCRController.uploadOfflinePrescription
+);
+
+// 8c. Poll upload job status
+router.get('/upload-job/:jobId', optionalAuth, PrescriptionOCRController.getUploadJobStatus);
+
+// 8d. Get full OCR + extraction analysis for patient review screen
+router.get('/ocr/:jobId/analysis', optionalAuth, PrescriptionOCRController.getOcrAnalysis);
+
+// 8e. Save patient corrections (before confirming)
+router.patch('/ocr/:jobId/review', optionalAuth, PrescriptionOCRController.savePrescriptionReview);
+
+// 8f. Patient confirms verified prescription → saves to history + timeline
+router.post('/ocr/:jobId/confirm', optionalAuth, PrescriptionOCRController.confirmPrescription);
+
+// 8g. Get medicine intelligence for a specific drug catalog entry
+router.get('/ocr/:jobId/medicine-info/:drugCatalogId', PrescriptionOCRController.getMedicineIntelligence);
+
+// 8h. Get all patient-uploaded (external) prescriptions for a patient (doctor view)
+router.get('/patient/:id/external', optionalAuth, PrescriptionOCRController.getExternalPrescriptions);
 
 export default router;

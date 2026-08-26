@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Pill,
@@ -27,9 +27,16 @@ import {
   Inbox,
   FilePlus,
   Loader2,
+  Upload,
+  ScanLine,
+  Camera,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import OfflinePrescriptionUpload from "./components/OfflinePrescriptionUpload";
+import PrescriptionOCRStatus from "./components/PrescriptionOCRStatus";
+import PrescriptionReviewScreen from "./components/PrescriptionReviewScreen";
 
 interface DoseItem {
   item_id: string;
@@ -70,6 +77,8 @@ interface PrescriptionItem {
 
 interface PrescriptionRecord {
   id: string;
+  source_type?: string;
+  offline_doctor_name?: string;
   doctor_name?: string;
   doctor_specialty?: string;
   hospital_name?: string;
@@ -97,6 +106,77 @@ export default function PatientPrescriptionsPage() {
   const [refillSuccess, setRefillSuccess] = useState(false);
   const [qrModalRx, setQrModalRx] = useState<PrescriptionRecord | null>(null);
 
+  // ── Offline Upload State Machine ────────────────────────────────────────────
+  // Stage: 'idle' | 'polling' | 'review' | 'confirmed'
+  type OfflineStage = "idle" | "polling" | "review" | "confirmed";
+  const [offlineStage, setOfflineStage] = useState<OfflineStage>("idle");
+  const [uploadJob, setUploadJob] = useState<any>(null); // job from /upload-offline
+  const [jobStatus, setJobStatus] = useState<any>(null); // from /upload-job/:id
+  const [fullAnalysis, setFullAnalysis] = useState<any>(null); // from /ocr/:id/analysis
+  const [confirmedPrescriptionId, setConfirmedPrescriptionId] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | undefined>(undefined);
+
+  // Load auth token once for upload requests
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthToken(data?.session?.access_token);
+    });
+  }, []);
+
+  // Poll job status every 3s while in 'polling' stage
+  const pollJobStatus = useCallback(async () => {
+    if (!uploadJob?.jobId) return;
+    try {
+      const res = await fetch(`/api/prescriptions/upload-job/${uploadJob.jobId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const job = data.data;
+      if (!job) return;
+      setJobStatus(job);
+
+      if (job.status === "NEEDS_REVIEW" || job.status === "VERIFIED") {
+        // Fetch full analysis
+        const analysisRes = await fetch(`/api/prescriptions/ocr/${uploadJob.jobId}/analysis`);
+        if (analysisRes.ok) {
+          const analysisData = await analysisRes.json();
+          setFullAnalysis(analysisData.data);
+        }
+        setOfflineStage("review");
+      } else if (job.status === "FAILED") {
+        // Stay in polling stage to show error
+      }
+    } catch {}
+  }, [uploadJob]);
+
+  useEffect(() => {
+    if (offlineStage !== "polling" || !uploadJob?.jobId) return;
+    const interval = setInterval(pollJobStatus, 3000);
+    pollJobStatus(); // immediate first check
+    return () => clearInterval(interval);
+  }, [offlineStage, uploadJob, pollJobStatus]);
+
+  const handleUploadStarted = (result: any) => {
+    setUploadJob(result);
+    setJobStatus(null);
+    setFullAnalysis(null);
+    setOfflineStage("polling");
+  };
+
+  const handleConfirmed = (prescriptionId: string) => {
+    setConfirmedPrescriptionId(prescriptionId);
+    setOfflineStage("confirmed");
+    // Refresh prescriptions list
+    fetchPrescriptionData();
+  };
+
+  const resetOfflineFlow = () => {
+    setOfflineStage("idle");
+    setUploadJob(null);
+    setJobStatus(null);
+    setFullAnalysis(null);
+    setConfirmedPrescriptionId(null);
+  };
+
   // Translations Cache Map: { [uniqueKey]: explanationObject }
   const [translations, setTranslations] = useState<Record<string, any>>({});
   const [loadingTranslations, setLoadingTranslations] = useState<Record<string, boolean>>({});
@@ -104,13 +184,6 @@ export default function PatientPrescriptionsPage() {
   useEffect(() => {
     fetchPrescriptionData();
   }, [user]);
-
-  // Load translations when language changes to Hindi
-  useEffect(() => {
-    if (selectedLanguage === "Hindi" && prescriptions.length > 0) {
-      loadHindiTranslations();
-    }
-  }, [selectedLanguage, prescriptions]);
 
   const fetchPrescriptionData = async () => {
     setIsLoading(true);
@@ -158,14 +231,35 @@ export default function PatientPrescriptionsPage() {
     }
   };
 
-  const loadHindiTranslations = async () => {
+  // Load rich personalized AI explanations for all medicines
+  useEffect(() => {
+    if (prescriptions.length > 0) {
+      loadExplanations(selectedLanguage);
+    }
+  }, [selectedLanguage, prescriptions]);
+
+  const loadExplanations = async (lang: string = "English") => {
     for (let rIdx = 0; rIdx < prescriptions.length; rIdx++) {
       const rx = prescriptions[rIdx];
       for (let mIdx = 0; mIdx < (rx.medicines || []).length; mIdx++) {
         const med = rx.medicines[mIdx];
-        const uniqueKey = `${rIdx}-${mIdx}`;
-        if (!translations[uniqueKey]) {
-          setLoadingTranslations((prev) => ({ ...prev, [uniqueKey]: true }));
+        const cacheKey = `${rIdx}-${mIdx}-${lang}`;
+
+        let existingExpl: any = null;
+        if (typeof rx.ai_explanation === "string") {
+          try { existingExpl = JSON.parse(rx.ai_explanation); } catch {}
+        } else if (rx.ai_explanation && typeof rx.ai_explanation === "object") {
+          existingExpl = rx.ai_explanation;
+        }
+
+        // If English and prescription has pre-saved rich explanation
+        if (lang === "English" && existingExpl && existingExpl.why_prescribed && !existingExpl.why_prescribed.includes("External prescription")) {
+          setTranslations((prev) => ({ ...prev, [cacheKey]: existingExpl }));
+          continue;
+        }
+
+        if (!translations[cacheKey]) {
+          setLoadingTranslations((prev) => ({ ...prev, [cacheKey]: true }));
           try {
             const res = await fetch("/api/prescriptions/explain", {
               method: "POST",
@@ -174,23 +268,51 @@ export default function PatientPrescriptionsPage() {
                 medicine_name: med.drug_name,
                 dosage: med.strength,
                 frequency: med.schedule_code,
-                diagnosis: rx.diagnosis_text,
-                language: "Hindi",
+                diagnosis: rx.diagnosis_text && !rx.diagnosis_text.includes("External") ? rx.diagnosis_text : "Targeted Symptom Relief & Care",
+                language: lang,
               }),
             });
             if (res.ok) {
               const data = await res.json();
               if (data.success && data.data) {
-                setTranslations((prev) => ({ ...prev, [uniqueKey]: data.data }));
+                setTranslations((prev) => ({ ...prev, [cacheKey]: data.data }));
               }
             }
           } catch (err) {
-            console.error("Translation error:", err);
+            console.error("Explanation loading error:", err);
           } finally {
-            setLoadingTranslations((prev) => ({ ...prev, [uniqueKey]: false }));
+            setLoadingTranslations((prev) => ({ ...prev, [cacheKey]: false }));
           }
         }
       }
+    }
+  };
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDeletePrescription = async (rxId: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this prescription from your records?")) return;
+    setDeletingId(rxId);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const res = await fetch(`/api/prescriptions/${rxId}`, {
+        method: "DELETE",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (res.ok) {
+        setPrescriptions((prev) => prev.filter((p) => p.id !== rxId));
+        fetchPrescriptionData();
+      } else {
+        alert("Failed to delete prescription.");
+      }
+    } catch (err) {
+      console.error("Delete prescription error:", err);
+      alert("An error occurred while deleting the prescription.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -392,6 +514,25 @@ export default function PatientPrescriptionsPage() {
         >
           <QrCode className="w-4 h-4" /> Prescription Passes & QR Verification
         </button>
+
+        {/* Tab 4: Offline Upload */}
+        <button
+          onClick={() => setActiveTab("upload" as any)}
+          className={`px-5 py-3 border-b-2 transition-all flex items-center gap-2 ${
+            (activeTab as any) === "upload"
+              ? "border-violet-500 text-violet-600"
+              : "border-transparent text-slate-500 hover:text-slate-900"
+          }`}
+          id="tab-offline-upload"
+        >
+          <Upload className="w-4 h-4" /> Upload Offline Prescription
+          {offlineStage === "polling" && (
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          )}
+          {offlineStage === "confirmed" && (
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          )}
+        </button>
       </div>
 
       {/* ────────────────────────────────────────────────────────── */}
@@ -555,11 +696,19 @@ export default function PatientPrescriptionsPage() {
             <div className="space-y-4">
               {prescriptions.flatMap((rx, rIdx) =>
                 (rx.medicines || []).map((med, mIdx) => {
-                  const uniqueKey = `${rIdx}-${mIdx}`;
+                  const cacheKey = `${rIdx}-${mIdx}-${selectedLanguage}`;
                   const isExpanded = expandedMedIndex === mIdx;
                   const isHindi = selectedLanguage === "Hindi";
-                  const isTranslating = loadingTranslations[uniqueKey];
-                  const explainer = isHindi && translations[uniqueKey] ? translations[uniqueKey] : rx.ai_explanation;
+                  const isTranslating = loadingTranslations[cacheKey];
+
+                  let explainer: any = translations[cacheKey];
+                  if (!explainer) {
+                    if (typeof rx.ai_explanation === "string") {
+                      try { explainer = JSON.parse(rx.ai_explanation); } catch {}
+                    } else if (rx.ai_explanation && typeof rx.ai_explanation === "object" && rx.ai_explanation.why_prescribed) {
+                      explainer = rx.ai_explanation;
+                    }
+                  }
 
                   const janPrice = med.jan_aushadhi_price != null ? Number(med.jan_aushadhi_price) : null;
                   const marketPrice = med.market_brand_price != null ? Number(med.market_brand_price) : null;
@@ -570,7 +719,7 @@ export default function PatientPrescriptionsPage() {
 
                   return (
                     <div
-                      key={uniqueKey}
+                      key={cacheKey}
                       className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4 transition-all"
                     >
                       {/* Header Row */}
@@ -604,6 +753,14 @@ export default function PatientPrescriptionsPage() {
                             className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold min-h-[34px]"
                           >
                             {isHindi ? "दवा दोबारा मांगें (Refill)" : "Request Refill"}
+                          </button>
+                          <button
+                            onClick={() => handleDeletePrescription(rx.id)}
+                            disabled={deletingId === rx.id}
+                            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-all flex items-center justify-center min-h-[34px] min-w-[34px]"
+                            title="Delete Prescription Record"
+                          >
+                            {deletingId === rx.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                           </button>
                           <button
                             onClick={() => setExpandedMedIndex(isExpanded ? null : mIdx)}
@@ -647,16 +804,16 @@ export default function PatientPrescriptionsPage() {
                                   explainer?.audio_summary_script ||
                                     explainer?.why_prescribed ||
                                     `Please take ${med.drug_name} as directed by your doctor.`,
-                                  uniqueKey
+                                  cacheKey
                                 )
                               }
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
-                                speakingIndex === uniqueKey
+                                speakingIndex === cacheKey
                                   ? "bg-red-600 text-white"
                                   : "bg-[#0891B2] hover:bg-[#0e7490] text-white"
                               }`}
                             >
-                              {speakingIndex === uniqueKey ? (
+                              {speakingIndex === cacheKey ? (
                                 <>
                                   <VolumeX className="w-3.5 h-3.5" /> {isHindi ? "आवाज बंद करें" : "Stop Audio"}
                                 </>
@@ -666,6 +823,25 @@ export default function PatientPrescriptionsPage() {
                                 </>
                               )}
                             </button>
+                          </div>
+
+                          {/* Clinical Intelligence Badges */}
+                          <div className="flex items-center gap-2 flex-wrap pt-1">
+                            {explainer?.drug_class && (
+                              <span className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-bold">
+                                💊 {explainer.drug_class}
+                              </span>
+                            )}
+                            {explainer?.expected_onset && (
+                              <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                                ⚡ {explainer.expected_onset}
+                              </span>
+                            )}
+                            {explainer?.active_ingredient && (
+                              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-bold">
+                                🔬 Salt: {explainer.active_ingredient}
+                              </span>
+                            )}
                           </div>
 
                           {/* 5 Modules */}
@@ -722,6 +898,26 @@ export default function PatientPrescriptionsPage() {
                             </div>
                           </div>
 
+                          {/* Pharmacist Lifestyle Tip & Avoidances */}
+                          {(explainer?.lifestyle_tip || explainer?.foods_and_habits_to_avoid?.length > 0) && (
+                            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950 space-y-1">
+                              <span className="font-bold flex items-center gap-1 text-emerald-800">
+                                💡 {isHindi ? "फार्मासिस्ट रिकवरी व लाइफस्टाइल सलाह" : "Pharmacist Care & Recovery Advice"}
+                              </span>
+                              {explainer?.lifestyle_tip && (
+                                <p className="text-[11px] leading-relaxed text-emerald-900 font-medium">
+                                  • {explainer.lifestyle_tip}
+                                </p>
+                              )}
+                              {explainer?.foods_and_habits_to_avoid?.length > 0 && (
+                                <p className="text-[11px] leading-relaxed text-rose-800 font-medium">
+                                  • <strong>{isHindi ? "परहेज करें:" : "Avoid:"}</strong> {explainer.foods_and_habits_to_avoid.join(" • ")}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Missed Dose Box */}
                           <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200 text-xs text-amber-900 space-y-0.5">
                             <span className="font-bold">{isHindi ? "यदि खुराक लेना भूल जाएं?" : "What if I forget a dose?"}</span>
                             <p className="text-[11px] leading-relaxed text-amber-800 font-medium">
@@ -776,16 +972,31 @@ export default function PatientPrescriptionsPage() {
                         </span>
                         <span className="font-heading font-black text-lg text-[#0891B2]">{rx.id}</span>
                       </div>
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" /> {rx.status}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {rx.source_type === "PATIENT_UPLOADED" && (
+                          <span className="px-2.5 py-1 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-[10px] font-bold flex items-center gap-1">
+                            <Pill className="w-3 h-3 text-violet-600" /> EXTERNAL (PATIENT UPLOADED)
+                          </span>
+                        )}
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" /> {rx.status}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="text-xs space-y-1">
-                      <div className="font-bold text-[#0F172A]">{rx.doctor_name || "Prescribing Physician"}</div>
-                      {rx.hospital_name && <div className="text-[#475569]">{rx.hospital_name}</div>}
+                      <div className="font-bold text-[#0F172A]">
+                        {rx.source_type === "PATIENT_UPLOADED"
+                          ? (rx.doctor_name && rx.doctor_name !== "Dr. Sarah Jenkins, MD" && rx.doctor_name !== "No doctor provided" ? rx.doctor_name : "Doctor: No data provided")
+                          : (rx.doctor_name || "Prescribing Physician")}
+                      </div>
+                      <div className="text-[#475569]">
+                        {rx.source_type === "PATIENT_UPLOADED"
+                          ? (rx.hospital_name && rx.hospital_name !== "MediVault Healthcare" && rx.hospital_name !== "No hospital provided" ? rx.hospital_name : "Hospital / Clinic: No data provided")
+                          : (rx.hospital_name || "MediVault Healthcare")}
+                      </div>
                       <div className="text-[#475569] pt-1">
-                        <strong>Diagnosis:</strong> {rx.diagnosis_text}
+                        <strong>Diagnosis:</strong> {rx.diagnosis_text || "No diagnosis provided"}
                       </div>
                     </div>
 
@@ -819,12 +1030,131 @@ export default function PatientPrescriptionsPage() {
                       href={`/verify/rx/${rx.id}`}
                       target="_blank"
                       className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center gap-1 min-h-[38px]"
+                      title="Verify On-Chain"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Link>
+                    <button
+                      onClick={() => handleDeletePrescription(rx.id)}
+                      disabled={deletingId === rx.id}
+                      className="px-3 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center min-h-[38px]"
+                      title="Delete Prescription"
+                    >
+                      {deletingId === rx.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* TAB 4: OFFLINE PRESCRIPTION UPLOAD & AI OCR INTELLIGENCE   */}
+      {/* ────────────────────────────────────────────────────────── */}
+      {(activeTab as any) === "upload" && (
+        <div className="space-y-6">
+          {/* Stage 1: Upload Dropzone */}
+          {offlineStage === "idle" && (
+            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs">
+              <OfflinePrescriptionUpload
+                patientId={user?.id || "pat-1001"}
+                token={authToken}
+                onUploadStarted={handleUploadStarted}
+              />
+            </div>
+          )}
+
+          {/* Stage 2: OCR & Extraction Status (Polling) */}
+          {offlineStage === "polling" && (
+            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="font-heading font-black text-lg text-[#0F172A] flex items-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-[#0891B2]" />
+                    Analyzing Offline Prescription
+                  </h2>
+                  <p className="text-xs text-[#475569] mt-0.5">
+                    Job ID: <span className="font-mono">{uploadJob?.jobId}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={resetOfflineFlow}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel / Start Over
+                </button>
+              </div>
+
+              <PrescriptionOCRStatus
+                status={jobStatus?.status || "PROCESSING"}
+                errorMessage={jobStatus?.error_message}
+                imageQualityScore={jobStatus?.ocr_result?.image_quality_score}
+                qualityIssues={jobStatus?.ocr_result?.quality_issues}
+                processingTimeMs={jobStatus?.processing_time_ms}
+              />
+            </div>
+          )}
+
+          {/* Stage 3: Verification & Review Screen */}
+          {offlineStage === "review" && fullAnalysis && (
+            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs">
+              <PrescriptionReviewScreen
+                jobId={uploadJob?.jobId}
+                imageUrl={fullAnalysis?.image_url}
+                rawOcrText={fullAnalysis?.raw_ocr_text}
+                structuredExtraction={fullAnalysis?.structured_extraction || { medications: [] }}
+                patientId={user?.id || "pat-1001"}
+                token={authToken}
+                onConfirmed={handleConfirmed}
+                onClose={resetOfflineFlow}
+              />
+            </div>
+          )}
+
+          {/* Stage 4: Confirmed Success State */}
+          {offlineStage === "confirmed" && (
+            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-xs text-center space-y-5">
+              <div className="w-16 h-16 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <div className="space-y-1 max-w-md mx-auto">
+                <h3 className="font-heading font-black text-xl text-[#0F172A]">
+                  Prescription Verified & Added!
+                </h3>
+                <p className="text-xs text-[#475569]">
+                  Your external prescription has been notarized into your longitudinal health record. It is now tracked in your Daily Dosing Schedule and visible on your Clinical Timeline.
+                </p>
+                {confirmedPrescriptionId && (
+                  <div className="pt-2">
+                    <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-mono text-xs">
+                      Rx ID: {confirmedPrescriptionId}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => setActiveTab("schedule")}
+                  className="px-5 py-2.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white text-xs font-bold shadow-xs flex items-center gap-2"
+                >
+                  <Clock className="w-4 h-4" /> View Daily Doses
+                </button>
+                <Link
+                  href="/patient/timeline"
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-2"
+                >
+                  <Calendar className="w-4 h-4" /> Go to Clinical Timeline
+                </Link>
+                <button
+                  onClick={resetOfflineFlow}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4" /> Upload Another
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -897,7 +1227,11 @@ export default function PatientPrescriptionsPage() {
               <form onSubmit={handleRequestRefillSubmit} className="space-y-4 text-xs">
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                   <div className="font-bold text-[#0F172A]">Prescription: {refillModalRx.id}</div>
-                  <div className="text-slate-500">Doctor: {refillModalRx.doctor_name || "Prescribing Physician"}</div>
+                  <div className="text-slate-500">
+                    Doctor: {refillModalRx.source_type === "PATIENT_UPLOADED"
+                      ? (refillModalRx.doctor_name && refillModalRx.doctor_name !== "No doctor provided" ? refillModalRx.doctor_name : "No data provided")
+                      : (refillModalRx.doctor_name || "Prescribing Physician")}
+                  </div>
                 </div>
 
                 <div>

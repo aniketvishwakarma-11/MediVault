@@ -248,9 +248,15 @@ export class PrescriptionService {
     try {
       const rxRes = await query(
         `SELECT p.*, 
-                COALESCE(prof.full_name, 'Dr. Sarah Jenkins, MD') as doctor_name, 
+                CASE 
+                  WHEN p.source_type = 'PATIENT_UPLOADED' THEN COALESCE(NULLIF(p.offline_doctor_name, ''), 'No doctor provided')
+                  ELSE COALESCE(prof.full_name, 'Dr. Sarah Jenkins, MD')
+                END as doctor_name, 
                 COALESCE(d.specialization, 'General Physician') as doctor_specialty, 
-                COALESCE(d.hospital_affiliation, 'MediVault Healthcare') as hospital_name
+                CASE 
+                  WHEN p.source_type = 'PATIENT_UPLOADED' THEN 'No hospital provided'
+                  ELSE COALESCE(d.hospital_affiliation, 'MediVault Healthcare')
+                END as hospital_name
          FROM public.prescriptions p
          LEFT JOIN public.doctors d ON p.doctor_id = d.id
          LEFT JOIN public.users_profile prof ON d.user_id = prof.id
@@ -294,10 +300,16 @@ export class PrescriptionService {
     try {
       const res = await query(
         `SELECT p.id, p.status, p.diagnosis_text, p.qr_code_hash, p.digital_signature, p.blockchain_tx_hash,
-                p.created_at, p.expires_at, p.recommended_tests,
-                COALESCE(prof_doc.full_name, 'Dr. Sarah Jenkins, MD') as doctor_name, 
+                p.created_at, p.expires_at, p.recommended_tests, p.source_type, p.offline_doctor_name,
+                CASE 
+                  WHEN p.source_type = 'PATIENT_UPLOADED' THEN COALESCE(NULLIF(p.offline_doctor_name, ''), 'No doctor provided')
+                  ELSE COALESCE(prof_doc.full_name, 'Dr. Sarah Jenkins, MD')
+                END as doctor_name, 
                 COALESCE(d.specialization, 'General Physician') as doctor_specialty, 
-                COALESCE(d.hospital_affiliation, 'Jenkins Medical Associates') as hospital_name,
+                CASE 
+                  WHEN p.source_type = 'PATIENT_UPLOADED' THEN 'No hospital provided'
+                  ELSE COALESCE(d.hospital_affiliation, 'Jenkins Medical Associates')
+                END as hospital_name,
                 COALESCE(prof_pat.full_name, 'Patient') as patient_name, 
                 pt.id as patient_id
          FROM public.prescriptions p
@@ -681,8 +693,10 @@ export class PrescriptionService {
    */
   public static async deletePrescription(prescriptionId: string, doctorId: string): Promise<any> {
     try {
-      await query(`DELETE FROM public.medication_adherence_logs WHERE prescription_item_id IN (SELECT id FROM public.prescription_items WHERE prescription_id::text = $1)`, [prescriptionId]);
-      await query(`DELETE FROM public.prescription_items WHERE prescription_id::text = $1`, [prescriptionId]);
+      await query(`DELETE FROM public.medication_adherence_logs WHERE prescription_item_id IN (SELECT id FROM public.prescription_items WHERE prescription_id::text = $1)`, [prescriptionId]).catch(() => {});
+      await query(`DELETE FROM public.prescription_refill_requests WHERE prescription_id::text = $1`, [prescriptionId]).catch(() => {});
+      await query(`UPDATE public.prescription_ocr_results SET prescription_id = NULL WHERE prescription_id::text = $1`, [prescriptionId]).catch(() => {});
+      await query(`DELETE FROM public.prescription_items WHERE prescription_id::text = $1`, [prescriptionId]).catch(() => {});
       await query(`DELETE FROM public.prescriptions WHERE id::text = $1`, [prescriptionId]);
       return { success: true, message: 'Prescription permanently deleted.' };
     } catch (err: any) {

@@ -525,6 +525,33 @@ export class CopilotRepository {
       logger.warn('[CopilotRepository] RAG medical_knowledge retrieval error:', err.message || err);
     }
 
+    // 2b. Retrieve verified offline/external prescription medications
+    try {
+      const rxSql = `
+        SELECT p.diagnosis_text, p.source_type, p.offline_doctor_name, p.created_at,
+               pi.drug_name, pi.generic_name, pi.strength, pi.schedule_code, pi.food_instructions, pi.duration_days
+        FROM public.prescriptions p
+        JOIN public.prescription_items pi ON pi.prescription_id = p.id
+        WHERE (p.patient_id = $1 OR p.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1 OR id = $1))
+        ORDER BY p.created_at DESC
+        LIMIT 30;
+      `;
+      const rxRes = await query(rxSql, [patientId]);
+      for (const row of rxRes.rows) {
+        medicalKnowledge.push({
+          knowledge_type: 'PRESCRIPTION_MEDICATION',
+          name: `${row.drug_name} (${row.strength || 'standard dose'})`,
+          value: `${row.schedule_code || 'Daily'} - ${row.food_instructions || 'Take with water'} for ${row.duration_days || 30} days [Source: ${row.source_type || 'EXTERNAL_DOCTOR'}${row.offline_doctor_name ? ` by ${row.offline_doctor_name}` : ''}]`,
+          unit: null,
+          reference_range: null,
+          status: 'ACTIVE',
+          recorded_date: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : null,
+        });
+      }
+    } catch (rxErr: any) {
+      logger.warn('[CopilotRepository] RAG prescription retrieval error:', rxErr.message || rxErr);
+    }
+
     // 3. Retrieve patient profile (allergies, conditions, etc.)
     try {
       const profSql = `
