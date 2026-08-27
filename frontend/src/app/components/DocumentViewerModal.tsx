@@ -464,24 +464,24 @@ export default function DocumentViewerModal({
       ];
 
   const modalJsx = (
-    <div className="fixed inset-0 z-[999999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-6xl w-full h-[94vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden relative">
+    <div className="fixed inset-0 z-[999999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-200">
+      <div className="bg-white rounded-none sm:rounded-3xl max-w-6xl w-full h-full sm:h-[94vh] flex flex-col shadow-2xl border-0 sm:border border-slate-200 overflow-hidden relative">
         
         {/* ========================================================================= */}
         {/* 1. HERO HEADER                                                            */}
         {/* ========================================================================= */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/90 shrink-0 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 bg-slate-50/90 shrink-0 gap-3 sm:gap-4">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="p-3 rounded-2xl bg-gradient-to-tr from-[#0891B2] to-[#06B6D4] text-white shadow-md shadow-[#0891B2]/20 shrink-0">
-              <Sparkles className="w-6 h-6" />
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-tr from-[#0891B2] to-[#06B6D4] text-white shadow-md shadow-[#0891B2]/20 shrink-0">
+              <Sparkles className="w-5 h-5 sm:w-6 h-6" />
             </div>
             <div className="overflow-hidden">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-heading font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight truncate">
+                <h1 className="font-heading font-extrabold text-base sm:text-lg md:text-xl text-slate-900 tracking-tight truncate max-w-xs sm:max-w-md md:max-w-lg">
                   {reportTitle}
                 </h1>
                 
-                <span className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center gap-1.5 shrink-0 ${
+                <span className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-extrabold flex items-center gap-1.5 shrink-0 ${
                   overallStatus === "ATTENTION_REQUIRED"
                     ? "bg-amber-50 text-amber-700 border border-amber-200"
                     : overallStatus === "CRITICAL"
@@ -493,82 +493,79 @@ export default function DocumentViewerModal({
                 </span>
 
                 {(isHandwritten || documentFormat === 'HANDWRITTEN') && (
-                  <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5 shrink-0">
+                  <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-extrabold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5 shrink-0">
                     <Stethoscope className="w-3.5 h-3.5 text-amber-600" />
-                    <span>✍️ Doctor Script (TrOCR)</span>
+                    <span>✍️ Doctor Script</span>
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5 flex-wrap">
+              <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-slate-500 mt-0.5 flex-wrap">
                 <span className="flex items-center gap-1">
-                  <Stethoscope className="w-3.5 h-3.5 text-[#0891B2]" />
+                  <Stethoscope className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#0891B2]" />
                   <span>{specialty}</span>
                 </span>
                 <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                <span className="flex items-center gap-1 truncate max-w-[120px] sm:max-w-none">
+                  <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
                   <span>{hospital}</span>
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{doctor}</span>
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
                   <span>{vDate}</span>
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-auto justify-between sm:justify-end flex-wrap pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
             <div className="bg-slate-200/80 p-1 rounded-xl flex items-center gap-1">
               <button
                 onClick={() => setActiveView("insights")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeView === "insights"
                     ? "bg-white text-[#0891B2] shadow-sm"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>AI Clinical Report</span>
+                <span>AI Report</span>
               </button>
 
               <button
                 onClick={() => setActiveView("evidence")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeView === "evidence"
                     ? "bg-slate-900 text-white shadow-sm"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
-                <span>Supporting Evidence</span>
+                <span>Original File</span>
               </button>
             </div>
 
-            {documentId && (
-              <a
-                href={`/patient/ai-copilot?docId=${documentId}&docName=${encodeURIComponent(documentName)}`}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white shadow-md shadow-sky-600/20"
-                title="Ask AI Copilot questions about this specific document"
-              >
-                <Bot className="w-3.5 h-3.5" />
-                <span>Chat with AI</span>
-              </a>
-            )}
+            <div className="flex items-center gap-1.5">
+              {documentId && (
+                <a
+                  href={`/patient/ai-copilot?docId=${documentId}&docName=${encodeURIComponent(documentName)}`}
+                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white shadow-md shadow-sky-600/20 min-h-[36px]"
+                  title="Ask AI Copilot questions about this specific document"
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Ask AI</span>
+                </a>
+              )}
 
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer ml-1"
-              title="Close Viewer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
+                title="Close Viewer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 

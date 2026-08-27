@@ -1,9 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { MaintenanceGuard } from "@/app/components/MaintenanceGuard";
+import MobileBottomNav from "@/app/components/MobileBottomNav";
 import { MotionConfig } from "motion/react";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#0891B2",
+};
 
 export const metadata: Metadata = {
   title: "MediVault Chain AI — Your Digital Health Identity Platform",
@@ -35,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <MaintenanceGuard>
               <MotionConfig reducedMotion="user">
                 {children}
+                <MobileBottomNav />
               </MotionConfig>
             </MaintenanceGuard>
           </ToastProvider>
