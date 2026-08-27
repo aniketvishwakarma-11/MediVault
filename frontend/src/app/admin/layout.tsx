@@ -233,6 +233,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </aside>
 
+      {/* Mobile Drawer Backdrop */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-30 md:hidden animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
       {/* Main Content Wrapper with Top Bar */}
       <div className="md:pl-72 min-h-screen flex flex-col w-full relative z-10">
         {/* Desktop Top Header Bar */}
@@ -270,7 +279,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Page Content Container */}
-        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">{children}</main>
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-24 lg:pb-8 max-w-7xl w-full mx-auto">{children}</main>
 
         {/* Footer Banner */}
         <footer className="border-t border-slate-200/80 py-4 px-6 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2 bg-white/60 backdrop-blur-xs">
