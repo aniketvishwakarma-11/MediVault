@@ -221,7 +221,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-[#F0FDFA] text-[#0F172A] flex flex-col font-body">
       <Navbar />
 
-      <main className="flex-1 pt-24 lg:pt-28 pb-12 flex items-center justify-center relative overflow-hidden px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 pt-20 sm:pt-24 lg:pt-28 pb-12 flex items-center justify-center relative overflow-hidden px-3 sm:px-6 lg:px-8">
         {/* Background Ambient Glows */}
         <div className="absolute inset-0 grid-pattern opacity-60 pointer-events-none" />
         <div className="absolute top-1/4 left-1/4 w-[600px] h-[350px] bg-gradient-to-tr from-cyan-200/50 via-teal-200/30 to-emerald-200/40 blur-3xl rounded-full pointer-events-none -z-10 animate-pulse" />
@@ -231,7 +231,7 @@ export default function AuthPage() {
         {/* MOBILE VIEW (< lg): EXACT ORIGINAL SINGLE CENTERED CARD */}
         {/* ========================================================= */}
         <div className="block lg:hidden w-full max-w-xl relative z-10">
-          <div className="bg-white/98 backdrop-blur-2xl rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-10 space-y-6">
+          <div className="bg-white/98 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl p-4 sm:p-8 md:p-10 space-y-5 sm:space-y-6">
             
             {/* Header Title */}
             <div className="text-center space-y-2">

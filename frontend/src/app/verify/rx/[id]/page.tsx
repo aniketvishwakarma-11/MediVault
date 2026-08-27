@@ -206,7 +206,8 @@ export default function PublicPrescriptionVerifyPage() {
               Prescribed Medications & Dispensing Instructions
             </h2>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-400 text-[11px]">
@@ -234,6 +235,29 @@ export default function PublicPrescriptionVerifyPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Stacked Cards View */}
+            <div className="sm:hidden space-y-2.5">
+              {prescription.medicines?.map((m: any, idx: number) => (
+                <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-[#0F172A] text-sm">{m.drug_name}</div>
+                      {m.food_instructions && (
+                        <div className="text-[11px] text-slate-500 mt-0.5">{m.food_instructions}</div>
+                      )}
+                    </div>
+                    <span className="px-2 py-1 rounded bg-cyan-100 text-[#0891B2] font-bold text-[10px] shrink-0 font-mono">
+                      {m.schedule_code}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1.5 border-t border-slate-200/60 font-mono">
+                    <span>Qty: <strong className="text-slate-900">{m.quantity_to_dispense}</strong></span>
+                    <span>Refills: <strong className="text-slate-900">{m.refills_allowed}</strong></span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

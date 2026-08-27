@@ -66,8 +66,8 @@ const ERROR_MESSAGES = {
 
 function BloodGroupBadge({ group }: { group: string }) {
   return (
-    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-600 text-white font-black text-2xl shadow-lg shadow-red-900/40 border-2 border-red-400">
-      <Droplets className="w-6 h-6" />
+    <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl bg-red-600 text-white font-black text-xl sm:text-2xl shadow-lg shadow-red-900/40 border-2 border-red-400 shrink-0">
+      <Droplets className="w-5 h-5 sm:w-6 h-6" />
       <span>{group}</span>
     </div>
   );
@@ -208,11 +208,11 @@ export default function EmergencyGatewayPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         {/* Patient Identity */}
-        <div className="p-6 rounded-3xl bg-white/5 border border-white/15 space-y-4">
-          <div className="flex items-start justify-between flex-wrap gap-4">
+        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white/5 border border-white/15 space-y-4">
+          <div className="flex items-start justify-between flex-wrap gap-3 sm:gap-4">
             <div>
               <div className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Patient</div>
-              <h1 className="text-3xl font-black text-white">{profile.patientDisplayName}</h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-white">{profile.patientDisplayName}</h1>
               <div className="flex items-center gap-1.5 mt-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="text-xs text-emerald-400 font-semibold">MediVault Verified Identity</span>

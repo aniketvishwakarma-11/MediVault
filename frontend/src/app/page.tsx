@@ -396,9 +396,9 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             COMPLIANCE TRUST BAR
         ══════════════════════════════════════════════════════ */}
-        <section className="bg-white border-b border-slate-200 py-5">
+        <section className="bg-white border-b border-slate-200 py-4 sm:py-5">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-center justify-center gap-0 divide-x divide-slate-200">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-0 sm:divide-x sm:divide-slate-200">
               {[
                 { icon: Shield, label: "HIPAA Compliant" },
                 { icon: Layers, label: "FHIR R4 Interoperable" },
@@ -406,7 +406,7 @@ export default function Home() {
                 { icon: Fingerprint, label: "ZKP On-Chain Proof" },
                 { icon: CheckCircle2, label: "WCAG 2.1 AAA" },
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-2 px-5 py-2 text-slate-500 text-xs font-medium">
+                <div key={label} className="flex items-center gap-2 px-3 sm:px-5 py-1.5 sm:py-2 text-slate-600 sm:text-slate-500 text-xs font-medium bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none border sm:border-0 border-slate-200/60">
                   <Icon className="w-4 h-4 text-[#0891B2] shrink-0" />
                   <span>{label}</span>
                 </div>
