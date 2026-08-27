@@ -432,10 +432,10 @@ export default function MedicalReportsPage() {
         </div>
 
         {/* Category Pills Bar */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
+        <div className="flex overflow-x-auto no-scrollbar sm:flex-wrap items-center gap-1.5 pt-2 pb-1 border-t border-slate-100">
           <button
             onClick={() => setSelectedCategory("")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer shrink-0 ${
               selectedCategory === ""
                 ? "bg-sky-600 text-white shadow-xs"
                 : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900"

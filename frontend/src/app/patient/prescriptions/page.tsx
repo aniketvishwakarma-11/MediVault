@@ -496,10 +496,10 @@ export default function PatientPrescriptionsPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-slate-200 text-xs font-bold">
+      <div className="flex overflow-x-auto no-scrollbar border-b border-slate-200 text-xs font-bold shrink-0">
         <button
           onClick={() => setActiveTab("schedule")}
-          className={`px-5 py-3 border-b-2 transition-all flex items-center gap-2 ${
+          className={`px-4 sm:px-5 py-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer min-h-[44px] ${
             activeTab === "schedule"
               ? "border-[#0891B2] text-[#0891B2]"
               : "border-transparent text-slate-500 hover:text-slate-900"
@@ -510,7 +510,7 @@ export default function PatientPrescriptionsPage() {
 
         <button
           onClick={() => setActiveTab("cabinet")}
-          className={`px-5 py-3 border-b-2 transition-all flex items-center gap-2 ${
+          className={`px-4 sm:px-5 py-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer min-h-[44px] ${
             activeTab === "cabinet"
               ? "border-[#0891B2] text-[#0891B2]"
               : "border-transparent text-slate-500 hover:text-slate-900"
@@ -521,7 +521,7 @@ export default function PatientPrescriptionsPage() {
 
         <button
           onClick={() => setActiveTab("archive")}
-          className={`px-5 py-3 border-b-2 transition-all flex items-center gap-2 ${
+          className={`px-4 sm:px-5 py-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer min-h-[44px] ${
             activeTab === "archive"
               ? "border-[#0891B2] text-[#0891B2]"
               : "border-transparent text-slate-500 hover:text-slate-900"
@@ -533,7 +533,7 @@ export default function PatientPrescriptionsPage() {
         {/* Tab 4: Offline Upload */}
         <button
           onClick={() => setActiveTab("upload" as any)}
-          className={`px-5 py-3 border-b-2 transition-all flex items-center gap-2 ${
+          className={`px-4 sm:px-5 py-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer min-h-[44px] ${
             (activeTab as any) === "upload"
               ? "border-violet-500 text-violet-600"
               : "border-transparent text-slate-500 hover:text-slate-900"

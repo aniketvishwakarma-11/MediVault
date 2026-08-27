@@ -271,9 +271,16 @@ function CopilotContent() {
   const [isDocPickerOpen, setIsDocPickerOpen] = useState(false);
   const [focusedDoc, setFocusedDoc] = useState<{ id: string; name: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [insightsOpen, setInsightsOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const [loadingInit, setLoadingInit] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setSidebarOpen(true);
+      setInsightsOpen(true);
+    }
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -773,9 +780,18 @@ function CopilotContent() {
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-3 animate-in fade-in duration-500 relative">
 
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
       {/* ═══ LEFT SIDEBAR — Sessions ═══ */}
       {sidebarOpen && (
-        <div className="w-72 shrink-0 flex flex-col bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="fixed inset-y-0 left-0 z-50 w-72 lg:relative lg:inset-auto lg:z-auto shrink-0 flex flex-col bg-white rounded-r-3xl lg:rounded-3xl border-r lg:border border-slate-200/80 shadow-2xl lg:shadow-xs overflow-hidden">
           {/* Header */}
           <div className="p-4 border-b border-slate-100 space-y-2">
             <div className="flex items-center justify-between">

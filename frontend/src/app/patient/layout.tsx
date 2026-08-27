@@ -154,6 +154,15 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
         </div>
       </aside>
 
+      {/* Mobile Drawer Backdrop */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-30 md:hidden animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
       {/* Main Content Wrapper with Top Bar */}
       <div className="md:pl-64 min-h-screen flex flex-col w-full">
         {/* Desktop Top Header Bar */}
@@ -179,7 +188,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-24 lg:pb-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>
