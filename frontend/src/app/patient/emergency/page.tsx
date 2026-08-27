@@ -7,12 +7,13 @@ import {
   Share2, History, Settings, Phone, Edit3, Plus, Trash2,
   CheckCircle2, XCircle, Clock, AlertTriangle, Eye, EyeOff,
   ChevronRight, Download, Lock, Globe, ShieldCheck, Activity,
-  Droplets, Pill, Heart, User,
+  Droplets, Pill, Heart, User, WifiOff,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/context/ToastContext";
 import EmergencyCardPass from "@/app/components/EmergencyCardPass";
+import { OfflineEmergencyVault } from "@/lib/offline-emergency-vault";
 import {
   emergencyApi,
   type EmergencyCredential,
@@ -216,6 +217,7 @@ export default function PatientEmergencyCenter() {
   const [credLoading, setCredLoading] = useState(true);
   const [credAction, setCredAction] = useState<"generate" | "regenerate" | "revoke" | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isOfflineLoaded, setIsOfflineLoaded] = useState(false);
 
   // Profile settings state
   const [profileSettings, setProfileSettings] = useState<EmergencyProfileSettings | null>(null);
@@ -255,15 +257,33 @@ export default function PatientEmergencyCenter() {
         chronicList = patientRow.chronic_conditions.split(",").map((s: string) => s.trim()).filter(Boolean);
       }
 
-      setPatientDbData({
+      const dataObj = {
         fullName: profileRow?.full_name || "",
         bloodGroup: patientRow?.blood_group || "",
         emergencyContactName: patientRow?.emergency_contact_name || "",
         emergencyContactPhone: patientRow?.emergency_contact_phone || patientRow?.emergency_contact || "",
         chronicConditions: chronicList,
+      };
+
+      setPatientDbData(dataObj);
+      OfflineEmergencyVault.saveSnapshot({
+        patientName: dataObj.fullName,
+        bloodGroup: dataObj.bloodGroup,
+        uhid: patientRow?.uhid || "",
       });
     } catch (err) {
-      console.warn("Failed to load patient DB data:", err);
+      console.warn("Failed to load patient DB data, checking offline vault:", err);
+      const cached = OfflineEmergencyVault.getSnapshot();
+      if (cached) {
+        setPatientDbData({
+          fullName: cached.patientName,
+          bloodGroup: cached.bloodGroup,
+          emergencyContactName: "",
+          emergencyContactPhone: "",
+          chronicConditions: [],
+        });
+        setIsOfflineLoaded(true);
+      }
     }
   }, [user]);
 
@@ -276,19 +296,31 @@ export default function PatientEmergencyCenter() {
       if (cred?.id) {
         const userId = user?.id || 'demo';
         const storedUrl = localStorage.getItem(`medivault_qr_url_${userId}_${cred.id}`) || localStorage.getItem(`medivault_qr_url_${userId}`);
-        if (storedUrl) {
-          setGeneratedQrUrl(storedUrl);
-        } else {
-          const url = cred.qrUrl || (cred.rawToken ? `${window.location.origin}/e/${cred.rawToken}` : `${window.location.origin}/e/${cred.id}`);
-          setGeneratedQrUrl(url);
-        }
+        const url = storedUrl || cred.qrUrl || (cred.rawToken ? `${window.location.origin}/e/${cred.rawToken}` : `${window.location.origin}/e/${cred.id}`);
+        setGeneratedQrUrl(url);
+
+        // Sync to offline vault
+        OfflineEmergencyVault.saveSnapshot({
+          credential: { ...cred, qrUrl: url },
+          patientName: userProfile?.displayName || undefined,
+        });
+        setIsOfflineLoaded(false);
       }
     } catch {
-      setCredential(null);
+      // Offline fallback
+      const cached = OfflineEmergencyVault.getSnapshot();
+      if (cached?.credential) {
+        setCredential(cached.credential);
+        const url = cached.credential.qrUrl || (cached.credential.rawToken ? `${window.location.origin}/e/${cached.credential.rawToken}` : `${window.location.origin}/e/${cached.credential.id}`);
+        setGeneratedQrUrl(url);
+        setIsOfflineLoaded(true);
+      } else {
+        setCredential(null);
+      }
     } finally {
       setCredLoading(false);
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   // ─── Load profile settings ───
   const loadProfileSettings = useCallback(async () => {
@@ -303,8 +335,13 @@ export default function PatientEmergencyCenter() {
       const settings = await emergencyApi.getProfileSettings();
       const merged = localSaved ? { ...settings, ...localSaved } : settings;
       setProfileSettings(merged);
+      OfflineEmergencyVault.saveSnapshot({ profileSettings: merged });
     } catch {
-      if (localSaved) {
+      const cached = OfflineEmergencyVault.getSnapshot();
+      if (cached?.profileSettings) {
+        setProfileSettings(cached.profileSettings);
+        setIsOfflineLoaded(true);
+      } else if (localSaved) {
         setProfileSettings(localSaved as EmergencyProfileSettings);
       }
     } finally {
@@ -518,7 +555,25 @@ export default function PatientEmergencyCenter() {
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 font-body">
+      {/* Offline Status Alert Banner */}
+      {(isOfflineLoaded || OfflineEmergencyVault.isOffline()) && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-100 text-amber-700 shrink-0">
+              <WifiOff className="w-4 h-4" />
+            </div>
+            <div>
+              <strong className="block font-heading font-bold text-amber-900 text-xs">Offline Emergency Pass Active</strong>
+              <span className="text-[11px] text-amber-700">Displaying cryptographically verified Emergency Pass cached on your device. First responders can still scan and verify.</span>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200/70 px-2.5 py-1 rounded-full border border-amber-300 shrink-0">
+            ⚡ On-Device Vault
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
         <div>

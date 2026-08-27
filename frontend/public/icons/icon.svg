@@ -1,0 +1,34 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0891B2"/>
+      <stop offset="50%" stop-color="#0E7490"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="crossGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E0F2FE"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- Rounded Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Inner Ring -->
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="4"/>
+  
+  <!-- Shield Emblem with Medical Cross -->
+  <g filter="url(#shadow)" transform="translate(106, 86) scale(0.586)">
+    <!-- Shield Outline -->
+    <path d="M256 0 C390 0 512 80 512 213 C512 373 341 480 256 512 C171 480 0 373 0 213 C0 80 122 0 256 0 Z" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-width="16"/>
+    
+    <!-- Medical Cross -->
+    <path d="M216 120 L300 120 C306 120 312 126 312 132 L312 204 L384 204 C390 204 396 210 396 216 L396 300 C396 306 390 312 384 312 L312 312 L312 384 C312 390 306 396 300 396 L216 396 C210 396 204 390 204 384 L204 312 L132 312 C126 312 120 306 120 300 L120 216 C120 210 126 204 132 204 L204 204 L204 132 C204 126 210 120 216 120 Z" fill="url(#crossGrad)"/>
+    
+    <!-- Pulse Line Center -->
+    <path d="M168 258 L218 258 L238 220 L274 300 L294 258 L344 258" fill="none" stroke="#0891B2" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
