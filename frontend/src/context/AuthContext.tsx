@@ -31,6 +31,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function setAuthCookies(role: string, isDemo: boolean = false) {
+  if (typeof document === "undefined") return;
+  const maxAge = isDemo ? 86400 : 604800; // 1 day for demo, 7 days for real
+  document.cookie = `medivault_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
+  document.cookie = `medivault_role=${encodeURIComponent(role)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  if (isDemo) {
+    document.cookie = `medivault_is_demo=true; path=/; max-age=${maxAge}; SameSite=Lax`;
+  } else {
+    document.cookie = `medivault_is_demo=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+  }
+}
+
+function clearAuthCookies() {
+  if (typeof document === "undefined") return;
+  document.cookie = `medivault_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+  document.cookie = `medivault_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+  document.cookie = `medivault_is_demo=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -165,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     localStorage.setItem("medivault_user_role", realRole);
     setRoleState(realRole);
+    setAuthCookies(realRole, false);
 
     setUserProfile({
       uid: currentUser.id,
@@ -197,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // DEMO USER LOGGED IN (NO REAL JWT SESSION)
         setIsDemo(true);
         const demoRole = savedRole || "patient";
+        setAuthCookies(demoRole, true);
         setUserProfile({
           uid: "demo-patient-123",
           email: demoRole === "patient" ? "patient@medivault.local" : "doctor@hospital.org",
@@ -207,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setIsDemo(false);
         setIsProfileCompleted(true);
+        clearAuthCookies();
       }
       setLoading(false);
     });
@@ -226,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isStillDemo) {
           setIsDemo(true);
           const activeRole = (localStorage.getItem("medivault_user_role") as UserRole) || "patient";
+          setAuthCookies(activeRole, true);
           setUserProfile({
             uid: "demo-patient-123",
             email: activeRole === "patient" ? "patient@medivault.local" : "doctor@hospital.org",
@@ -237,6 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsDemo(false);
           setUserProfile(null);
           setIsProfileCompleted(false);
+          clearAuthCookies();
         }
       }
       setLoading(false);
@@ -248,6 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setRole = useCallback((newRole: UserRole) => {
     setRoleState(newRole);
     localStorage.setItem("medivault_user_role", newRole);
+    setAuthCookies(newRole, localStorage.getItem("medivault_is_demo") === "true");
     setUserProfile((prev) => (prev ? { ...prev, role: newRole } : null));
   }, []);
 
@@ -256,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleState(demoRole);
     localStorage.setItem("medivault_is_demo", "true");
     localStorage.setItem("medivault_user_role", demoRole);
+    setAuthCookies(demoRole, true);
     setUserProfile({
       uid: "demo-patient-123",
       email: demoRole === "patient" ? "patient@medivault.local" : "doctor@hospital.org",
@@ -273,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.removeItem("medivault_user_role");
     localStorage.removeItem("medivault_is_demo");
+    clearAuthCookies();
     setIsDemo(false);
     setUserProfile(null);
     setIsProfileCompleted(false);
