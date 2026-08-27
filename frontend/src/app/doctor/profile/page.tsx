@@ -133,10 +133,10 @@ function DoctorProfileForm() {
               registrationCouncil: docRow?.registration_council || prev.registrationCouncil || "State Medical Board",
               specialization: docRow?.specialization || prev.specialization || "General Practice & Cardiology",
               experienceYears: String(docRow?.experience_years || prev.experienceYears || 5),
-              hospitalAffiliation: docRow?.hospital_affiliation || prev.hospitalAffiliation || "",
+              hospitalAffiliation: docRow?.hospital_affiliation || docRow?.hospital_name || prev.hospitalAffiliation || "",
               clinicName: docRow?.clinic_name || prev.clinicName || "",
               address: docRow?.address || prev.address || "",
-              languages: docRow?.languages ? docRow.languages.join(", ") : prev.languages || "English",
+              languages: Array.isArray(docRow?.languages) ? docRow.languages.join(", ") : (docRow?.languages || prev.languages || "English, Hindi"),
             }));
           }
 
