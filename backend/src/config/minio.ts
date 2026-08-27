@@ -21,6 +21,16 @@ export const V2_BUCKETS = [
   { name: 'medivault-archives', public: false },
 ];
 
+// Helper to detect region for cloud S3 providers (Backblaze B2, AWS, Supabase, etc.)
+function detectRegion(endPoint: string): string | undefined {
+  if (process.env.MINIO_REGION) return process.env.MINIO_REGION;
+  if (endPoint.includes('backblazeb2.com')) {
+    const parts = endPoint.split('.');
+    if (parts.length >= 3) return parts[1]; // e.g. s3.us-east-005.backblazeb2.com -> us-east-005
+  }
+  return undefined;
+}
+
 // Singleton Client Instance
 let minioClientInstance: Client | null = null;
 
@@ -29,13 +39,20 @@ let minioClientInstance: Client | null = null;
  */
 export const getMinioClient = (): Client => {
   if (!minioClientInstance) {
-    minioClientInstance = new Client({
+    const clientOptions: any = {
       endPoint: MINIO_CONFIG.endPoint,
       port: MINIO_CONFIG.port,
       useSSL: MINIO_CONFIG.useSSL,
       accessKey: MINIO_CONFIG.accessKey,
       secretKey: MINIO_CONFIG.secretKey,
-    });
+    };
+
+    const region = detectRegion(MINIO_CONFIG.endPoint);
+    if (region) {
+      clientOptions.region = region;
+    }
+
+    minioClientInstance = new Client(clientOptions);
   }
   return minioClientInstance;
 };
@@ -48,13 +65,12 @@ export const getMinioBucketName = (): string => {
 };
 
 /**
- * Health check utility to verify MinIO connectivity.
+ * Health check utility to verify MinIO / S3 connectivity.
  */
 export const checkMinioHealth = async (): Promise<boolean> => {
   try {
     const client = getMinioClient();
-    await client.listBuckets();
-    return true;
+    return await client.bucketExists(MINIO_CONFIG.bucketName);
   } catch (error) {
     console.error('[MinIO Health Check Error]:', error);
     return false;
@@ -62,50 +78,40 @@ export const checkMinioHealth = async (): Promise<boolean> => {
 };
 
 /**
- * Verifies if V2 buckets exist, creating them automatically if missing.
- * Implements graceful fallback resilience for development.
+ * Verifies the configured bucket exists, creating it automatically if running locally.
+ * Works seamlessly with cloud providers (Backblaze B2, Supabase S3) and local MinIO.
  */
 export const initializeMinioBucket = async (maxRetries = 2, retryDelayMs = 1000): Promise<void> => {
   const client = getMinioClient();
+  const bucket = MINIO_CONFIG.bucketName;
+  const isLocal = MINIO_CONFIG.endPoint === '127.0.0.1' || MINIO_CONFIG.endPoint === 'localhost';
 
   let attempt = 0;
   while (attempt < maxRetries) {
     attempt++;
     try {
-      console.log(`[MinIO V2 Initialization] Verifying V2 buckets (Attempt ${attempt}/${maxRetries})...`);
+      console.log(`[Storage Initialization] Verifying bucket "${bucket}" on ${MINIO_CONFIG.endPoint} (Attempt ${attempt}/${maxRetries})...`);
 
-      for (const b of V2_BUCKETS) {
-        const bucketExists = await client.bucketExists(b.name);
-        if (!bucketExists) {
-          console.log(`[MinIO Initialization] Creating bucket "${b.name}"...`);
-          await client.makeBucket(b.name, 'us-east-1');
-        }
-
-        if (b.public) {
-          const publicPolicy = {
-            Version: '2012-10-17',
-            Statement: [
-              {
-                Effect: 'Allow',
-                Principal: '*',
-                Action: ['s3:GetObject'],
-                Resource: [`arn:aws:s3:::${b.name}/*`],
-              },
-            ],
-          };
-          try {
-            await client.setBucketPolicy(b.name, JSON.stringify(publicPolicy));
-          } catch (pErr) {}
-        }
+      const bucketExists = await client.bucketExists(bucket);
+      if (bucketExists) {
+        console.log(`✅ [Storage Initialization] Cloud bucket "${bucket}" connected and ready.`);
+        return;
       }
 
-      console.log('✅ [MinIO V2 Initialization] All 4 MinIO buckets ready.');
-      return; // Success
+      if (isLocal) {
+        console.log(`[Storage Initialization] Creating local bucket "${bucket}"...`);
+        await client.makeBucket(bucket, 'us-east-1');
+        console.log(`✅ [Storage Initialization] Local bucket "${bucket}" ready.`);
+        return;
+      } else {
+        console.warn(`[Storage Initialization] Bucket "${bucket}" not found on ${MINIO_CONFIG.endPoint}.`);
+        return;
+      }
     } catch (error: any) {
-      console.warn(`[MinIO Note] Attempt ${attempt}/${maxRetries} - Could not connect to MinIO on ${MINIO_CONFIG.endPoint}:${MINIO_CONFIG.port}.`);
+      console.warn(`[Storage Note] Attempt ${attempt}/${maxRetries} - ${error.message || error}`);
       if (attempt >= maxRetries) {
-        console.warn('⚠️ MinIO is currently offline. Starting server with fallback mode. Run minio.exe or docker compose up -d to enable live object storage.');
-        return; // Graceful non-blocking return for dev resilience
+        console.warn('⚠️ Object storage is currently offline or credentials need review.');
+        return;
       }
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
     }
