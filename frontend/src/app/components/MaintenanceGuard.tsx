@@ -174,39 +174,47 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
 
   // When Maintenance is ACTIVE:
   if (maintenance.enabled) {
-    // 1. Admin Console: Always accessible with top reminder banner
+    // 1. Admin Console: Always accessible with non-disruptive fixed alert badge
     if (isAdminRoute) {
       return (
         <>
-          <div className="bg-gradient-to-r from-rose-600 to-amber-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-sm z-50 sticky top-0">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>
-                <strong>MAINTENANCE MODE ACTIVE:</strong> Patient and Doctor portals are locked. Admin console remains open.
-              </span>
-            </div>
+          <aside className="fixed bottom-4 right-4 z-[999] max-w-md px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 text-white text-xs font-bold shadow-2xl flex items-center gap-3 border border-white/20 animate-in slide-in-from-bottom">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              <strong>MAINTENANCE ACTIVE:</strong> Portals locked.
+            </span>
             <Link
               href="/admin/settings"
-              className="underline hover:text-white/80 shrink-0 font-extrabold"
+              className="ml-auto underline hover:text-white/80 shrink-0 font-extrabold"
             >
               Settings &rarr;
             </Link>
-          </div>
+          </aside>
           {children}
         </>
       );
     }
 
-    // 2. Homepage, Auth, and Emergency Life-saving Passes: Accessible with top maintenance banner
+    // 2. Homepage, Auth, and Emergency Life-saving Passes: Accessible with non-disruptive fixed notification pill
     if (isHomepage || isAuthRoute || isEmergencyRoute) {
       return (
         <>
-          <div className="bg-gradient-to-r from-[#0891B2] via-teal-600 to-[#0D9488] text-white px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-md z-50 sticky top-0 animate-in slide-in-from-top text-center">
-            <Wrench className="w-4 h-4 shrink-0 animate-pulse" />
-            <span>
-              <strong>SCHEDULED UPGRADE IN PROGRESS:</strong> {maintenance.message || "Patient & Doctor portals are undergoing database optimization. All services will resume shortly."}
-            </span>
-          </div>
+          <aside className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[999] max-w-xl w-[92%] px-4 py-2.5 rounded-2xl bg-slate-900/95 backdrop-blur-md text-white text-xs font-medium shadow-2xl flex items-center justify-between gap-3 border border-slate-700/80 animate-in slide-in-from-bottom">
+            <div className="flex items-center gap-2.5 truncate">
+              <Wrench className="w-4 h-4 text-cyan-400 shrink-0 animate-pulse" />
+              <span className="truncate">
+                <strong className="text-cyan-300 font-bold">Maintenance Upgrade:</strong>{" "}
+                {maintenance.message || "Patient & Doctor portals are undergoing database optimization."}
+              </span>
+            </div>
+            <button
+              onClick={checkMaintenance}
+              disabled={checking}
+              className="shrink-0 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] transition-colors cursor-pointer"
+            >
+              {checking ? "Checking..." : "Refresh"}
+            </button>
+          </aside>
           {children}
         </>
       );
@@ -214,14 +222,14 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
 
     // 3. All Other Routes (Patients /patient/*, Doctors /doctor/*, etc.): BRANDED FULL-SCREEN LOCK
     return (
-      <div className="min-h-screen bg-[#F0FDFA] text-[#0F172A] flex flex-col justify-between p-4 sm:p-8 font-body relative overflow-x-hidden">
+      <div className="min-h-screen bg-[#F0FDFA] text-[#0F172A] flex flex-col px-4 py-3 sm:px-8 sm:py-4 font-body relative overflow-x-hidden">
         {/* Ambient Gradient Glows */}
         <div className="fixed inset-0 grid-pattern opacity-40 pointer-events-none" />
         <div className="fixed -top-40 -left-40 w-96 h-96 rounded-full bg-cyan-200/50 blur-3xl pointer-events-none -z-10" />
         <div className="fixed -bottom-40 -right-40 w-96 h-96 rounded-full bg-teal-200/40 blur-3xl pointer-events-none -z-10" />
 
         {/* Top Navbar Header with Brand & Interactive Navigation Actions */}
-        <header className="max-w-6xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4 py-4 border-b border-slate-200/80 mb-4 sm:mb-6">
+        <header className="max-w-6xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3 py-2.5 sm:py-3 border-b border-slate-200/80 mb-3 sm:mb-4 shrink-0">
           <Link href="/" className="flex items-center gap-3 group cursor-pointer">
             <div className="p-2.5 rounded-2xl bg-gradient-to-br from-[#0891B2] to-[#0D9488] text-white shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform">
               <Shield className="w-6 h-6" />
@@ -296,7 +304,7 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content Grid: Maintenance Notice + Admin Architect Profile */}
-        <main className="max-w-6xl mx-auto w-full my-auto py-8">
+        <main className="max-w-6xl mx-auto w-full flex-1 py-1 sm:py-2">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
             {/* ─── Left Card: Maintenance Status & Upgrade Notice (7 Cols) ─── */}
             <div className="lg:col-span-7 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xl shadow-cyan-900/5 flex flex-col justify-between space-y-6">
