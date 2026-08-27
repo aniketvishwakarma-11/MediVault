@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Power,
   Wrench,
@@ -23,9 +23,14 @@ import {
   Check,
   CheckCircle2,
   Lock,
+  LogOut,
+  LogIn,
+  Home,
+  User as UserIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 function LinkedInIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
   return (
@@ -53,6 +58,10 @@ interface MaintenanceState {
 
 export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, userProfile, role, logout, isDemo } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
+
   const [maintenance, setMaintenance] = useState<MaintenanceState>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -64,6 +73,21 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   });
   const [checking, setChecking] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      router.push("/auth");
+    } catch (err) {
+      console.error("[MaintenanceGuard] Sign out error:", err);
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth";
+      }
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const checkMaintenance = useCallback(async () => {
     try {
@@ -146,6 +170,7 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const isAdminRoute = pathname?.startsWith("/admin");
   const isHomepage = pathname === "/";
   const isAuthRoute = pathname === "/auth";
+  const isEmergencyRoute = pathname === "/patient/emergency" || pathname?.startsWith("/e/");
 
   // When Maintenance is ACTIVE:
   if (maintenance.enabled) {
@@ -172,8 +197,8 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
       );
     }
 
-    // 2. Homepage: Accessible with top maintenance banner
-    if (isHomepage || isAuthRoute) {
+    // 2. Homepage, Auth, and Emergency Life-saving Passes: Accessible with top maintenance banner
+    if (isHomepage || isAuthRoute || isEmergencyRoute) {
       return (
         <>
           <div className="bg-gradient-to-r from-[#0891B2] via-teal-600 to-[#0D9488] text-white px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-2 shadow-md z-50 sticky top-0 animate-in slide-in-from-top text-center">
@@ -195,10 +220,10 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
         <div className="fixed -top-40 -left-40 w-96 h-96 rounded-full bg-cyan-200/50 blur-3xl pointer-events-none -z-10" />
         <div className="fixed -bottom-40 -right-40 w-96 h-96 rounded-full bg-teal-200/40 blur-3xl pointer-events-none -z-10" />
 
-        {/* Top Navbar Brand */}
-        <header className="max-w-6xl mx-auto w-full flex items-center justify-between py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-[#0891B2] to-[#0D9488] text-white shadow-md shadow-cyan-500/20">
+        {/* Top Navbar Header with Brand & Interactive Navigation Actions */}
+        <header className="max-w-6xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4 py-4 border-b border-slate-200/80 mb-4 sm:mb-6">
+          <Link href="/" className="flex items-center gap-3 group cursor-pointer">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-[#0891B2] to-[#0D9488] text-white shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform">
               <Shield className="w-6 h-6" />
             </div>
             <div>
@@ -212,13 +237,61 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
               </div>
               <p className="text-[10px] text-slate-500 font-medium">Digital Health &amp; Clinical Identity</p>
             </div>
-          </div>
+          </Link>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+          {/* Nav & Auth Controls */}
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-              Platform Maintenance
+              Maintenance Mode
             </span>
+
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-xs transition-colors"
+            >
+              <Home className="w-3.5 h-3.5 text-slate-500" />
+              <span>Home</span>
+            </Link>
+
+            <Link
+              href="/patient/emergency"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 shadow-xs transition-colors"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+              <span>Emergency ID</span>
+            </Link>
+
+            {user || isDemo ? (
+              <div className="flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/80 border border-slate-200 text-xs text-slate-700 font-medium">
+                  <UserIcon className="w-3.5 h-3.5 text-[#0891B2]" />
+                  <span className="max-w-[120px] truncate">{userProfile?.displayName || user?.email?.split("@")[0] || "User"}</span>
+                  <span className="uppercase text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
+                    {role}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={loggingOut}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  title="Sign Out of MediVault"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>{loggingOut ? "Signing out..." : "Sign Out"}</span>
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/auth"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white text-xs font-bold shadow-xs transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Portal Login</span>
+              </Link>
+            )}
           </div>
         </header>
 
@@ -311,22 +384,62 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-100">
+              <div className="flex flex-wrap items-center gap-2.5 pt-4 border-t border-slate-100">
                 <button
+                  type="button"
                   onClick={checkMaintenance}
                   disabled={checking}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 transition-all cursor-pointer shadow-sm shadow-cyan-500/20 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 transition-all cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${checking ? "animate-spin" : ""}`} />
-                  <span>{checking ? "Checking System Status..." : "Check Status & Refresh"}</span>
+                  <span>{checking ? "Checking..." : "Check Status & Refresh"}</span>
                 </button>
 
                 <Link
                   href="/"
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all border border-slate-200/80 shadow-xs"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all border border-slate-200 shadow-xs"
                 >
+                  <Home className="w-3.5 h-3.5 text-slate-500" />
                   <span>Return to Homepage</span>
                 </Link>
+
+                <Link
+                  href="/patient/emergency"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all border border-rose-200 shadow-xs"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Emergency Pass</span>
+                </Link>
+
+                {user || isDemo ? (
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={loggingOut}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all border border-rose-200 shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                    <span>{loggingOut ? "Signing out..." : "Sign Out"}</span>
+                  </button>
+                ) : (
+                  <Link
+                    href="/auth"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-[#0891B2] text-xs font-bold transition-all border border-cyan-200 shadow-xs"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Sign In / Switch Role</span>
+                  </Link>
+                )}
+
+                {role === "admin" && (
+                  <Link
+                    href="/admin/settings"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition-all border border-amber-200 shadow-xs"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Admin Settings &rarr;</span>
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -459,9 +572,20 @@ export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="max-w-6xl mx-auto w-full text-center py-4 text-xs text-slate-400 font-mono">
-          MediVault Chain AI &copy; 2026 &middot; High Availability Clinical Infrastructure
+        {/* Footer Navigation */}
+        <footer className="max-w-6xl mx-auto w-full pt-6 pb-4 border-t border-slate-200/70 mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-medium">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            <Link href="/" className="hover:text-[#0891B2] transition-colors">Home</Link>
+            <span className="text-slate-300">&bull;</span>
+            <Link href="/patient/emergency" className="hover:text-[#0891B2] transition-colors">Emergency Medical Pass</Link>
+            <span className="text-slate-300">&bull;</span>
+            <Link href="/auth" className="hover:text-[#0891B2] transition-colors">Portal Login</Link>
+            <span className="text-slate-300">&bull;</span>
+            <Link href="/admin" className="hover:text-[#0891B2] transition-colors">Admin Console</Link>
+          </div>
+          <p className="font-mono text-[11px] text-slate-400 text-center sm:text-right">
+            MediVault Chain AI &copy; 2026 &middot; High Availability Infrastructure
+          </p>
         </footer>
       </div>
     );
