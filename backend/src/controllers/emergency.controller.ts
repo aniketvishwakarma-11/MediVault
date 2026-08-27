@@ -25,6 +25,20 @@ const VALID_SCOPES = [
   'timeline.read',
 ];
 
+function getCallerOrigin(req: Request): string | undefined {
+  const origin = req.headers.origin as string;
+  if (origin && typeof origin === 'string' && origin.startsWith('http')) {
+    return origin;
+  }
+  const referer = req.headers.referer as string;
+  if (referer && typeof referer === 'string' && referer.startsWith('http')) {
+    try {
+      return new URL(referer).origin;
+    } catch {}
+  }
+  return process.env.FRONTEND_URL;
+}
+
 export class EmergencyController {
 
   // ─────────────────────────────────────────────────────────────────
@@ -134,7 +148,8 @@ export class EmergencyController {
       const patientId = user?.patient_id || user?.id || 'demo-patient-123';
       if (!patientId) { sendError(res, 401, 'Patient identity not found.'); return; }
 
-      const generated = await EmergencyService.generateCredential(patientId);
+      const origin = getCallerOrigin(req);
+      const generated = await EmergencyService.generateCredential(patientId, origin);
       sendSuccess(res, 201, generated, 'Emergency credential generated. Save the QR code — the raw token is only shown once.');
     } catch (err: any) {
       logger.error('[EmergencyController.generateCredential]', err);
@@ -152,7 +167,8 @@ export class EmergencyController {
       const patientId = user?.patient_id || user?.id || 'demo-patient-123';
       if (!patientId) { sendError(res, 401, 'Patient identity not found.'); return; }
 
-      const credential = await EmergencyService.getCredential(patientId);
+      const origin = getCallerOrigin(req);
+      const credential = await EmergencyService.getCredential(patientId, origin);
       sendSuccess(res, 200, credential, credential ? 'Active credential found.' : 'No active credential.');
     } catch (err: any) {
       logger.error('[EmergencyController.getCredential]', err);
@@ -170,7 +186,8 @@ export class EmergencyController {
       const patientId = user?.patient_id || user?.id || 'demo-patient-123';
       if (!patientId) { sendError(res, 401, 'Patient identity not found.'); return; }
 
-      const generated = await EmergencyService.regenerateCredential(patientId);
+      const origin = getCallerOrigin(req);
+      const generated = await EmergencyService.regenerateCredential(patientId, origin);
       sendSuccess(res, 201, generated, 'New emergency credential generated. Previous QR code is now invalid.');
     } catch (err: any) {
       logger.error('[EmergencyController.regenerateCredential]', err);

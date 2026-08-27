@@ -15,7 +15,7 @@ import type {
   EmergencyActorType,
 } from '../types/emergency';
 
-const BASE_URL = process.env.FRONTEND_URL || 'https://medi-vault-seven-lyart.vercel.app';
+const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const CREDENTIAL_EXPIRY_DAYS = 365; // 1 year by default
 
 // ─────────────────────────────────────────────────────────────────
@@ -90,12 +90,13 @@ export class EmergencyService {
    * Revokes any existing ACTIVE credential first.
    * Returns the raw token ONCE — it is never stored.
    */
-  public static async generateCredential(patientId: string): Promise<GeneratedCredential> {
+  public static async generateCredential(patientId: string, origin?: string): Promise<GeneratedCredential> {
     const realPatientId = await this.resolvePatientUuid(patientId);
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashToken(rawToken);
     const expiresAt = new Date(Date.now() + CREDENTIAL_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const baseUrl = origin || process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL;
 
     try {
       // Revoke all existing active credentials for this patient
@@ -125,7 +126,7 @@ export class EmergencyService {
       );
 
       const row = res.rows[0];
-      const qrUrl = `${BASE_URL}/e/${rawToken}`;
+      const qrUrl = `${baseUrl}/e/${rawToken}`;
 
       // Ensure emergency_profiles row exists
       await query(
@@ -157,7 +158,7 @@ export class EmergencyService {
   /**
    * Get current credential metadata for a patient (no raw token returned).
    */
-  public static async getCredential(patientId: string): Promise<EmergencyCredential | null> {
+  public static async getCredential(patientId: string, origin?: string): Promise<EmergencyCredential | null> {
     try {
       const realPatientId = await this.resolvePatientUuid(patientId);
 
@@ -168,7 +169,7 @@ export class EmergencyService {
         [realPatientId]
       );
       if (res.rows.length === 0) return null;
-      return this.mapCredentialRow(res.rows[0]);
+      return this.mapCredentialRow(res.rows[0], origin);
     } catch (err: any) {
       if (isConnectionError(err)) return null;
       throw err;
@@ -178,8 +179,8 @@ export class EmergencyService {
   /**
    * Regenerate: revoke old + generate new.
    */
-  public static async regenerateCredential(patientId: string): Promise<GeneratedCredential> {
-    return this.generateCredential(patientId);
+  public static async regenerateCredential(patientId: string, origin?: string): Promise<GeneratedCredential> {
+    return this.generateCredential(patientId, origin);
   }
 
   /**
@@ -796,11 +797,12 @@ export class EmergencyService {
   // Private Mappers
   // ───────────────────────────────
 
-  private static mapCredentialRow(row: any): EmergencyCredential {
+  private static mapCredentialRow(row: any, origin?: string): EmergencyCredential {
+    const baseUrl = origin || process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL;
     return {
       id: row.id,
       patientId: row.patient_id,
-      qrUrl: `${BASE_URL}/e/${row.id}`,
+      qrUrl: `${baseUrl}/e/${row.id}`,
       version: row.version,
       status: row.status,
       expiresAt: row.expires_at,

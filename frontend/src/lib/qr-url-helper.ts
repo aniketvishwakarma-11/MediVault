@@ -1,58 +1,53 @@
 ﻿// MediVault — Emergency QR URL Normalizer
-// Guarantees all emergency QR codes encode the live production URL and eliminates any localhost references.
+// Dynamically resolves QR URLs using the current active origin (localhost or production domain)
+// Eliminates cross-origin mismatches while avoiding hardcoded URLs.
 
-export function getProductionFrontendOrigin(): string {
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-    if (origin && !origin.includes("localhost") && !origin.includes("127.0.0.1")) {
-      return origin;
-    }
+export function getFrontendOrigin(): string {
+  if (typeof window !== "undefined" && window.location.origin) {
+    return window.location.origin;
   }
-  return process.env.NEXT_PUBLIC_FRONTEND_URL || "https://medi-vault-seven-lyart.vercel.app";
+  return process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
 }
 
 /**
- * Normalizes any emergency QR URL to use the correct live frontend origin.
- * Automatically cleans localhost / 127.0.0.1 references.
+ * Normalizes any emergency QR URL to match the currently running environment.
+ * If running on localhost, keeps/rewrites to localhost.
+ * If running on a deployed domain (Vercel, custom domain, etc.), keeps/rewrites to that domain.
  */
 export function normalizeEmergencyQrUrl(
   rawUrl?: string | null,
   fallbackTokenOrId?: string | null
 ): string {
-  const prodOrigin = getProductionFrontendOrigin();
+  const currentOrigin = getFrontendOrigin();
 
   if (rawUrl && typeof rawUrl === "string") {
-    // If it's a localhost / 127.0.0.1 URL, extract path and rebuild with production origin
-    if (rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1")) {
-      try {
-        const parsed = new URL(rawUrl);
-        return `${prodOrigin}${parsed.pathname}${parsed.search}`;
-      } catch {
-        return rawUrl.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, prodOrigin);
-      }
-    }
-
-    // If it's a relative path
+    // Relative path (/e/...)
     if (rawUrl.startsWith("/")) {
-      return `${prodOrigin}${rawUrl}`;
+      return `${currentOrigin}${rawUrl}`;
     }
 
-    // Valid absolute URL
-    if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+    try {
+      const parsed = new URL(rawUrl);
+      // If the URL host differs from current window origin (e.g. cached from different environment)
+      if (typeof window !== "undefined" && parsed.origin !== window.location.origin) {
+        return `${window.location.origin}${parsed.pathname}${parsed.search}`;
+      }
       return rawUrl;
+    } catch {
+      return `${currentOrigin}/e/${fallbackTokenOrId || ""}`;
     }
   }
 
   // If no rawUrl, build from token or credentialId
   if (fallbackTokenOrId) {
-    return `${prodOrigin}/e/${fallbackTokenOrId}`;
+    return `${currentOrigin}/e/${fallbackTokenOrId}`;
   }
 
-  return `${prodOrigin}/patient/emergency`;
+  return `${currentOrigin}/patient/emergency`;
 }
 
 /**
- * Scans localStorage and cleans any legacy localhost QR URLs
+ * Scans localStorage and ensures cached QR URLs match the active origin.
  */
 export function cleanLocalStorageQrUrls(): void {
   if (typeof window === "undefined") return;
@@ -68,7 +63,7 @@ export function cleanLocalStorageQrUrls(): void {
 
     for (const key of keysToClean) {
       const val = localStorage.getItem(key);
-      if (val && (val.includes("localhost") || val.includes("127.0.0.1"))) {
+      if (val) {
         if (key === "medivault_offline_emergency_snapshot") {
           try {
             const parsed = JSON.parse(val);
@@ -79,11 +74,13 @@ export function cleanLocalStorageQrUrls(): void {
           } catch {}
         } else {
           const cleaned = normalizeEmergencyQrUrl(val);
-          localStorage.setItem(key, cleaned);
+          if (cleaned !== val) {
+            localStorage.setItem(key, cleaned);
+          }
         }
       }
     }
   } catch (err) {
-    console.warn("[QR Helper] Error cleaning legacy localStorage URLs:", err);
+    console.warn("[QR Helper] Error syncing legacy localStorage URLs:", err);
   }
 }
