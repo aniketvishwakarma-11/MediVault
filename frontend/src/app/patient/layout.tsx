@@ -43,9 +43,9 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Global Route Guard: For REAL users, if profile is not completed, redirect to /patient/profile
-  // For DEMO users, NEVER force redirect to profile page.
+  // For DEMO users or /patient/emergency, NEVER force redirect to profile page.
   React.useEffect(() => {
-    if (user && !isDemo && isProfileCompleted === false && pathname !== "/patient/profile") {
+    if (user && !isDemo && isProfileCompleted === false && pathname !== "/patient/profile" && pathname !== "/patient/emergency") {
       router.replace("/patient/profile?required=true");
     }
   }, [user, isProfileCompleted, isDemo, pathname, router]);

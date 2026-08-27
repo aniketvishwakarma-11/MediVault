@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
+import { OfflineEmergencyVault } from "@/lib/offline-emergency-vault";
+
 export type UserRole = "patient" | "doctor" | "hospital" | "admin";
 
 interface UserProfile {
@@ -186,12 +188,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleState(realRole);
     setAuthCookies(realRole, false);
 
-    setUserProfile({
+    const profile: UserProfile = {
       uid: currentUser.id,
       email: currentUser.email || null,
       displayName: currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "User",
       role: realRole,
-    });
+    };
+
+    localStorage.setItem("medivault_cached_user_profile", JSON.stringify(profile));
+    setUserProfile(profile);
   }, []);
 
   useEffect(() => {
@@ -201,6 +206,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoleState(savedRole);
     }
     const savedIsDemo = localStorage.getItem("medivault_is_demo") === "true";
+
+    // Immediate offline fallback: check if we have a cached user profile
+    try {
+      const cachedStr = localStorage.getItem("medivault_cached_user_profile");
+      if (cachedStr) {
+        const cached = JSON.parse(cachedStr) as UserProfile;
+        if (cached?.uid) {
+          setUserProfile(cached);
+          if (cached.role) setRoleState(cached.role);
+        }
+      }
+    } catch {}
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -230,6 +247,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsProfileCompleted(true);
         clearAuthCookies();
       }
+      setLoading(false);
+    }).catch(() => {
+      // Network failure / offline
       setLoading(false);
     });
 
@@ -299,6 +319,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.removeItem("medivault_user_role");
     localStorage.removeItem("medivault_is_demo");
+    localStorage.removeItem("medivault_cached_user_profile");
+    OfflineEmergencyVault.clearSnapshot();
     clearAuthCookies();
     setIsDemo(false);
     setUserProfile(null);

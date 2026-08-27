@@ -1,11 +1,12 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Identify Protected Route Portals
-  const isPatientRoute = pathname.startsWith('/patient');
+  // 1. Identify Protected Route Portals (Exempt /patient/emergency for offline/first-responder emergency access)
+  const isEmergencyRoute = pathname === '/patient/emergency';
+  const isPatientRoute = pathname.startsWith('/patient') && !isEmergencyRoute;
   const isDoctorRoute = pathname.startsWith('/doctor');
   const isAdminRoute = pathname.startsWith('/admin');
   const isAuthRoute = pathname === '/auth';

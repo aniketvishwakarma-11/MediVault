@@ -362,13 +362,57 @@ export default function PatientEmergencyCenter() {
     }
   }, []);
 
+  // Helper to ensure mutations are strictly protected by active authentication and online connection
+  const requireAuthAndOnline = (actionName: string): boolean => {
+    if (!user) {
+      showError("Authentication Required", `You must be signed in to ${actionName}.`);
+      return false;
+    }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showWarning("Offline Mode", `Cannot ${actionName} while offline. Please connect to the internet.`);
+      return false;
+    }
+    return true;
+  };
+
   useEffect(() => {
-    if (user) {
+    // 1. Zero-latency offline hydration: immediately load cached offline snapshot in 0ms
+    const cached = OfflineEmergencyVault.getSnapshot();
+    if (cached) {
+      if (cached.credential) {
+        setCredential(cached.credential);
+        const url =
+          cached.credential.qrUrl ||
+          (cached.credential.rawToken
+            ? `${window.location.origin}/e/${cached.credential.rawToken}`
+            : `${window.location.origin}/e/${cached.credential.id}`);
+        setGeneratedQrUrl(url);
+      }
+      if (cached.profileSettings) {
+        setProfileSettings(cached.profileSettings);
+      }
+      if (cached.patientName || cached.bloodGroup) {
+        setPatientDbData({
+          fullName: cached.patientName || "",
+          bloodGroup: cached.bloodGroup || "",
+          emergencyContactName: "",
+          emergencyContactPhone: "",
+          chronicConditions: [],
+        });
+      }
+      setIsOfflineLoaded(true);
+      setCredLoading(false);
+      setProfileLoading(false);
+    }
+
+    // 2. Fresh background sync when user is available or online
+    if (user || (typeof navigator !== "undefined" && navigator.onLine)) {
       loadCredential();
       loadProfileSettings();
       loadPatientDbData();
     }
   }, [user, loadCredential, loadProfileSettings, loadPatientDbData]);
+
   useEffect(() => { if (activeTab === "history") loadHistory(); }, [activeTab, loadHistory]);
 
   // Helper to save QR URL locally
@@ -391,6 +435,7 @@ export default function PatientEmergencyCenter() {
 
   // ─── Generate credential ───
   const handleGenerate = async () => {
+    if (!requireAuthAndOnline("generate emergency credentials")) return;
     setCredAction("generate");
     try {
       const generated = await emergencyApi.generateCredential();
@@ -409,6 +454,7 @@ export default function PatientEmergencyCenter() {
 
   // ─── Regenerate credential ───
   const handleRegenerate = async () => {
+    if (!requireAuthAndOnline("regenerate emergency credentials")) return;
     if (!confirm("Regenerating will invalidate your current QR code. All saved copies will stop working. Continue?")) return;
     setCredAction("regenerate");
     try {
@@ -428,6 +474,7 @@ export default function PatientEmergencyCenter() {
 
   // ─── Revoke credential ───
   const handleRevoke = async () => {
+    if (!requireAuthAndOnline("revoke emergency credentials")) return;
     if (!confirm("Revoking will permanently deactivate your current QR code. Anyone trying to scan it will see an error. Continue?")) return;
     setCredAction("revoke");
     try {
@@ -462,6 +509,7 @@ export default function PatientEmergencyCenter() {
 
   // ─── Profile toggle ───
   const handleToggle = async (key: keyof EmergencyProfileSettings, value: boolean) => {
+    if (!requireAuthAndOnline("update profile visibility settings")) return;
     const current = profileSettings || {
       id: "", patientId: user?.id || "",
       showBloodGroup: true, showAllergies: true, showMedications: true,
@@ -492,6 +540,7 @@ export default function PatientEmergencyCenter() {
 
   // ─── Add emergency contact ───
   const handleAddContact = async () => {
+    if (!requireAuthAndOnline("add emergency contacts")) return;
     if (!newContact.name || !newContact.phone) return;
     const contacts = [...(profileSettings?.emergencyContacts || [])];
     const contact: EmergencyContactItem = { ...newContact, priority: contacts.length + 1 };
@@ -511,6 +560,7 @@ export default function PatientEmergencyCenter() {
 
   // ─── Remove contact ───
   const handleRemoveContact = async (index: number) => {
+    if (!requireAuthAndOnline("remove emergency contacts")) return;
     if (!profileSettings) return;
     const contacts = profileSettings.emergencyContacts.filter((_, i) => i !== index);
     setProfileSaving(true);
