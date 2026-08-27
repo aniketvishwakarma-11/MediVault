@@ -76,7 +76,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
 
       {/* FIXED Light Sidebar Navigation */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-5 px-4 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-50 md:z-40 h-full max-h-screen w-64 bg-white border-r border-slate-200 flex flex-col justify-between py-5 px-4 overflow-y-auto transition-transform duration-300 ease-in-out ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -129,7 +129,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
         </div>
 
         {/* Footer Info & System Health */}
-        <div className="pt-4 border-t border-slate-100 space-y-3">
+        <div className="pt-4 border-t border-slate-100 space-y-3 shrink-0 pb-6 md:pb-0">
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-[#475569] space-y-1.5">
             <div className="flex items-center justify-between text-[10px]">
               <span className="text-slate-400">Vault Nodes</span>
@@ -158,7 +158,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
       {isMobileSidebarOpen && (
         <div
           onClick={() => setIsMobileSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-30 md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-45 md:hidden animate-in fade-in duration-200"
           aria-hidden="true"
         />
       )}

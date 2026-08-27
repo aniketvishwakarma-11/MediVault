@@ -95,7 +95,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
 
       {/* FIXED Light Sidebar Navigation */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r border-slate-200/90 shadow-sm flex flex-col justify-between p-5 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-50 md:z-40 h-full max-h-screen w-72 bg-white border-r border-slate-200/90 shadow-sm flex flex-col justify-between p-5 overflow-y-auto transition-transform duration-300 ease-in-out ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -173,7 +173,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
         </div>
 
         {/* Sidebar Footer Actions */}
-        <div className="pt-4 border-t border-slate-100 space-y-2">
+        <div className="pt-4 border-t border-slate-100 space-y-2 shrink-0 pb-6 md:pb-0">
           <Link
             href="/doctor/emergency"
             className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-xs transition-all min-h-[44px]"
@@ -184,7 +184,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
 
           <button
             onClick={logout}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-[#0891B2] hover:bg-cyan-50 transition-colors"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-[#0891B2] hover:bg-cyan-50 transition-colors cursor-pointer min-h-[44px]"
           >
             <span className="flex items-center gap-2">
               <LogOut className="w-4 h-4" /> Sign Out Portal
@@ -198,7 +198,7 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
       {isMobileSidebarOpen && (
         <div
           onClick={() => setIsMobileSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-30 md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-45 md:hidden animate-in fade-in duration-200"
           aria-hidden="true"
         />
       )}
