@@ -21,11 +21,29 @@ dotenv.config();
 
 const app = express();
 
-// Security Headers & CORS
+// Security Headers & CORS (Allows both Localhost and Vercel domains)
 app.use(securityHeaders);
+
+const configuredOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : [];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // Allow server-to-server, mobile, curl, or same-origin requests with no origin header
+      if (!origin) return callback(null, true);
+
+      // Whitelist checks: Localhost, Vercel deployments, and configured origins
+      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      const isVercel = /^https:\/\/.*\.vercel\.app$/.test(origin);
+      const isConfigured = configuredOrigins.includes(origin);
+
+      if (isLocalhost || isVercel || isConfigured) {
+        return callback(null, true);
+      }
+      return callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     credentials: true,
   })
 );
