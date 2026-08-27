@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { WifiOff, Download, X, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { OfflineEmergencyVault } from "@/lib/offline-emergency-vault";
@@ -30,6 +31,7 @@ export function usePWA() {
 }
 
 export function PWAProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -37,61 +39,45 @@ export function PWAProvider({ children }: { children: ReactNode }) {
   const [isOffline, setIsOffline] = useState(false);
   const [hasOfflineSnapshot, setHasOfflineSnapshot] = useState(false);
 
+  // 1. Service Worker & Connectivity Registration
   useEffect(() => {
-    // 1. Initial State
     if (typeof window !== "undefined") {
       setIsOffline(!navigator.onLine);
       setHasOfflineSnapshot(OfflineEmergencyVault.hasSnapshot());
 
-      // Check if already installed (standalone mode)
+      // Check if already running in standalone PWA mode
       const isStandalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         (window.navigator as any).standalone ||
         document.referrer.includes("android-app://");
       setIsInstalled(!!isStandalone);
-
-      // Check if user dismissed prompt in this session
-      const dismissed = sessionStorage.getItem("medivault_pwa_prompt_dismissed");
-      if (!dismissed && !isStandalone) {
-        // Will be shown if beforeinstallprompt fires
-      }
     }
 
-    // 2. Register Service Worker
     if (typeof window !== "undefined" && "serviceWorker" in navigator && process.env.NODE_ENV !== "development") {
       navigator.serviceWorker
         .register("/sw.js")
         .then((reg) => {
-          console.log("[PWA] Service Worker registered:", reg.scope);
+          console.log("[PWA] Service Worker active:", reg.scope);
         })
         .catch((err) => {
-          console.warn("[PWA] Service Worker registration failed:", err);
+          console.warn("[PWA] Service Worker registration:", err);
         });
     }
 
-    // 3. Listen for BeforeInstallPrompt event (Chrome / Edge / Android)
+    // Capture beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setIsInstallable(true);
-
-      const dismissed = sessionStorage.getItem("medivault_pwa_prompt_dismissed");
-      if (!dismissed) {
-        // Give the user a few seconds to experience the app before prompting
-        setTimeout(() => setShowInstallBanner(true), 3000);
-      }
     };
 
-    // 4. Listen for AppInstalled event
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setIsInstallable(false);
       setShowInstallBanner(false);
       setDeferredPrompt(null);
-      console.log("[PWA] App successfully installed!");
     };
 
-    // 5. Connectivity Listeners
     const unsubscribeConnectivity = OfflineEmergencyVault.subscribeConnectivity((online) => {
       setIsOffline(!online);
       setHasOfflineSnapshot(OfflineEmergencyVault.hasSnapshot());
@@ -106,6 +92,19 @@ export function PWAProvider({ children }: { children: ReactNode }) {
       unsubscribeConnectivity();
     };
   }, []);
+
+  // 2. Show install banner every time user visits the homepage (if not installed)
+  useEffect(() => {
+    if (pathname === "/" && !isInstalled) {
+      const timer = setTimeout(() => {
+        // Show on homepage if install prompt available or supported
+        setShowInstallBanner(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    } else {
+      setShowInstallBanner(false);
+    }
+  }, [pathname, isInstalled, isInstallable]);
 
   const installApp = async () => {
     if (!deferredPrompt) return;
@@ -124,16 +123,14 @@ export function PWAProvider({ children }: { children: ReactNode }) {
   };
 
   const dismissInstallPrompt = () => {
+    // Dismiss for this immediate view without permanently blocking next visit to homepage
     setShowInstallBanner(false);
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("medivault_pwa_prompt_dismissed", "true");
-    }
   };
 
   return (
     <PWAContext.Provider
       value={{
-        isInstallable,
+        isInstallable: isInstallable || !!deferredPrompt,
         isInstalled,
         isOffline,
         hasOfflineSnapshot,

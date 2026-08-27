@@ -1,15 +1,25 @@
-﻿"use client";
+"use client";
 
-import React from "react";
-import { Download, X, ShieldCheck, Sparkles } from "lucide-react";
+import React, { useState } from "react";
+import { Download, X, ShieldCheck, Share, PlusSquare } from "lucide-react";
 import { usePWA } from "./PWAProvider";
 
 export default function PWAInstallBanner() {
   const { showInstallBanner, isInstallable, installApp, dismissInstallPrompt } = usePWA();
+  const [showIosInstructions, setShowIosInstructions] = useState(false);
 
-  if (!showInstallBanner || !isInstallable) {
+  if (!showInstallBanner) {
     return null;
   }
+
+  const handleInstallClick = async () => {
+    const isIos = typeof window !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIos && !isInstallable) {
+      setShowIosInstructions(true);
+    } else {
+      await installApp();
+    }
+  };
 
   return (
     <div className="fixed bottom-20 lg:bottom-6 right-4 left-4 sm:left-auto sm:w-96 z-40 bg-white/95 backdrop-blur-md rounded-2xl border border-cyan-200/90 shadow-xl shadow-cyan-900/10 p-4 animate-in slide-in-from-bottom-5 duration-300 font-body">
@@ -27,21 +37,37 @@ export default function PWAInstallBanner() {
             Add to your home screen for instant 1-tap launch & offline Emergency ID access.
           </p>
 
-          <div className="flex items-center gap-2 mt-3">
-            <button
-              onClick={installApp}
-              className="px-3.5 py-1.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer min-h-[36px]"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Install App</span>
-            </button>
-            <button
-              onClick={dismissInstallPrompt}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer min-h-[36px]"
-            >
-              Not Now
-            </button>
-          </div>
+          {showIosInstructions ? (
+            <div className="mt-2.5 p-2.5 rounded-xl bg-cyan-50 border border-cyan-200 text-slate-800 text-[11px] space-y-1.5 animate-in fade-in">
+              <div className="font-bold text-[#0891B2] flex items-center gap-1">
+                <span>To install on iOS:</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-700">
+                <span>1. Tap <strong>Share</strong> in Safari</span>
+                <Share className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              </div>
+              <div className="flex items-center gap-2 text-slate-700">
+                <span>2. Select <strong>Add to Home Screen</strong></span>
+                <PlusSquare className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={handleInstallClick}
+                className="px-3.5 py-1.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer min-h-[36px]"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Install App</span>
+              </button>
+              <button
+                onClick={dismissInstallPrompt}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer min-h-[36px]"
+              >
+                Not Now
+              </button>
+            </div>
+          )}
         </div>
 
         <button
