@@ -33,7 +33,7 @@ export interface StorageSettings {
 }
 
 const DEFAULT_AI: AIEngineSettings = {
-  default_model: 'gemini-1.5-flash',
+  default_model: 'gemini-3.6-flash',
   confidence_threshold: 0.85,
   max_tokens: 4096,
   enable_rag: true,

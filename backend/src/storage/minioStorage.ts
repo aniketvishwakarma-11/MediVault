@@ -126,9 +126,8 @@ export class MinioStorageService {
       logger.info(`[MinIO Storage] Pre-signed download URL generated for key "${storageKey}" (Expires in ${expirySeconds}s).`);
       return signedUrl;
     } catch (error) {
-      logger.warn(`[MinIO Storage Warning] Pre-signed URL fallback for key "${storageKey}":`, error);
-      const port = process.env.PORT || '5000';
-      return `http://localhost:${port}/documents/file-stream?key=${encodeURIComponent(storageKey)}`;
+      const baseUrl = process.env.API_BASE_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || '5000'}`;
+      return `${baseUrl}/documents/file-stream?key=${encodeURIComponent(storageKey)}`;
     }
   }
 

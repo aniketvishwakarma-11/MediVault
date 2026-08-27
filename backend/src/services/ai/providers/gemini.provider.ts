@@ -13,7 +13,29 @@ export class GeminiProvider implements AIProvider {
   }
 
   private getModelName(): string {
-    return process.env.PRIMARY_MEDICAL_MODEL_VERSION || 'gemini-1.5-flash';
+    const configured = process.env.PRIMARY_MEDICAL_MODEL_VERSION || 'gemini-3.1-flash-lite';
+    // Auto-migrate legacy 1.5/2.0/2.5 model names to Google Gemini 3.x series
+    if (configured.includes('1.5') || configured === 'gemini-2.0-flash' || configured === 'gemini-2.5-flash') {
+      return 'gemini-3.1-flash-lite';
+    }
+    return configured;
+  }
+
+  private static isValidMediaBuffer(buffer?: Buffer, mimeType?: string): boolean {
+    if (!buffer || buffer.length < 64) return false;
+    if (mimeType === 'application/pdf') {
+      return buffer.slice(0, 5).toString('ascii').startsWith('%PDF');
+    }
+    if (mimeType?.startsWith('image/')) {
+      // JPEG: FF D8
+      if (buffer[0] === 0xff && buffer[1] === 0xd8) return true;
+      // PNG: 89 50 4E 47
+      if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return true;
+      // WEBP: RIFF....WEBP
+      if (buffer.slice(0, 4).toString('ascii') === 'RIFF') return true;
+      return true;
+    }
+    return false;
   }
 
   public async processMedicalDocument(
@@ -107,11 +129,11 @@ Output STRICT VALID JSON ONLY conforming exactly to this structure:
     `;
 
     const requestParts: any[] = [{ text: systemPrompt }];
-    if (fileBuffer && fileBuffer.length > 0 && (mimeType === 'application/pdf' || mimeType?.startsWith('image/'))) {
+    if (GeminiProvider.isValidMediaBuffer(fileBuffer, mimeType)) {
       requestParts.push({
         inlineData: {
-          mimeType: mimeType,
-          data: fileBuffer.toString('base64'),
+          mimeType: mimeType!,
+          data: fileBuffer!.toString('base64'),
         },
       });
     }
@@ -165,11 +187,11 @@ Output STRICT VALID JSON ONLY conforming exactly to this structure:
       });
 
       const sdkParts: any[] = [systemPrompt];
-      if (fileBuffer && fileBuffer.length > 0 && (mimeType === 'application/pdf' || mimeType?.startsWith('image/'))) {
+      if (GeminiProvider.isValidMediaBuffer(fileBuffer, mimeType)) {
         sdkParts.push({
           inlineData: {
-            mimeType: mimeType,
-            data: fileBuffer.toString('base64'),
+            mimeType: mimeType!,
+            data: fileBuffer!.toString('base64'),
           },
         });
       }

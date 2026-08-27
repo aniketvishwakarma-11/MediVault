@@ -107,12 +107,13 @@ export class PrescriptionNormalizerService {
     mimeType?: string
   ): Promise<StructuredPrescriptionData | null> {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    const configuredPrimary = process.env.PRIMARY_MEDICAL_MODEL_VERSION || "gemini-3.6-flash";
     const models = [
-      process.env.PRIMARY_MEDICAL_MODEL_VERSION || "gemini-1.5-flash",
-      "gemini-1.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-pro",
-      "gemini-2.5-flash",
+      configuredPrimary.includes("1.5") || configuredPrimary.includes("2.0") ? "gemini-3.6-flash" : configuredPrimary,
+      "gemini-3.6-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-2.5-flash-lite",
+      "gemini-flash-latest",
     ];
 
     const prompt = `You are an expert clinical pharmacist and handwriting specialist reading a medical prescription.
@@ -201,7 +202,8 @@ Return STRICT JSON matching this schema exactly:
     if (!apiKey || apiKey.includes("your_nvidia")) return null;
 
     const baseUrl = process.env.NVIDIA_NIM_BASE_URL || "https://integrate.api.nvidia.com/v1";
-    const model = process.env.NVIDIA_NIM_MODEL || "meta/llama-3.1-8b-instruct";
+    const configuredNvidia = process.env.NVIDIA_NIM_MODEL || "meta/llama-3.2-11b-vision-instruct";
+    const model = configuredNvidia.includes("llama-3.1") ? "meta/llama-3.2-11b-vision-instruct" : configuredNvidia;
 
     const prompt = `You are an expert clinical pharmacist reading a medical prescription.
 Extract the EXACT medicines, strengths, dosage forms, and directions from the following prescription text:

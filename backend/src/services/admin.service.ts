@@ -2032,7 +2032,7 @@ export class AdminService {
         const { GoogleGenerativeAI } = await import('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-          model: 'gemini-1.5-flash-latest',
+          model: 'gemini-3.6-flash',
           generationConfig: {
             temperature: 0.1,
             responseMimeType: 'application/json',
@@ -2045,7 +2045,7 @@ export class AdminService {
 
         return {
           mock: false,
-          model: 'gemini-1.5-flash',
+          model: 'gemini-3.6-flash',
           parsed: JSON.parse(text),
         };
       } catch (geminiErr: any) {

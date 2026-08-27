@@ -19,7 +19,11 @@ export class NvidiaProvider implements AIProvider {
   }
 
   private getModelName(): string {
-    return process.env.NVIDIA_NIM_MODEL || 'meta/llama-3.1-70b-instruct';
+    const configured = process.env.NVIDIA_NIM_MODEL || 'meta/llama-3.2-11b-vision-instruct';
+    if (configured.includes('llama-3.1-70b-instruct') || configured.includes('llama-3.1-8b-instruct')) {
+      return 'meta/llama-3.2-11b-vision-instruct';
+    }
+    return configured;
   }
 
   public async processMedicalDocument(
