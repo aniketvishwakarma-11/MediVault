@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/context/ToastContext";
 import EmergencyCardPass from "@/app/components/EmergencyCardPass";
 import { OfflineEmergencyVault } from "@/lib/offline-emergency-vault";
+import { normalizeEmergencyQrUrl, cleanLocalStorageQrUrls } from "@/lib/qr-url-helper";
 import {
   emergencyApi,
   type EmergencyCredential,
@@ -296,7 +297,8 @@ export default function PatientEmergencyCenter() {
       if (cred?.id) {
         const userId = user?.id || 'demo';
         const storedUrl = localStorage.getItem(`medivault_qr_url_${userId}_${cred.id}`) || localStorage.getItem(`medivault_qr_url_${userId}`);
-        const url = storedUrl || cred.qrUrl || (cred.rawToken ? `${window.location.origin}/e/${cred.rawToken}` : `${window.location.origin}/e/${cred.id}`);
+        const rawUrl = cred.rawToken ? `/e/${cred.rawToken}` : (cred.qrUrl || storedUrl || `/e/${cred.id}`);
+        const url = normalizeEmergencyQrUrl(rawUrl, cred.rawToken || cred.id);
         setGeneratedQrUrl(url);
 
         // Sync to offline vault
@@ -311,7 +313,7 @@ export default function PatientEmergencyCenter() {
       const cached = OfflineEmergencyVault.getSnapshot();
       if (cached?.credential) {
         setCredential(cached.credential);
-        const url = cached.credential.qrUrl || (cached.credential.rawToken ? `${window.location.origin}/e/${cached.credential.rawToken}` : `${window.location.origin}/e/${cached.credential.id}`);
+        const url = normalizeEmergencyQrUrl(cached.credential.qrUrl, cached.credential.rawToken || cached.credential.id);
         setGeneratedQrUrl(url);
         setIsOfflineLoaded(true);
       } else {
@@ -376,16 +378,18 @@ export default function PatientEmergencyCenter() {
   };
 
   useEffect(() => {
+    // Clean any legacy localhost URLs in localStorage
+    cleanLocalStorageQrUrls();
+
     // 1. Zero-latency offline hydration: immediately load cached offline snapshot in 0ms
     const cached = OfflineEmergencyVault.getSnapshot();
     if (cached) {
       if (cached.credential) {
         setCredential(cached.credential);
-        const url =
-          cached.credential.qrUrl ||
-          (cached.credential.rawToken
-            ? `${window.location.origin}/e/${cached.credential.rawToken}`
-            : `${window.location.origin}/e/${cached.credential.id}`);
+        const url = normalizeEmergencyQrUrl(
+          cached.credential.qrUrl,
+          cached.credential.rawToken || cached.credential.id
+        );
         setGeneratedQrUrl(url);
       }
       if (cached.profileSettings) {
@@ -418,9 +422,10 @@ export default function PatientEmergencyCenter() {
   // Helper to save QR URL locally
   const saveQrUrlLocally = (credId: string, url: string) => {
     const userId = user?.id || 'demo';
+    const cleanUrl = normalizeEmergencyQrUrl(url, credId);
     try {
-      localStorage.setItem(`medivault_qr_url_${userId}_${credId}`, url);
-      localStorage.setItem(`medivault_qr_url_${userId}`, url);
+      localStorage.setItem(`medivault_qr_url_${userId}_${credId}`, cleanUrl);
+      localStorage.setItem(`medivault_qr_url_${userId}`, cleanUrl);
     } catch {}
   };
 
@@ -440,7 +445,10 @@ export default function PatientEmergencyCenter() {
     try {
       const generated = await emergencyApi.generateCredential();
       setCredential(generated);
-      const url = generated.qrUrl || (generated.rawToken ? `${window.location.origin}/e/${generated.rawToken}` : `${window.location.origin}/e/${generated.id}`);
+      const url = normalizeEmergencyQrUrl(
+        generated.qrUrl || (generated.rawToken ? `/e/${generated.rawToken}` : `/e/${generated.id}`),
+        generated.rawToken || generated.id
+      );
       setGeneratedQrUrl(url);
       if (url && generated.id) {
         saveQrUrlLocally(generated.id, url);
@@ -460,7 +468,10 @@ export default function PatientEmergencyCenter() {
     try {
       const generated = await emergencyApi.regenerateCredential();
       setCredential(generated);
-      const url = generated.qrUrl || (generated.rawToken ? `${window.location.origin}/e/${generated.rawToken}` : `${window.location.origin}/e/${generated.id}`);
+      const url = normalizeEmergencyQrUrl(
+        generated.qrUrl || (generated.rawToken ? `/e/${generated.rawToken}` : `/e/${generated.id}`),
+        generated.rawToken || generated.id
+      );
       setGeneratedQrUrl(url);
       if (url && generated.id) {
         saveQrUrlLocally(generated.id, url);
@@ -595,7 +606,10 @@ export default function PatientEmergencyCenter() {
     : [];
 
   const hasActiveCredential = credential?.status === "ACTIVE";
-  const activeQrUrl = generatedQrUrl || (credential?.rawToken ? `${window.location.origin}/e/${credential.rawToken}` : (credential?.id ? `${window.location.origin}/e/${credential.id}` : null));
+  const activeQrUrl = normalizeEmergencyQrUrl(
+    generatedQrUrl || (credential?.rawToken ? `/e/${credential.rawToken}` : (credential?.id ? `/e/${credential.id}` : null)),
+    credential?.rawToken || credential?.id
+  );
 
   const tabs: { id: Tab; icon: React.ElementType; label: string }[] = [
     { id: "qr", icon: QrCode, label: "Emergency QR" },

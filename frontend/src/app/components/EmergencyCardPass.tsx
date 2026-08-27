@@ -18,6 +18,7 @@ import {
   Building2,
 } from "lucide-react";
 import type { EmergencyCredential, EmergencyProfileSettings, EmergencyContactItem } from "@/lib/emergency-api";
+import { normalizeEmergencyQrUrl } from "@/lib/qr-url-helper";
 
 interface EmergencyCardPassProps {
   patientName: string;
@@ -51,6 +52,10 @@ export default function EmergencyCardPass({
 
   const displayBloodGroup = bloodGroup && bloodGroup !== "Not provided" ? bloodGroup : "Not specified";
   const primaryContact = emergencyContacts[0];
+
+  const effectiveQrUrl = React.useMemo(() => {
+    return normalizeEmergencyQrUrl(qrUrl, credential?.rawToken || credential?.id);
+  }, [qrUrl, credential]);
 
   return (
     <div className="space-y-6">
@@ -150,8 +155,8 @@ export default function EmergencyCardPass({
 
               {/* QR Code Container */}
               <div className="flex flex-col items-center justify-center p-1.5 bg-white rounded-xl shadow-xs border border-slate-200">
-                {qrUrl ? (
-                  <QRCodeSVG value={qrUrl} size={88} bgColor="#ffffff" fgColor="#0f172a" level="H" />
+                {effectiveQrUrl ? (
+                  <QRCodeSVG value={effectiveQrUrl} size={88} bgColor="#ffffff" fgColor="#0f172a" level="H" />
                 ) : (
                   <div className="w-[88px] h-[88px] bg-slate-50 rounded-lg flex flex-col items-center justify-center text-slate-400 text-[9px] text-center p-1">
                     <QrCode className="w-6 h-6 mb-1 text-slate-400" />
@@ -332,8 +337,8 @@ export default function EmergencyCardPass({
                   </div>
 
                   <div className="flex justify-center p-1 bg-white border border-slate-900 rounded">
-                    {qrUrl ? (
-                      <QRCodeSVG value={qrUrl} size={76} bgColor="#ffffff" fgColor="#000000" level="H" />
+                    {effectiveQrUrl ? (
+                      <QRCodeSVG value={effectiveQrUrl} size={76} bgColor="#ffffff" fgColor="#000000" level="H" />
                     ) : (
                       <div className="w-[76px] h-[76px] bg-slate-100 text-[8px] font-mono text-center flex items-center justify-center p-1">
                         SCAN QR CODE

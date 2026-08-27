@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
         source: '/consent/:path*',
         destination: `${API_BASE}/consent/:path*`,
       },
+      {
+        source: '/emergency/:path*',
+        destination: `${API_BASE}/emergency/:path*`,
+      },
     ];
   },
 };

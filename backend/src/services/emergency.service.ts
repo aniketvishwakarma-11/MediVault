@@ -15,7 +15,7 @@ import type {
   EmergencyActorType,
 } from '../types/emergency';
 
-const BASE_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const BASE_URL = process.env.FRONTEND_URL || 'https://medi-vault-seven-lyart.vercel.app';
 const CREDENTIAL_EXPIRY_DAYS = 365; // 1 year by default
 
 // ─────────────────────────────────────────────────────────────────
