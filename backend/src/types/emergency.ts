@@ -33,6 +33,7 @@ export type EmergencyAction =
 export interface EmergencyCredential {
   id: string;
   patientId: string;
+  qrUrl?: string;
   version: number;
   status: EmergencyCredentialStatus;
   expiresAt: string | null;

@@ -56,77 +56,68 @@ export const authenticateJWT = async (
       return sendError(res, 401, 'Invalid authentication token payload.');
     }
 
-    // Determine actual role: check users_profile first for admin, then doctors table, then token metadata
+    // Determine actual role: check users_profile first (most authoritative source)
     let role = 'patient';
+    let roleFoundInProfile = false;
 
-    // 1. Check users_profile for admin or doctor role (most authoritative source)
+    // 1. Check users_profile for role (most authoritative source)
     try {
       const profCheck = await query('SELECT role FROM public.users_profile WHERE id = $1', [userId]);
       if (profCheck.rows.length > 0 && profCheck.rows[0].role) {
-        const pRole = String(profCheck.rows[0].role).toLowerCase();
-        if (pRole === 'admin') {
-          role = 'admin';
-        } else if (pRole === 'doctor') {
-          role = 'doctor';
-        } else if (pRole === 'hospital') {
-          role = 'hospital';
+        const pRole = String(profCheck.rows[0].role).toLowerCase().trim();
+        if (pRole === 'admin' || pRole === 'doctor' || pRole === 'hospital' || pRole === 'patient') {
+          role = pRole;
+          roleFoundInProfile = true;
         }
       }
     } catch {}
 
-    // 2. If not admin/hospital, cross-check doctors table
-    if (role === 'patient') {
+    // 2. If not found in users_profile, cross-check doctors table
+    if (!roleFoundInProfile) {
       try {
         const docCheck = await query('SELECT id FROM public.doctors WHERE user_id = $1', [userId]);
         if (docCheck.rows.length > 0) {
           role = 'doctor';
+          roleFoundInProfile = true;
         }
       } catch {}
     }
 
-    // 3. Fallback to JWT payload metadata & claims (only for non-admin)
-    if (role !== 'doctor' && role !== 'admin' && role !== 'hospital') {
+    // 3. Fallback to JWT payload metadata & claims
+    if (!roleFoundInProfile) {
       const metaRole =
         decoded.user_metadata?.role ||
         decoded.app_metadata?.role ||
         decoded.user_role ||
         decoded.role;
-      if (metaRole === 'doctor') {
-        role = 'doctor';
-      } else if (metaRole === 'admin') {
-        role = 'admin';
+      if (metaRole) {
+        const mRole = String(metaRole).toLowerCase().trim();
+        if (mRole === 'doctor' || mRole === 'admin' || mRole === 'hospital' || mRole === 'patient') {
+          role = mRole;
+          roleFoundInProfile = true;
+        }
       }
     }
 
-    // 4. Fallback to client request headers (x-user-role, x-role, role)
-    if (role !== 'doctor' && role !== 'admin') {
+    // 4. Fallback to client request headers (only if not found in profile)
+    if (!roleFoundInProfile) {
       const headerRole = (req.headers['x-user-role'] || req.headers['x-role'] || req.headers['role']) as string;
-      if (headerRole && headerRole.toLowerCase() === 'doctor') {
-        role = 'doctor';
+      if (headerRole) {
+        const hRole = headerRole.toLowerCase().trim();
+        if (hRole === 'doctor' || hRole === 'admin' || hRole === 'patient') {
+          role = hRole;
+        }
       }
     }
 
-    // 5. Fallback: if accessing a doctor endpoint (/doctor/*, /consent/doctor/*)
-    if (role !== 'doctor' && role !== 'admin') {
-      const isDoctorRoute = req.originalUrl?.includes('/doctor') || req.baseUrl?.includes('/doctor');
-      if (isDoctorRoute) {
-        role = 'doctor';
-      }
-    }
-
-    // If role is doctor, ensure doctors table record & users_profile exist & are verified
+    // 5. If role is verified doctor, ensure doctors table record exists
     if (role === 'doctor') {
       try {
         await query(
           `INSERT INTO public.doctors (user_id, license_number, specialization, hospital_name, hospital_affiliation, verification_status)
            VALUES ($1, $2, 'General Physician', 'MediVault EMR', 'MediVault EMR', 'VERIFIED')
-           ON CONFLICT (user_id) DO UPDATE SET verification_status = 'VERIFIED'`,
+           ON CONFLICT (user_id) DO NOTHING`,
           [userId, `DOC-${userId.substring(0, 8).toUpperCase()}`]
-        ).catch(() => {});
-
-        await query(
-          `UPDATE public.users_profile SET role = 'doctor' WHERE id = $1 AND role != 'doctor'`,
-          [userId]
         ).catch(() => {});
       } catch {}
     }

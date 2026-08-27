@@ -216,8 +216,8 @@ export class EmergencyService {
     try {
       const tokenHash = hashToken(rawToken);
       const res = await query(
-        `SELECT * FROM public.emergency_credentials WHERE token_hash = $1`,
-        [tokenHash]
+        `SELECT * FROM public.emergency_credentials WHERE token_hash = $1 OR id::text = $2`,
+        [tokenHash, rawToken]
       );
 
       if (res.rows.length === 0) {
@@ -800,6 +800,7 @@ export class EmergencyService {
     return {
       id: row.id,
       patientId: row.patient_id,
+      qrUrl: `${BASE_URL}/e/${row.id}`,
       version: row.version,
       status: row.status,
       expiresAt: row.expires_at,

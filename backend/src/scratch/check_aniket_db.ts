@@ -4,14 +4,15 @@ async function checkAniketRecords() {
   console.log('=== Checking Aniket Vishwakarma DB Records ===\n');
 
   try {
-    // 1. Check users_profile and patients
+    // 1. Check users_profile, doctors, and patients
     const userRes = await query(`
-      SELECT u.id as user_id, u.full_name, u.email, p.id as patient_id
+      SELECT u.id as user_id, u.full_name, u.email, u.role, p.id as patient_id, d.id as doctor_id
       FROM public.users_profile u
       LEFT JOIN public.patients p ON p.user_id = u.id
+      LEFT JOIN public.doctors d ON d.user_id = u.id
       WHERE u.full_name ILIKE '%Aniket%' OR u.email ILIKE '%aniket%';
     `);
-    console.log('Users/Patients matching Aniket:', JSON.stringify(userRes.rows, null, 2));
+    console.log('Users matching Aniket:', JSON.stringify(userRes.rows, null, 2));
 
     // 2. Check all documents in DB
     const docsRes = await query(`

@@ -11,10 +11,18 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   if (!token && typeof window !== 'undefined') {
     token = localStorage.getItem('medivault_demo_jwt') || undefined;
   }
-  const activeRole = (typeof window !== 'undefined' ? localStorage.getItem('medivault_user_role') : null) || 'doctor';
+
+  let activeRole: string | null = null;
+  if (typeof window !== 'undefined') {
+    activeRole =
+      localStorage.getItem('medivault_user_role') ||
+      (session?.user?.user_metadata?.role as string) ||
+      (window.location.pathname.startsWith('/doctor') ? 'doctor' : 'patient');
+  }
+
   return {
     'Content-Type': 'application/json',
-    'x-user-role': activeRole,
+    ...(activeRole ? { 'x-user-role': activeRole } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }

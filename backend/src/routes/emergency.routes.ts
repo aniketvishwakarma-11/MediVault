@@ -20,7 +20,7 @@ router.get('/:credential', EmergencyController.resolvePublic);
 router.post(
   '/credential',
   authenticateJWT,
-  authorizeRoles('patient'),
+  authorizeRoles('patient', 'doctor', 'admin', 'hospital'),
   EmergencyController.generateCredential
 );
 
@@ -28,7 +28,7 @@ router.post(
 router.get(
   '/credential/status',
   authenticateJWT,
-  authorizeRoles('patient'),
+  authorizeRoles('patient', 'doctor', 'admin', 'hospital'),
   EmergencyController.getCredential
 );
 
@@ -36,7 +36,7 @@ router.get(
 router.post(
   '/credential/regenerate',
   authenticateJWT,
-  authorizeRoles('patient'),
+  authorizeRoles('patient', 'doctor', 'admin', 'hospital'),
   EmergencyController.regenerateCredential
 );
 
@@ -44,7 +44,7 @@ router.post(
 router.post(
   '/credential/revoke',
   authenticateJWT,
-  authorizeRoles('patient'),
+  authorizeRoles('patient', 'doctor', 'admin', 'hospital'),
   EmergencyController.revokeCredential
 );
 
@@ -52,7 +52,7 @@ router.post(
 router.get(
   '/profile/settings',
   authenticateJWT,
-  authorizeRoles('patient'),
+  authorizeRoles('patient', 'doctor', 'admin', 'hospital'),
   EmergencyController.getProfileSettings
 );
 
@@ -60,7 +60,7 @@ router.get(
 router.patch(
   '/profile/settings',
   authenticateJWT,
-  authorizeRoles('patient'),
+  authorizeRoles('patient', 'doctor', 'admin', 'hospital'),
   EmergencyController.updateProfileSettings
 );
 
@@ -68,11 +68,11 @@ router.patch(
 router.get(
   '/access-history',
   authenticateJWT,
-  authorizeRoles('patient'),
+  authorizeRoles('patient', 'doctor', 'admin', 'hospital'),
   EmergencyController.getAccessHistory
 );
 
-// Patient can also revoke an active session on their record
+// Patient / User can also revoke an active session on their record
 router.post(
   '/session/:id/revoke',
   authenticateJWT,
