@@ -27,7 +27,8 @@ export function middleware(request: NextRequest) {
   // 3. Unauthenticated access to Protected Portals -> Server-side redirect to /auth
   if ((isPatientRoute || isDoctorRoute || isAdminRoute) && !isAuthenticated) {
     const loginUrl = new URL('/auth', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+    const targetWithQuery = `${pathname}${request.nextUrl.search}`;
+    loginUrl.searchParams.set('redirect', targetWithQuery);
     return NextResponse.redirect(loginUrl);
   }
 

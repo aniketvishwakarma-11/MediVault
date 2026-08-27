@@ -1101,11 +1101,31 @@ function DoctorEmergencyTerminalContent() {
   const [qrSuccessNotice, setQrSuccessNotice] = useState<string | null>(null);
   const qrFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Auto-populate from URL query
+  // Auto-populate from URL query or storage bridge
   useEffect(() => {
-    const tokenQuery = searchParams?.get("token");
-    if (tokenQuery) {
-      setCredentialToken(extractEmergencyToken(tokenQuery));
+    const tokenQuery = searchParams?.get("token") || searchParams?.get("credential");
+    let fallbackToken: string | null = null;
+    if (typeof window !== "undefined") {
+      try {
+        fallbackToken =
+          sessionStorage.getItem("medivault_pending_break_glass_token") ||
+          localStorage.getItem("medivault_pending_break_glass_token");
+      } catch {}
+    }
+
+    const rawToken = tokenQuery || fallbackToken;
+    if (rawToken) {
+      const cleanToken = extractEmergencyToken(rawToken);
+      if (cleanToken) {
+        setCredentialToken(cleanToken);
+        setQrSuccessNotice("Patient emergency credential token auto-attached from emergency scan.");
+      }
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem("medivault_pending_break_glass_token");
+          localStorage.removeItem("medivault_pending_break_glass_token");
+        } catch {}
+      }
     }
   }, [searchParams]);
 

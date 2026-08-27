@@ -79,6 +79,23 @@ export default function AuthPage() {
       else if (activeRole === "admin") target = "/admin/dashboard";
       else if (activeRole === "hospital") target = "/patient/dashboard";
 
+      // Check for authorized redirect query parameter
+      if (typeof window !== "undefined") {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const redirectParam = params.get("redirect");
+          if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
+            const isRoleAllowed =
+              (activeRole === "doctor" && redirectParam.startsWith("/doctor")) ||
+              (activeRole === "patient" && redirectParam.startsWith("/patient")) ||
+              (activeRole === "admin" && redirectParam.startsWith("/admin"));
+            if (isRoleAllowed) {
+              target = redirectParam;
+            }
+          }
+        } catch {}
+      }
+
       // If URL has OAuth hash (#access_token=...), wipe hash and perform clean client replace
       if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
         window.location.replace(target);
@@ -145,6 +162,22 @@ export default function AuthPage() {
         let target = "/patient/dashboard";
         if (userRole === "doctor") target = "/doctor/dashboard";
         else if (userRole === "admin") target = "/admin/dashboard";
+
+        if (typeof window !== "undefined") {
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const redirectParam = params.get("redirect");
+            if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
+              const isRoleAllowed =
+                (userRole === "doctor" && redirectParam.startsWith("/doctor")) ||
+                (userRole === "patient" && redirectParam.startsWith("/patient")) ||
+                (userRole === "admin" && redirectParam.startsWith("/admin"));
+              if (isRoleAllowed) {
+                target = redirectParam;
+              }
+            }
+          } catch {}
+        }
         
         router.replace(target);
       } else {

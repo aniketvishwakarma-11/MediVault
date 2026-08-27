@@ -368,7 +368,13 @@ export default function EmergencyGatewayPage() {
               </div>
 
               <a
-                href="/doctor/emergency"
+                href={`/doctor/emergency?token=${encodeURIComponent(credential)}`}
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem("medivault_pending_break_glass_token", credential);
+                    localStorage.setItem("medivault_pending_break_glass_token", credential);
+                  } catch {}
+                }}
                 className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-2xl bg-sky-700 hover:bg-sky-600 text-white font-bold text-sm transition-colors min-h-[48px]"
               >
                 <Stethoscope className="w-4 h-4" />
