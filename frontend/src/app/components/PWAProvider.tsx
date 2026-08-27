@@ -64,11 +64,12 @@ export function PWAProvider({ children }: { children: ReactNode }) {
         });
     }
 
-    // Capture beforeinstallprompt
+    // Capture beforeinstallprompt (Fires when the app is NOT installed on the device)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setIsInstallable(true);
+      setIsInstalled(false); // If browser fires this, the app is not currently installed
     };
 
     const handleAppInstalled = () => {
