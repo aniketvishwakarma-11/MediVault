@@ -296,7 +296,7 @@ export class DocumentRepository {
 
       const dataRes = await query(dataSql, [...params, limit, offset]);
 
-      const docs: DocumentRecord[] = dataRes.rows.map((row) => {
+      const docs: DocumentRecord[] = dataRes.rows.map((row: any) => {
         let aiAnalysis = null;
         if (row.ai_raw_json) {
           try {

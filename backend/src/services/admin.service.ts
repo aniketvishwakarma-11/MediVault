@@ -2183,12 +2183,12 @@ export class AdminService {
       ]);
 
       const audienceMap: Record<string, number> = {};
-      audienceRes.rows.forEach((r) => {
+      audienceRes.rows.forEach((r: any) => {
         audienceMap[r.target_role || 'ALL'] = parseInt(r.count, 10);
       });
 
       const severityMap: Record<string, number> = {};
-      severityRes.rows.forEach((r) => {
+      severityRes.rows.forEach((r: any) => {
         severityMap[r.severity || 'INFO'] = parseInt(r.count, 10);
       });
 
@@ -2286,7 +2286,7 @@ export class AdminService {
       const res = await query(`SELECT key, value, updated_at FROM public.system_settings ORDER BY key ASC`);
       
       const settingsMap: Record<string, any> = {};
-      res.rows.forEach((r) => {
+      res.rows.forEach((r: any) => {
         settingsMap[r.key] = r.value;
       });
 

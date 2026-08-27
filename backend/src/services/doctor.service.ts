@@ -579,7 +579,7 @@ export class DoctorService {
         `INSERT INTO public.emergency_access_logs (patient_id, access_reason, expires_at, blockchain_tx_hash)
          VALUES ($1, $2, $3, $4)`,
         [patientRow.id, reason, expiresAt, `0x${Date.now().toString(16)}`]
-      ).catch((e) => logger.warn('[Emergency Log Warning]', e.message));
+      ).catch((e: any) => logger.warn('[Emergency Log Warning]', e.message));
 
       const dob = patientRow.date_of_birth ? new Date(patientRow.date_of_birth) : new Date(1990, 3, 12);
       const age = new Date().getFullYear() - dob.getFullYear();

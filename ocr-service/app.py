@@ -1,62 +1,70 @@
 ﻿"""
-MediVault Prescription OCR Microservice
-Wraps chinmays18/medical-prescription-ocr (TrOCR fine-tuned on handwritten prescriptions)
-+ Tesseract fallback for typed/printed documents.
-
-Deploy this on HuggingFace Spaces (FREE) or Render (FREE).
+MediVault Prescription OCR Microservice (Gradio SDK + ZeroGPU)
+Powered by TrOCR (chinmays18/medical-prescription-ocr)
+Pure PyTorch & Transformers - No external system binaries needed.
 """
 
 import os
 import time
 import io
 import logging
-from fastapi import FastAPI, File, UploadFile, HTTPException
+import gradio as gr
+from fastapi import File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-import uvicorn
+from PIL import Image
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("medivault-ocr")
 
-app = FastAPI(title="MediVault Prescription OCR API", version="1.0.0")
-
-# ── Model Loading ─────────────────────────────────────────────────────────────
 MODEL_NAME = os.getenv("PRESCRIPTION_OCR_MODEL", "chinmays18/medical-prescription-ocr")
-USE_GPU = os.getenv("USE_GPU", "false").lower() == "true"
 
 processor = None
 model = None
 model_loaded = False
 load_error = None
 
+# ZeroGPU Decorator (provides dynamic NVIDIA A100 GPU allocation on Hugging Face)
+try:
+    import spaces
+    gpu_decorator = spaces.GPU
+except Exception:
+    def gpu_decorator(func):
+        return func
+
 def load_model():
     global processor, model, model_loaded, load_error
     try:
-        logger.info(f"Loading model: {MODEL_NAME}")
+        logger.info(f"Loading TrOCR model: {MODEL_NAME}...")
         from transformers import TrOCRProcessor, VisionEncoderDecoderModel
         import torch
 
-        device = "cuda" if (USE_GPU and torch.cuda.is_available()) else "cpu"
+        device = "cpu"  # Initial load on CPU for ZeroGPU dynamic allocation
         processor = TrOCRProcessor.from_pretrained(MODEL_NAME)
         model = VisionEncoderDecoderModel.from_pretrained(MODEL_NAME).to(device)
         model.eval()
         model_loaded = True
-        logger.info(f"Model {MODEL_NAME} loaded successfully on {device}")
+        logger.info(f"Model {MODEL_NAME} loaded successfully!")
     except Exception as e:
         load_error = str(e)
-        logger.warning(f"Failed to load {MODEL_NAME}: {e}. Will use Tesseract fallback only.")
+        logger.warning(f"Failed to load {MODEL_NAME}: {e}")
         model_loaded = False
 
-# Load model at startup (non-blocking for HuggingFace Spaces)
+# Load model in background thread on startup
 import threading
 threading.Thread(target=load_model, daemon=True).start()
 
-# ── OCR Helpers ───────────────────────────────────────────────────────────────
-
+@gpu_decorator
 def run_trocr(image_bytes: bytes) -> str:
-    """Run TrOCR model on image bytes."""
+    """Run TrOCR model on raw image bytes using ZeroGPU if available."""
     from PIL import Image
     import torch
-    device = next(model.parameters()).device
+
+    if not model_loaded or model is None or processor is None:
+        return ""
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     pixel_values = processor(image, return_tensors="pt").pixel_values.to(device)
     with torch.no_grad():
@@ -66,29 +74,9 @@ def run_trocr(image_bytes: bytes) -> str:
             num_beams=4,
             early_stopping=True
         )
-    text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    return text.strip()
-
-def run_tesseract(image_bytes: bytes, mime_type: str) -> str:
-    """Tesseract fallback for typed/printed documents."""
-    try:
-        import pytesseract
-        from PIL import Image
-        import pdf2image
-
-        if mime_type == "application/pdf":
-            pages = pdf2image.convert_from_bytes(image_bytes, dpi=300)
-            texts = [pytesseract.image_to_string(p, lang="eng") for p in pages]
-            return "\n".join(texts).strip()
-        else:
-            image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-            return pytesseract.image_to_string(image, lang="eng").strip()
-    except Exception as e:
-        logger.warning(f"Tesseract failed: {e}")
-        return ""
+    return processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
 def score_quality(text: str) -> tuple[float, list[str]]:
-    """Simple heuristic quality scoring."""
     issues = []
     score = 1.0
     if len(text) < 20:
@@ -99,10 +87,36 @@ def score_quality(text: str) -> tuple[float, list[str]]:
         score -= 0.2
     return max(round(score, 2), 0.4), issues
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# Interactive UI testing handler
+def gradio_extract(pil_image):
+    if pil_image is None:
+        return "Please upload a prescription image."
+    img_byte_arr = io.BytesIO()
+    pil_image.save(img_byte_arr, format='JPEG')
+    raw_bytes = img_byte_arr.getvalue()
+    try:
+        result = run_trocr(raw_bytes)
+        return result if result else "No legible handwriting detected."
+    except Exception as e:
+        return f"Extraction error: {e}"
 
-@app.get("/health")
-async def health():
+# ── Gradio Web UI ─────────────────────────────────────────────────────────────
+with gr.Blocks(title="MediVault Prescription OCR", theme=gr.themes.Soft()) as demo:
+    gr.Markdown("# 💊 MediVault Prescription OCR Microservice")
+    gr.Markdown("High-accuracy handwritten medical prescription extraction powered by **TrOCR** (`chinmays18/medical-prescription-ocr`).")
+    with gr.Row():
+        with gr.Column():
+            input_image = gr.Image(type="pil", label="Upload Prescription Image")
+            extract_btn = gr.Button("Extract Prescription Text", variant="primary")
+        with gr.Column():
+            output_text = gr.Textbox(label="Extracted Clinical Text", lines=10)
+    
+    extract_btn.click(fn=gradio_extract, inputs=[input_image], outputs=[output_text])
+    gr.Markdown("### REST API Endpoints for MediVault Backend:\n- `POST /analyze` (multipart file upload)\n- `GET /health`\n- `GET /model-info`")
+
+# ── REST API Endpoints for MediVault Backend ──────────────────────────────────
+@demo.app.get("/health")
+def health():
     return {
         "status": "ok",
         "model_loaded": model_loaded,
@@ -110,37 +124,28 @@ async def health():
         "load_error": load_error,
     }
 
-@app.get("/model-info")
-async def model_info():
+@demo.app.get("/model-info")
+def model_info():
     return {
         "model_name": MODEL_NAME,
         "model_loaded": model_loaded,
-        "framework": "TrOCR (transformers)",
-        "fallback": "Tesseract 5 + pdf2image",
-        "supported_types": ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+        "framework": "TrOCR (transformers) + ZeroGPU",
+        "supported_types": ["image/jpeg", "image/png", "image/webp"],
     }
 
-@app.post("/analyze")
+@demo.app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
     start = time.time()
     try:
         image_bytes = await file.read()
-        mime_type = file.content_type or "image/jpeg"
         raw_text = ""
-        used_model = MODEL_NAME
 
-        # 1. Try TrOCR (fine-tuned on handwritten prescriptions)
-        if model_loaded and mime_type.startswith("image/"):
+        if model_loaded:
             try:
                 raw_text = run_trocr(image_bytes)
                 logger.info(f"TrOCR extracted {len(raw_text)} chars")
             except Exception as e:
-                logger.warning(f"TrOCR inference failed: {e}")
-
-        # 2. Fallback to Tesseract for PDFs or if TrOCR gave nothing
-        if not raw_text or len(raw_text.strip()) < 10:
-            raw_text = run_tesseract(image_bytes, mime_type)
-            used_model = "Tesseract OCR 5 (fallback)"
+                logger.warning(f"TrOCR inference error: {e}")
 
         quality_score, quality_issues = score_quality(raw_text)
         elapsed_ms = int((time.time() - start) * 1000)
@@ -148,7 +153,7 @@ async def analyze(file: UploadFile = File(...)):
         return JSONResponse({
             "success": True,
             "raw_text": raw_text,
-            "model_name": used_model,
+            "model_name": MODEL_NAME,
             "model_version": "1.0.0",
             "processing_time_ms": elapsed_ms,
             "image_quality_score": quality_score,
@@ -158,10 +163,9 @@ async def analyze(file: UploadFile = File(...)):
                 "word_count": len(raw_text.split()),
             }
         })
-
     except Exception as e:
         logger.error(f"Analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 7860)))
+    demo.launch(server_name="0.0.0.0", server_port=7860)

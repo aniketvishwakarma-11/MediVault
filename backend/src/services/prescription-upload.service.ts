@@ -341,7 +341,7 @@ export class PrescriptionUploadService {
             m.dosage_form, m.strength, m.schedule_code, m.food_instructions,
             m.duration_days, m.quantity_to_dispense, m.refills_allowed,
           ]
-        ).catch((e) => logger.warn("[PrescriptionUploadService] Item insert notice:", e.message));
+        ).catch((e: any) => logger.warn("[PrescriptionUploadService] Item insert notice:", e.message));
       }
     } catch (e: any) {
       logger.error("[PrescriptionUploadService] Prescription insert error:", e.message);

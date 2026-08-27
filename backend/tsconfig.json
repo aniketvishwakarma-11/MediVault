@@ -11,5 +11,12 @@
     "sourceMap": true,
     "declaration": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "src/scratch/**/*",
+    "src/scripts/**/*",
+    "src/tests/**/*",
+    "node_modules",
+    "dist"
+  ]
 }

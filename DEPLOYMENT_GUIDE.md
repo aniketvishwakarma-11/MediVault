@@ -56,101 +56,123 @@ SUPABASE_SERVICE_ROLE_KEY = eyJ...
 
 ---
 
-## STEP 2 — CLOUDFLARE R2 (File Storage, replaces MinIO)
+## STEP 2 — OBJECT STORAGE (File Storage, replaces MinIO — 100% FREE, NO CREDIT CARD)
 
-> R2 is S3-compatible — zero code changes needed in your backend.
+> Cloudflare R2 requires a credit card even for its free tier. Here are the two **best 100% FREE alternatives that require NO CREDIT CARD** and are fully S3/MinIO compatible:
 
-1. Go to [cloudflare.com](https://cloudflare.com) → Sign up (free) → Dashboard
-2. Left sidebar → **R2 Object Storage** → **Create bucket**
-   - Bucket name: `medivault-documents`
-   - Location: Auto → **Create bucket**
-3. Go to **R2 Overview** → **Manage R2 API Tokens** (top right)
-4. Click **Create API Token**
-   - Token name: `medivault-backend`
-   - Permissions: **Object Read & Write**
-   - Specify bucket: `medivault-documents`
-   - Click **Create API Token**
-5. Copy ALL values shown (shown only once!):
+### ⭐ Option A: Backblaze B2 (Recommended — 10 GB FREE FOREVER, NO CARD)
 
-📋 **Save these:**
+1. Go to [backblaze.com/cloud-storage](https://www.backblaze.com/cloud-storage) → Click **Try 10GB Free**.
+2. Sign up with email & password (verify your email). **NO credit card is asked.**
+3. In Backblaze Dashboard → Left menu → **Buckets** → Click **Create a Bucket**:
+   - Bucket Unique Name: `medivault-documents-xxxx` (must be globally unique, e.g., `medivault-docs-aniket1`)
+   - Files in Bucket: **Private**
+   - Default Encryption: Enabled
+   - Click **Create a Bucket**
+4. Copy your **Endpoint** shown on the bucket card (e.g., `s3.us-east-005.backblazeb2.com`).
+5. Left menu → **Application Keys** → Click **Add a New Application Key**:
+   - Name: `medivault-api`
+   - Allow access to Bucket: Select your created bucket
+   - Type of Access: **Read and Write**
+   - Click **Create New Key**
+6. Copy:
+   - `keyID` → this is your `MINIO_ACCESS_KEY`
+   - `applicationKey` → this is your `MINIO_SECRET_KEY`
+
+📋 **Save these for Step 9 (Render):**
+```env
+MINIO_ENDPOINT = s3.us-east-005.backblazeb2.com   # (use the endpoint shown on your bucket)
+MINIO_ACCESS_KEY = (your keyID)
+MINIO_SECRET_KEY = (your applicationKey)
+MINIO_BUCKET = medivault-docs-aniket1            # (your exact bucket name)
+MINIO_PORT = 443
+MINIO_USE_SSL = true
 ```
-MINIO_ENDPOINT = YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
-MINIO_ACCESS_KEY = (Access Key ID from token page)
-MINIO_SECRET_KEY = (Secret Access Key from token page)
+
+---
+
+### ⭐ Option B: Supabase Storage S3 (Zero New Accounts — 1 GB FREE)
+
+> If you don't want to create another account, use the Supabase project you already have!
+
+1. Go to your [Supabase Dashboard](https://supabase.com/dashboard) → Click your Project.
+2. Left menu → **Storage** → Click **New bucket**:
+   - Name: `medivault-documents`
+   - Public: **OFF** (Keep Private)
+   - Click **Save bucket**
+3. Left menu → Click **Project Settings** (gear icon) → Click **Storage**:
+   - Scroll down to **S3 Access Keys**
+   - Click **Generate new key**
+   - Copy the **Access Key ID** and **Secret Access Key**
+   - Notice your endpoint format: `<project-ref>.storage.supabase.co`
+
+📋 **Save these for Step 9 (Render):**
+```env
+MINIO_ENDPOINT = YOUR_PROJECT_REF.storage.supabase.co
+MINIO_ACCESS_KEY = (your Supabase S3 Access Key ID)
+MINIO_SECRET_KEY = (your Supabase S3 Secret Access Key)
 MINIO_BUCKET = medivault-documents
 MINIO_PORT = 443
 MINIO_USE_SSL = true
 ```
 
-> The Account ID is shown at the top of the R2 page (32 hex chars).
+---
 
 ---
 
-## STEP 3 — UPSTASH REDIS (Cache / Rate Limiting)
+## STEP 3 — AI KEYS & CREDENTIALS (100% Free)
 
-1. Go to [upstash.com](https://upstash.com) → **Sign up** (free, no credit card)
-2. Click **Create Database**
-   - Name: `medivault-cache`
-   - Type: **Regional**
-   - Region: `ap-south-1` (Mumbai — closest to India)
-   - Click **Create**
-3. On the database page → scroll to **REST API** section
-4. Copy the **REDIS_URL** (starts with `rediss://`)
+### A. Google Gemini API Key (Primary Clinical Model)
+1. Go to [aistudio.google.com](https://aistudio.google.com) → Sign in with Google.
+2. Click **Get API Key** (top right) → **Create API key in new project**.
+3. Copy the key (starts with `AIzaSy`).
 
-📋 **Save this:**
+📋 `GEMINI_API_KEY = AIzaSy...`
+
+### B. NVIDIA NIM API Key (Fallback AI & Chat Copilot)
+1. Go to [build.nvidia.com](https://build.nvidia.com) → Sign up.
+2. Go to your profile / API keys → Click **Generate API Key**.
+3. Copy the key (starts with `nvapi-`).
+
+📋 `NVIDIA_NIM_API_KEY = nvapi-...`
+
+### C. Generate a Secure JWT Secret
+Run this in PowerShell:
+```powershell
+[System.Convert]::ToBase64String((1..48 | ForEach-Object { [byte](Get-Random -Maximum 256) }))
 ```
-REDIS_URL = rediss://:TOKEN@ENDPOINT.upstash.io:6379
-```
+📋 `JWT_SECRET = your-random-base64-string`
 
 ---
 
-## STEP 4 — QDRANT CLOUD (Vector DB for RAG)
+## STEP 4 — HUGGINGFACE SPACES (Handwritten Prescription OCR Microservice — 100% FREE GRADIO SDK)
 
-1. Go to [cloud.qdrant.io](https://cloud.qdrant.io) → **Sign up** (free)
-2. Click **Create Cluster**
-   - Name: `medivault-vectors`
-   - Cloud: **AWS** → Region: **ap-south-1** (Mumbai)
-   - Size: **Free tier** (1GB)
-   - Click **Create**
-3. Wait ~2 min for cluster to start
-4. Click on your cluster → **API Keys** tab → **Create API Key**
-   - Name: `medivault-backend`
-   - Copy the key
-5. Copy the **Cluster URL** from the cluster overview (format: `https://XXXX.ap-south-1.aws.cloud.qdrant.io`)
+> This runs the `chinmays18/medical-prescription-ocr` handwriting model using the **FREE Gradio SDK**.
 
-📋 **Save these:**
-```
-QDRANT_URL = https://XXXX.ap-south-1.aws.cloud.qdrant.io
-QDRANT_API_KEY = eyJ...
-```
-
----
-
-## STEP 5 — HUGGINGFACE SPACES (Prescription OCR Microservice)
-
-> This runs the `chinmays18/medical-prescription-ocr` handwriting model.
-
-1. Go to [huggingface.co](https://huggingface.co) → **Sign up** (free)
-2. Click your avatar → **New Space**
-   - Owner: your username
+1. Go to [huggingface.co](https://huggingface.co) → Click your avatar → **New Space**:
    - Space name: `medivault-ocr`
-   - License: MIT
-   - SDK: **Docker**
-   - Hardware: **CPU basic** (free)
+   - Select Space SDK: **Gradio** (shown in your screenshot — 100% FREE!)
+   - Template: **Blank**
+   - Space hardware: **CPU Basic (Free)** or **ZeroGPU (Free)**
    - Visibility: **Public**
    - Click **Create Space**
-3. You'll see a file upload page. Upload these 4 files from your PC:
-   - `c:\Users\HP\OneDrive\Desktop\MediVault\ocr-service\app.py`
-   - `c:\Users\HP\OneDrive\Desktop\MediVault\ocr-service\requirements.txt`
-   - `c:\Users\HP\OneDrive\Desktop\MediVault\ocr-service\Dockerfile`
-   - `c:\Users\HP\OneDrive\Desktop\MediVault\ocr-service\README.md`
-4. HuggingFace will auto-build the Docker image (~5-10 min first time)
-5. Your Space URL will be: `https://YOUR_HF_USERNAME-medivault-ocr.hf.space`
-6. Test it: open `https://YOUR_HF_USERNAME-medivault-ocr.hf.space/health` in browser
-   - Should return: `{"status":"ok","model_loaded":true,...}`
+2. In the created Space, click the **Files** tab → **Add file** → **Upload files**.
+3. Upload these 3 files from your PC folder (`c:\Users\HP\OneDrive\Desktop\MediVault\ocr-service\`):
+   - `app.py`
+   - `requirements.txt`
+   - `README.md`
+   *(Do NOT include `packages.txt` — TrOCR is pure PyTorch and doesn't need external system packages).*
+4. Click **Commit changes to main**.
+5. HuggingFace will auto-install dependencies and start your Space (~3-5 minutes).
+6. Once it shows **Running**, you can test it directly in the browser!
+7. Your Space URL will be:
+   ```
+   https://YOUR_HF_USERNAME-medivault-ocr.hf.space
+   ```
+   *(Test in browser: `https://YOUR_HF_USERNAME-medivault-ocr.hf.space/health` should return `{"status":"ok","model_loaded":true}`)*
 
-📋 **Save this:**
-```
+📋 **Save for Step 5 (Render):**
+```env
 PRESCRIPTION_OCR_SERVICE_URL = https://YOUR_HF_USERNAME-medivault-ocr.hf.space
 OCR_TIMEOUT_MS = 30000
 ```
@@ -252,13 +274,9 @@ CHAT_MODEL                   = nvidia
 NVIDIA_NIM_MODEL             = meta/llama-3.1-70b-instruct
 NVIDIA_NIM_BASE_URL          = https://integrate.api.nvidia.com/v1
 
-PRESCRIPTION_OCR_SERVICE_URL = (from Step 5)
+PRESCRIPTION_OCR_SERVICE_URL = (from Step 4 — HuggingFace Space URL)
 PRESCRIPTION_OCR_MODEL       = chinmays18/medical-prescription-ocr
 OCR_TIMEOUT_MS               = 30000
-
-REDIS_URL                    = (from Step 3)
-QDRANT_URL                   = (from Step 4)
-QDRANT_API_KEY               = (from Step 4)
 ```
 
 6. Wait for build to complete (3–5 min)
@@ -374,19 +392,15 @@ git push origin main
 | Step | Service | Done? |
 |------|---------|-------|
 | 0 | Code pushed to GitHub | ☐ |
-| 1 | Supabase credentials copied | ☐ |
-| 2 | Cloudflare R2 bucket + token created | ☐ |
-| 3 | Upstash Redis created | ☐ |
-| 4 | Qdrant Cloud cluster created | ☐ |
-| 5 | HuggingFace OCR Space deployed | ☐ |
-| 6 | Gemini API key generated | ☐ |
-| 7 | NVIDIA NIM API key generated | ☐ |
-| 8 | JWT secret generated | ☐ |
-| 9 | Render backend deployed + all env vars set | ☐ |
-| 10 | Vercel frontend deployed | ☐ |
-| 11 | CORS updated on Render | ☐ |
-| 12 | UptimeRobot pings configured | ☐ |
-| 13 | All smoke tests passing | ☐ |
+| 1 | Supabase credentials copied (DB + Auth) | ☐ |
+| 2 | Object Storage configured (Backblaze B2 or Supabase S3) | ☐ |
+| 3 | AI Keys generated (Gemini + NVIDIA NIM + JWT) | ☐ |
+| 4 | HuggingFace OCR Space deployed | ☐ |
+| 5 | Render backend deployed + env vars set | ☐ |
+| 6 | Vercel frontend deployed | ☐ |
+| 7 | CORS updated on Render with Vercel URL | ☐ |
+| 8 | UptimeRobot keep-alive pings configured | ☐ |
+| 9 | All smoke tests passing | ☐ |
 
 ---
 
