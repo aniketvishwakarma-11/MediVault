@@ -481,13 +481,13 @@ export default function DoctorPrescriptionsPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="flex overflow-x-auto no-scrollbar items-center gap-2 shrink-0 pb-1">
           <button
             onClick={() => {
               setActiveTab("builder");
               setGeneratedRx(null);
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer min-h-[40px] ${
               activeTab === "builder"
                 ? "bg-[#0891B2] text-white shadow-xs"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -502,7 +502,7 @@ export default function DoctorPrescriptionsPage() {
               setGeneratedRx(null);
               fetchDoctorHistory();
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer min-h-[40px] ${
               activeTab === "history"
                 ? "bg-[#0891B2] text-white shadow-xs"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -516,7 +516,7 @@ export default function DoctorPrescriptionsPage() {
               setActiveTab("refills");
               setGeneratedRx(null);
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer min-h-[40px] ${
               activeTab === "refills"
                 ? "bg-[#0891B2] text-white shadow-xs"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"

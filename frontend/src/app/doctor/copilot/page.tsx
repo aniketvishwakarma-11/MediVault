@@ -323,7 +323,7 @@ export default function DoctorCopilotStudioPage() {
         </div>
 
         {/* Patient Selector — real patients only */}
-        <div className="flex items-center gap-2.5 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-[#475569] font-bold whitespace-nowrap">
             Active Patient:
           </span>
@@ -331,7 +331,7 @@ export default function DoctorCopilotStudioPage() {
             <select
               value={selectedPatientId}
               onChange={(e) => setSelectedPatientId(e.target.value)}
-              className="pl-3.5 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[#0891B2] font-bold focus:border-[#0891B2] focus:outline-none min-h-[38px] cursor-pointer"
+              className="pl-3 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[#0891B2] font-bold focus:border-[#0891B2] focus:outline-none min-h-[38px] cursor-pointer text-xs max-w-[200px] sm:max-w-none truncate"
             >
               {patients.map((p) => {
                 const age = getAge(p.date_of_birth);

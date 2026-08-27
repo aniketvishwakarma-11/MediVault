@@ -286,8 +286,8 @@ function DoctorProfileForm() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
         <div>
-          <h1 className="font-heading font-black text-2xl text-[#0F172A] tracking-tight flex items-center gap-2.5">
-            <UserCheck className="w-6 h-6 text-[#0891B2]" /> Physician Profile & Credentialing Studio
+          <h1 className="font-heading font-black text-xl sm:text-2xl text-[#0F172A] tracking-tight flex items-center gap-2.5">
+            <UserCheck className="w-6 h-6 text-[#0891B2] shrink-0" /> <span>Physician Profile & Credentialing Studio</span>
           </h1>
           <p className="text-xs text-[#475569] mt-1">
             Manage your official medical council license, hospital affiliations, consultation schedule, and credentials.
