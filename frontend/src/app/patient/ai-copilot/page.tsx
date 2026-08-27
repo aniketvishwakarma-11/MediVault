@@ -666,15 +666,13 @@ function CopilotContent() {
         setSuggestions(result.suggestedFollowUps);
       }
     } catch (err: any) {
-      // Fallback response if backend is offline/simulated
-      const fallbackAiMsg: ChatMessage = {
-        id: `ai-msg-${Date.now()}`,
+      // Show a safe, honest error — never inject fake medical responses
+      const errorMsg: ChatMessage = {
+        id: `ai-error-${Date.now()}`,
         role: "assistant",
-        content: docName
-          ? `### Document Analysis: ${docName}\n\nRegarding your query about **"${query}"**:\n\nBased on the clinical parameters extracted from **${docName}**, your markers show stable metrics. Continue following prescribed dosages and maintain regular clinical follow-ups.\n\n*Note: AI responses are generated from encrypted clinical records. Consult your physician for medical advice.*`
-          : `### Health Copilot Summary\n\nRegarding your question: **"${query}"**\n\nYour encrypted longitudinal health records indicate stable cardiovascular parameters and active asthma management (Albuterol 100 mcg as-needed). No critical contraindications or drug interactions were identified across your recent documents.`,
-        sources: docName ? [docName] : ["Medical Vault Summary"],
-        metadata: { provider: "MediVault Intelligence (Offline Mode)" },
+        content: `### ⚠️ Health Copilot Temporarily Unavailable\n\nThe AI analysis service could not be reached right now. This may be due to:\n- A temporary network issue\n- The backend service restarting\n\n**Please try again in a few moments.** If the issue persists, contact your care coordinator.\n\n*Do not make any medical decisions based on an unavailable service. Always consult your doctor directly.*`,
+        sources: [],
+        metadata: { provider: "MediVault Intelligence", error: true },
         created_at: new Date().toISOString(),
       };
 
@@ -687,7 +685,7 @@ function CopilotContent() {
         created_at: new Date().toISOString(),
       };
 
-      const updatedMsgs = [...messages.filter((m) => m.id !== tempUserMsg.id), finalUserMsg, fallbackAiMsg];
+      const updatedMsgs = [...messages.filter((m) => m.id !== tempUserMsg.id), finalUserMsg, errorMsg];
       setMessages(updatedMsgs);
 
       const updatedSession: ChatSession = {

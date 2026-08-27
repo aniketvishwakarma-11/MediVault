@@ -21,6 +21,10 @@ export const uploadDocumentSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Visit date must be in YYYY-MM-DD format.' })
     .optional()
     .or(z.literal('')),
+  is_handwritten: z
+    .union([z.boolean(), z.string().transform((v) => v === 'true' || v === '1')])
+    .optional(),
+  document_format: z.enum(['PRINTED', 'HANDWRITTEN']).optional(),
   custom_metadata: z.record(z.string(), z.any()).optional(),
 });
 
@@ -39,6 +43,10 @@ export const updateDocumentMetadataSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Visit date must be in YYYY-MM-DD format.' })
     .optional(),
+  is_handwritten: z
+    .union([z.boolean(), z.string().transform((v) => v === 'true' || v === '1')])
+    .optional(),
+  document_format: z.enum(['PRINTED', 'HANDWRITTEN']).optional(),
 });
 
 // Search & Filter Query Schema
@@ -47,6 +55,10 @@ export const searchDocumentsQuerySchema = z.object({
   document_category: z.string().optional(),
   hospital_name: z.string().optional(),
   doctor_name: z.string().optional(),
+  is_handwritten: z
+    .union([z.boolean(), z.string().transform((v) => v === 'true' || v === '1')])
+    .optional(),
+  document_format: z.string().optional(),
   visit_date_from: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

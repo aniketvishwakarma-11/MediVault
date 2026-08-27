@@ -109,3 +109,61 @@ export function cleanAndParseJson<T = any>(rawInput: string): T {
     }
   }
 }
+
+/**
+ * Generates an informative, human-readable clinical document title from AI analysis findings
+ * instead of displaying generic raw filenames (like hpkp0090.pdf).
+ */
+export function generateSmartDocumentTitle(
+  aiAnalysis?: any,
+  originalFilename?: string,
+  categoryHint?: string
+): string {
+  if (!aiAnalysis) {
+    if (originalFilename && !originalFilename.match(/^hpkp\d+\.pdf$/i) && !originalFilename.match(/^document\d*\.pdf$/i)) {
+      return originalFilename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+    }
+    return categoryHint || 'Medical Report';
+  }
+
+  // 1. If AI produced a specific high-quality suggested title, use it
+  const suggested = aiAnalysis.document?.suggested_title;
+  if (
+    suggested &&
+    typeof suggested === 'string' &&
+    suggested.trim().length > 3 &&
+    !suggested.toLowerCase().includes('placeholder') &&
+    !suggested.toLowerCase().includes('.pdf')
+  ) {
+    return suggested.trim();
+  }
+
+  // 2. Synthesize a smart clinical title from extracted clinical entities
+  const docType = aiAnalysis.document?.document_type || categoryHint || 'Clinical Report';
+  const doctor = aiAnalysis.doctor?.name;
+  const hospital = aiAnalysis.hospital?.name;
+  const primaryDiagnosis = Array.isArray(aiAnalysis.diagnosis) ? aiAnalysis.diagnosis[0] : null;
+  const visitDate = aiAnalysis.visit?.visit_date;
+
+  if (primaryDiagnosis && doctor) {
+    return `${docType} — ${primaryDiagnosis} (${doctor})`;
+  }
+  if (primaryDiagnosis && hospital) {
+    return `${docType} — ${primaryDiagnosis} (${hospital})`;
+  }
+  if (primaryDiagnosis) {
+    return `${docType} — ${primaryDiagnosis}`;
+  }
+  if (doctor) {
+    return `${docType} — ${doctor}`;
+  }
+  if (hospital) {
+    return `${docType} — ${hospital}`;
+  }
+  if (visitDate) {
+    return `${docType} (${visitDate})`;
+  }
+
+  return `${docType} — Medical Record`;
+}
+

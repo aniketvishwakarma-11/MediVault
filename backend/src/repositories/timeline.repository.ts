@@ -34,39 +34,42 @@ export class TimelineRepository {
     milestone_events: number;
   }> {
     try {
+      const patientMatch = `(patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))`;
+      const cePatientMatch = `(ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR ce.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))`;
+
       const res = await query(
         `SELECT
           (
             SELECT COUNT(*)::int
             FROM public.documents
-            WHERE (patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+            WHERE ${patientMatch}
               AND (is_archived IS FALSE OR is_archived IS NULL)
           ) as total_documents,
 
           (
             SELECT COUNT(*)::int
             FROM public.clinical_events
-            WHERE (patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+            WHERE ${patientMatch}
           ) as total_clinical_events,
 
           (
             SELECT COUNT(*)::int
             FROM public.clinical_events
-            WHERE (patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+            WHERE ${patientMatch}
               AND is_milestone = TRUE
           ) as milestone_events,
 
           (
             SELECT COUNT(*)::int
             FROM public.clinical_episodes
-            WHERE (patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+            WHERE ${patientMatch}
           ) as total_episodes,
 
           COALESCE((
             SELECT COUNT(DISTINCT diag)::int
             FROM public.clinical_events ce,
                  jsonb_array_elements_text(ce.structured_data->'diagnoses') as diag
-            WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+            WHERE ${cePatientMatch}
               AND ce.structured_data->'diagnoses' IS NOT NULL
               AND jsonb_typeof(ce.structured_data->'diagnoses') = 'array'
           ), 0) as active_conditions,
@@ -75,7 +78,7 @@ export class TimelineRepository {
             SELECT COUNT(DISTINCT lower(med_item->>'name'))::int
             FROM public.clinical_events ce,
                  jsonb_array_elements(ce.structured_data->'medications') as med_item
-            WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+            WHERE ${cePatientMatch}
               AND ce.structured_data->'medications' IS NOT NULL
               AND jsonb_typeof(ce.structured_data->'medications') = 'array'
           ), 0) as active_medications,
@@ -83,7 +86,7 @@ export class TimelineRepository {
           (
             SELECT MAX(event_date)::text
             FROM public.clinical_events
-            WHERE (patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+            WHERE ${patientMatch}
           ) as last_activity_date`,
         [patientId]
       );
@@ -124,7 +127,7 @@ export class TimelineRepository {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
     const params: any[] = [patientId];
-    const conditions: string[] = ['(ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))'];
+    const conditions: string[] = ['(ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR ce.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))'];
 
     if (filters.event_type) {
       params.push(filters.event_type);
@@ -149,7 +152,7 @@ export class TimelineRepository {
         `SELECT COUNT(*)::int as total
          FROM public.clinical_events ce
          LEFT JOIN public.ai_analyses a ON a.id = ce.analysis_id
-         WHERE ${where} AND (ce.analysis_id IS NULL OR a.is_active = TRUE)`,
+         WHERE ${where} AND (ce.analysis_id IS NULL OR a.id IS NULL OR a.is_active = TRUE)`,
         params
       );
       const total = countRes.rows[0]?.total || 0;
@@ -165,7 +168,7 @@ export class TimelineRepository {
          FROM public.clinical_events ce
          LEFT JOIN public.documents d ON d.id = ce.document_id
          LEFT JOIN public.ai_analyses a ON a.id = ce.analysis_id
-         WHERE ${where} AND (ce.analysis_id IS NULL OR a.is_active = TRUE)
+         WHERE ${where} AND (ce.analysis_id IS NULL OR a.id IS NULL OR a.is_active = TRUE)
          ORDER BY ce.event_date DESC, ce.created_at DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, limit, offset]
@@ -195,7 +198,7 @@ export class TimelineRepository {
            array_agg(DISTINCT ee.event_id) FILTER (WHERE ee.event_id IS NOT NULL) as event_ids
          FROM public.clinical_episodes ep
          LEFT JOIN public.clinical_episode_events ee ON ee.episode_id = ep.id
-         WHERE (ep.patient_id = $1 OR ep.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+         WHERE (ep.patient_id = $1 OR ep.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR ep.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))
          GROUP BY ep.id
          ORDER BY ep.start_date DESC`,
         [patientId]
@@ -220,7 +223,7 @@ export class TimelineRepository {
         `WITH ordered_events AS (
           SELECT event_date, LAG(event_date) OVER (ORDER BY event_date) as prev_date
           FROM public.clinical_events
-          WHERE (patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+          WHERE (patient_id = $1 OR patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))
         )
         SELECT
           prev_date::text as from_date,
@@ -257,7 +260,7 @@ export class TimelineRepository {
            ce.event_date::text
          FROM public.clinical_events ce,
               jsonb_array_elements(structured_data->'lab_results') as lab_item
-         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR ce.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))
            AND ce.event_type = 'LAB_TEST'
            AND lab_item->>'status' IN ('HIGH', 'LOW', 'CRITICAL')
          ORDER BY ce.event_date DESC

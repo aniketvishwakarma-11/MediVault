@@ -28,7 +28,9 @@ export interface AIProvider {
   processMedicalDocument(
     ocrText: string,
     originalFilename: string,
-    category?: string
+    category?: string,
+    fileBuffer?: Buffer,
+    mimeType?: string
   ): Promise<{ data: MedicalAIAnalysis; metrics: AIExecutionMetrics }>;
 
   /**

@@ -78,6 +78,9 @@ export interface DocumentViewerModalProps {
   hospitalName?: string;
   checksumSha256?: string;
   aiAnalysis?: any;
+  isHandwritten?: boolean;
+  documentFormat?: string;
+  ocrEngineUsed?: string;
   onDownload?: () => void;
   onAnalysisUpdated?: (newAnalysis: any) => void;
   isLoading?: boolean;
@@ -114,22 +117,49 @@ function formatBytes(bytes?: number): string {
 }
 
 function resolveReportTitle(aiData: any, documentCategory: string | undefined, documentName: string): string {
-  if (aiData?.document?.document_type && aiData.document.document_type !== "Other") {
-    const dt = aiData.document.document_type;
-    return dt.endsWith("Report") || dt.endsWith("Summary") || dt.endsWith("Panel") || dt.endsWith("Prescription") 
-      ? dt 
-      : `${dt} Medical Report`;
-  }
-  
-  if (documentCategory && documentCategory !== "Other" && documentCategory !== "General") {
-    return documentCategory.endsWith("Report") ? documentCategory : `${documentCategory} Report`;
+  // 1. AI generated descriptive suggested title
+  if (
+    aiData?.document?.suggested_title &&
+    typeof aiData.document.suggested_title === "string" &&
+    aiData.document.suggested_title.trim().length > 3 &&
+    !aiData.document.suggested_title.toLowerCase().includes("placeholder") &&
+    !aiData.document.suggested_title.toLowerCase().includes(".pdf")
+  ) {
+    return aiData.document.suggested_title.trim();
   }
 
-  if (documentName && !/^(image|img|doc|scan|file|document)[_-]?\d+/i.test(documentName)) {
+  // 2. User-provided meaningful document name (if not raw file pattern)
+  if (
+    documentName &&
+    !/^(image|img|doc|scan|file|document|hpkp)[_-]?\d+/i.test(documentName) &&
+    !documentName.endsWith('.pdf') &&
+    !documentName.endsWith('.png') &&
+    !documentName.endsWith('.jpg')
+  ) {
     return documentName.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
   }
 
-  return "Clinical Health Analysis";
+  // 3. Clinical entity combinations
+  const docType = aiData?.document?.document_type;
+  const doctor = aiData?.doctor?.name;
+  const hospital = aiData?.hospital?.name;
+  const primaryDiag = Array.isArray(aiData?.diagnosis) ? aiData?.diagnosis[0] : null;
+
+  if (primaryDiag && doctor) {
+    return `${docType || documentCategory || 'Medical Report'} — ${primaryDiag} (${doctor})`;
+  }
+  if (primaryDiag) {
+    return `${docType || documentCategory || 'Medical Report'} — ${primaryDiag}`;
+  }
+  if (docType && docType !== "Other") {
+    return doctor ? `${docType} — ${doctor}` : (hospital ? `${docType} — ${hospital}` : `${docType} Medical Report`);
+  }
+  
+  if (documentCategory && documentCategory !== "Other" && documentCategory !== "General") {
+    return documentCategory.endsWith("Report") || documentCategory.endsWith("Note") ? documentCategory : `${documentCategory} Record`;
+  }
+
+  return "Clinical Health Record";
 }
 
 function formatBulletPoints(text?: string | null, fallback: string[] = []): string[] {
@@ -228,7 +258,12 @@ export default function DocumentViewerModal({
   visitDate,
   doctorName,
   hospitalName,
+  checksumSha256,
   aiAnalysis,
+  isHandwritten,
+  documentFormat,
+  ocrEngineUsed,
+  onDownload,
   onAnalysisUpdated,
   isLoading = false,
   error = null,
@@ -456,6 +491,13 @@ export default function DocumentViewerModal({
                   <Activity className="w-3.5 h-3.5" />
                   <span>{overallStatus.replace(/_/g, " ")}</span>
                 </span>
+
+                {(isHandwritten || documentFormat === 'HANDWRITTEN') && (
+                  <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5 shrink-0">
+                    <Stethoscope className="w-3.5 h-3.5 text-amber-600" />
+                    <span>✍️ Doctor Script (TrOCR)</span>
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5 flex-wrap">

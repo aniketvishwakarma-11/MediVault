@@ -672,6 +672,97 @@ export async function runAutoMigrations(): Promise<void> {
       logger.warn('[Database Migration] Migration 011 notice:', m011Err.message || m011Err);
     }
 
+    // ── Migration 012 — Handwritten & Multi-Format Medical Documents ─────────
+    try {
+      await query(`
+        ALTER TABLE public.documents
+          ADD COLUMN IF NOT EXISTS is_handwritten BOOLEAN DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS document_format VARCHAR(20) DEFAULT 'PRINTED',
+          ADD COLUMN IF NOT EXISTS ocr_engine_used VARCHAR(100);
+      `);
+
+      await query(`CREATE INDEX IF NOT EXISTS idx_documents_handwritten ON public.documents(patient_id, is_handwritten);`);
+      await query(`CREATE INDEX IF NOT EXISTS idx_documents_format ON public.documents(patient_id, document_format);`);
+
+      logger.info('[Database Migration] Handwritten & Multi-Format Medical Documents schema (012) applied successfully.');
+    } catch (m012Err: any) {
+      logger.warn('[Database Migration] Migration 012 notice:', m012Err.message || m012Err);
+    }
+
+    // ── Migration 013 — Document Category Widening & Dynamic Categories ──────
+    try {
+      const extraCategories = [
+        'OPD Consultation Note',
+        'Emergency Triage Tag',
+        'Immunization Record',
+        'Vaccination',
+        'Surgery',
+        'General',
+        'Insurance'
+      ];
+      for (const cat of extraCategories) {
+        await query(`ALTER TYPE public.document_category ADD VALUE IF NOT EXISTS '${cat}';`).catch(() => {});
+      }
+      await query(`
+        ALTER TABLE public.documents 
+        ALTER COLUMN document_category TYPE VARCHAR(100) USING document_category::text;
+      `).catch(() => {});
+      logger.info('[Database Migration] Document Category widening (013) applied successfully.');
+    } catch (m013Err: any) {
+      logger.warn('[Database Migration] Migration 013 notice:', m013Err.message || m013Err);
+    }
+
+    // ── Migration 014 — Document Metadata Enrichment & Clinical Attributes ───
+    try {
+      await query(`
+        ALTER TABLE public.documents
+          ADD COLUMN IF NOT EXISTS doctor_name VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS hospital_name VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS visit_date DATE,
+          ADD COLUMN IF NOT EXISTS metadata_json JSONB;
+      `);
+      logger.info('[Database Migration] Document Metadata Enrichment (014) applied successfully.');
+    } catch (m014Err: any) {
+      logger.warn('[Database Migration] Migration 014 notice:', m014Err.message || m014Err);
+    }
+
+    // ── Migration 015 — Timeline Clinical Events Re-linking & UUID Normalization ───
+    try {
+      // 1. Re-link clinical events to the latest active AI analysis for their document
+      await query(`
+        UPDATE public.clinical_events ce
+        SET analysis_id = latest_a.id, updated_at = CURRENT_TIMESTAMP
+        FROM (
+          SELECT DISTINCT ON (document_id) id, document_id
+          FROM public.ai_analyses
+          WHERE is_active = TRUE
+          ORDER BY document_id, created_at DESC
+        ) latest_a
+        WHERE ce.document_id = latest_a.document_id
+          AND (ce.analysis_id IS NULL OR ce.analysis_id != latest_a.id);
+      `).catch(() => {});
+
+      // 2. Standardize patient_id on clinical_events to patient profile UUID
+      await query(`
+        UPDATE public.clinical_events ce
+        SET patient_id = p.id, updated_at = CURRENT_TIMESTAMP
+        FROM public.patients p
+        WHERE ce.patient_id = p.user_id;
+      `).catch(() => {});
+
+      // 3. Standardize patient_id on documents to patient profile UUID
+      await query(`
+        UPDATE public.documents d
+        SET patient_id = p.id, updated_at = CURRENT_TIMESTAMP
+        FROM public.patients p
+        WHERE d.patient_id = p.user_id;
+      `).catch(() => {});
+
+      logger.info('[Database Migration] Timeline Clinical Events Synchronization & Re-linking (015) applied successfully.');
+    } catch (m015Err: any) {
+      logger.warn('[Database Migration] Migration 015 notice:', m015Err.message || m015Err);
+    }
+
   } catch (error: any) {
     logger.warn('[Database Migration Notice] Auto-migration execution note:', error.message || error);
   }

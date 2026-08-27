@@ -54,6 +54,8 @@ router.post('/adherence/log', optionalAuth, PrescriptionController.logAdherence)
 
 // 7. Refill Requests
 router.post('/refill/request', optionalAuth, PrescriptionController.requestRefill);
+router.get('/refill/queue', optionalAuth, PrescriptionController.getRefillQueue);
+router.post('/refill/:id/approve', optionalAuth, PrescriptionController.approveRefill);
 
 // ══════════════════════════════════════════════════════════════════
 // 8. Patient Prescription Intelligence System — Offline Upload Flow

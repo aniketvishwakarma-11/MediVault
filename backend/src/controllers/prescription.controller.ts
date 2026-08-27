@@ -247,4 +247,40 @@ export class PrescriptionController {
       sendError(res, 500, 'Failed to delete prescription.');
     }
   }
+
+  /**
+   * GET /api/prescriptions/refill/queue
+   * Doctor fetches all pending refill requests assigned to them
+   */
+  public static async getRefillQueue(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = String((req as any).user?.id || req.query.doctor_id || 'doc-123');
+      const result = await PrescriptionService.getRefillQueue(doctorId);
+      sendSuccess(res, 200, { refillRequests: result, count: result.length });
+    } catch (err: any) {
+      logger.error('[PrescriptionController.getRefillQueue] Error:', err);
+      sendError(res, 500, 'Failed to fetch refill queue.');
+    }
+  }
+
+  /**
+   * POST /api/prescriptions/refill/:id/approve
+   * Doctor approves or rejects a refill request
+   */
+  public static async approveRefill(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = String((req as any).user?.id || 'doc-123');
+      const refillId = String(req.params.id);
+      const { action, notes } = req.body; // action: 'APPROVED' | 'REJECTED'
+      if (!action || !['APPROVED', 'REJECTED'].includes(action)) {
+        sendError(res, 400, 'action must be APPROVED or REJECTED.');
+        return;
+      }
+      const result = await PrescriptionService.resolveRefill(refillId, doctorId, action, notes);
+      sendSuccess(res, 200, result, `Refill request ${action.toLowerCase()} successfully.`);
+    } catch (err: any) {
+      logger.error('[PrescriptionController.approveRefill] Error:', err);
+      sendError(res, 500, 'Failed to process refill request.');
+    }
+  }
 }

@@ -7,152 +7,104 @@ import {
   AlertTriangle,
   FileClock,
   BellRing,
-  Search,
   ShieldAlert,
-  FilePlus,
-  Pill,
+  ShieldCheck,
   Bot,
   ArrowRight,
-  ShieldCheck,
-  Activity,
-  Calendar,
-  Clock,
   ChevronRight,
-  Sparkles,
-  CheckCircle2,
   Lock,
   TrendingUp,
-  FileText,
-  Heart,
-  ArrowUpRight,
-  Plus,
-  AlertCircle,
   RefreshCw,
-  Eye,
-  UserCheck
 } from "lucide-react";
-import { mockDoctorProfile, mockDoctorPatients } from "@/lib/doctorDemoData";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function DoctorDashboardPage() {
-  const { user, userProfile, isDemo } = useAuth();
-  const [patients, setPatients] = useState<any[]>(isDemo ? mockDoctorPatients : []);
-  const [loading, setLoading] = useState<boolean>(!isDemo);
+  const { user, userProfile } = useAuth();
+  const [patients, setPatients] = useState<any[]>([]);
+  const [stats, setStats] = useState<{
+    total_patients: number;
+    critical_cases: number;
+    pending_reports: number;
+    pending_consents: number;
+    critical_flags: any[];
+  }>({
+    total_patients: 0,
+    critical_cases: 0,
+    pending_reports: 0,
+    pending_consents: 0,
+    critical_flags: [],
+  });
+  const [doctorProfile, setDoctorProfile] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const doctorName = isDemo
-    ? mockDoctorProfile.fullName
-    : userProfile?.displayName || (user?.email ? `Dr. ${user.email.split("@")[0]}` : "Dr. Authenticated Doctor");
+  const doctorName =
+    doctorProfile?.fullName ||
+    userProfile?.displayName ||
+    (user?.email ? `Dr. ${user.email.split("@")[0]}` : "Dr. Physician");
 
-  const doctorLicense = isDemo
-    ? mockDoctorProfile.licenseNumber
-    : `DOC-${user?.id?.substring(0, 8).toUpperCase() || "REAL-894021"}`;
+  const doctorLicense =
+    doctorProfile?.licenseNumber ||
+    `DOC-${user?.id?.substring(0, 8).toUpperCase() || "VERIFIED"}`;
+
+  const fetchDashboardData = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      // 1. Fetch live dashboard statistics
+      const statsPromise = fetch(`${API_BASE_URL}/doctor/dashboard/stats`, { headers })
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null);
+
+      // 2. Fetch real patient directory
+      const patientsPromise = fetch(`${API_BASE_URL}/doctor/patients`, { headers })
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null);
+
+      // 3. Fetch doctor profile
+      const profilePromise = fetch(`${API_BASE_URL}/doctor/profile`, { headers })
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null);
+
+      const [statsRes, patientsRes, profileRes] = await Promise.all([
+        statsPromise,
+        patientsPromise,
+        profilePromise,
+      ]);
+
+      if (statsRes?.data) {
+        setStats(statsRes.data);
+      }
+
+      if (patientsRes?.data?.patients && Array.isArray(patientsRes.data.patients)) {
+        setPatients(patientsRes.data.patients);
+      }
+
+      if (profileRes?.data) {
+        setDoctorProfile(profileRes.data);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch real doctor dashboard data:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    if (isDemo) {
-      setPatients(mockDoctorPatients);
-      setLoading(false);
-      return;
-    }
+    fetchDashboardData();
+  }, [user]);
 
-    const fetchRealPatients = async () => {
-      setLoading(true);
-      try {
-        const { data: dbPatients, error: dbErr } = await supabase
-          .from("patients")
-          .select("*, users_profile!inner(full_name, email, phone, avatar_url)");
-
-        let rawList: any[] = [];
-
-        if (!dbErr && dbPatients && dbPatients.length > 0) {
-          rawList = dbPatients.map((p: any) => ({
-            id: p.id || p.user_id,
-            user_id: p.user_id,
-            full_name: p.users_profile?.full_name || p.users_profile?.email?.split("@")[0] || "Patient Record",
-            email: p.users_profile?.email || "",
-            phone: p.users_profile?.phone || "",
-            profile_image_url: p.users_profile?.avatar_url,
-            date_of_birth: p.date_of_birth,
-            gender: p.gender,
-            blood_group: p.blood_group,
-            allergies: Array.isArray(p.allergies_json) ? p.allergies_json.join(", ") : (p.allergies || ""),
-            chronic_conditions: Array.isArray(p.chronic_conditions_json) ? p.chronic_conditions_json.join(", ") : (p.chronic_conditions || ""),
-            emergency_contact: p.emergency_contact_name || p.emergency_contact || "",
-          }));
-        } else {
-          try {
-            const res = await fetch("http://localhost:5000/doctor/patients/search?q=");
-            if (res.ok) {
-              const json = await res.json();
-              if (json.data && Array.isArray(json.data)) {
-                rawList = json.data;
-              }
-            }
-          } catch (e) {
-            console.warn("Backend API offline fallback");
-          }
-        }
-
-        // Deduplicate patients by full_name
-        const uniqueMap = new Map();
-        for (const item of rawList) {
-          const nameKey = (item.full_name || item.email || item.id || "unknown").trim().toLowerCase();
-          if (!uniqueMap.has(nameKey)) {
-            uniqueMap.set(nameKey, item);
-          } else {
-            const existing = uniqueMap.get(nameKey);
-            const itemHasDetails = Boolean(item.blood_group && item.blood_group !== "Not provided" && item.blood_group !== "Not recorded");
-            const existingHasDetails = Boolean(existing.blood_group && existing.blood_group !== "Not provided" && existing.blood_group !== "Not recorded");
-            if (itemHasDetails && !existingHasDetails) {
-              uniqueMap.set(nameKey, item);
-            }
-          }
-        }
-
-        const uniqueList = Array.from(uniqueMap.values());
-
-        const mapped = uniqueList.map((p: any) => {
-          const birthYear = p.date_of_birth ? new Date(p.date_of_birth).getFullYear() : null;
-          const age = birthYear && !isNaN(birthYear) ? new Date().getFullYear() - birthYear : 30;
-
-          return {
-            id: p.id || p.user_id,
-            uhid: `MV-PAT-${(p.id || p.user_id).substring(0, 5).toUpperCase()}`,
-            fullName: p.full_name || p.email?.split("@")[0] || "Patient Record",
-            age,
-            gender: p.gender && p.gender !== "Not provided" ? p.gender : "Not recorded",
-            bloodGroup: p.blood_group && p.blood_group !== "Not provided" ? p.blood_group : "Not recorded",
-            phone: p.phone || "N/A",
-            email: p.email || "",
-            avatarUrl: p.profile_image_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-            riskBadge: "STABLE",
-            recentDiagnosis: "Active Clinical Consent Granted",
-            currentMedications: [],
-            lastVisit: new Date().toISOString().split("T")[0],
-            accessStatus: "APPROVED",
-            allergies: p.allergies ? [p.allergies] : ["None recorded"],
-            chronicConditions: p.chronic_conditions ? [p.chronic_conditions] : ["None reported"],
-            emergencyContact: p.emergency_contact || "N/A",
-            bmi: 22.0,
-            insuranceProvider: "Healthcare Provider",
-            primaryDoctor: doctorName,
-          };
-        });
-
-        setPatients(mapped);
-      } catch (err) {
-        console.warn("Failed to fetch real dashboard patients:", err);
-        setPatients([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRealPatients();
-  }, [isDemo, doctorName]);
-
-  const criticalCases = patients.filter((p) => p.riskBadge === "HIGH_RISK" || p.riskBadge === "CRITICAL");
-  const pendingRequests = patients.filter((p) => p.accessStatus === "PENDING");
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchDashboardData();
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 font-body">
@@ -168,22 +120,31 @@ export default function DoctorDashboardPage() {
             Good Day, {doctorName}
           </h1>
           <p className="text-cyan-100 text-xs sm:text-sm leading-relaxed">
-            Clinical EMR Portal synchronized with zero-knowledge encryption proofs and real-time patient consent records.
+            Clinical EMR Portal synchronized with live zero-knowledge encryption proofs and real-time patient health records.
           </p>
         </div>
 
         {/* Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-3 z-10 w-full md:w-auto">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all min-h-[44px] cursor-pointer"
+            title="Refresh Live Data"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            <span>{refreshing ? "Syncing..." : "Sync DB"}</span>
+          </button>
           <Link
             href="/doctor/copilot"
-            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#22C55E] hover:bg-[#16a34a] text-white font-bold text-xs shadow-md transition-all min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#22C55E] hover:bg-[#16a34a] text-white font-bold text-xs shadow-md transition-all min-h-[44px]"
           >
             <Bot className="w-4 h-4" />
             <span>Launch AI Copilot</span>
           </Link>
           <Link
             href="/doctor/emergency"
-            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold text-xs backdrop-blur-md transition-all min-h-[44px]"
           >
             <ShieldAlert className="w-4 h-4 text-[#22D3EE]" />
             <span>Emergency Access Scan</span>
@@ -196,157 +157,111 @@ export default function DoctorDashboardPage() {
         {/* Metric 1 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Patients Today</span>
+            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Registered Patients</span>
             <div className="p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
               <Users className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{patients.length}</span>
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">
+              {loading ? "..." : stats.total_patients || patients.length}
+            </span>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
-              <TrendingUp className="w-3 h-3 text-[#22C55E]" /> +2 New Today
+              <TrendingUp className="w-3 h-3 text-[#22C55E]" /> Live DB
             </span>
           </div>
-          <p className="text-[11px] text-[#475569]">Active EMR Consent Granted</p>
-        </div>        {/* Metric 2 */}
+          <p className="text-[11px] text-[#475569]">Verified Patients in Registry</p>
+        </div>
+
+        {/* Metric 2 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Critical Cases</span>
-            <div className="p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
+            <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0891B2]">{criticalCases.length}</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200">
-              Attention Needed
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-rose-600">
+              {loading ? "..." : stats.critical_cases}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+              Attention Required
             </span>
           </div>
-          <p className="text-[11px] text-[#475569]">Flagged by Diagnostic AI</p>
+          <p className="text-[11px] text-[#475569]">Flagged by AI Diagnostic Engine</p>
         </div>
 
         {/* Metric 3 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Pending Reports</span>
+            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Archived Documents</span>
             <div className="p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
               <FileClock className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">3</span>
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">
+              {loading ? "..." : stats.pending_reports}
+            </span>
             <span className="text-[11px] font-bold text-[#0891B2] bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200">
-              Unread Labs
+              Verified Records
             </span>
           </div>
-          <p className="text-[11px] text-[#475569]">Requires Physician Signature</p>
+          <p className="text-[11px] text-[#475569]">Medical Reports & Prescriptions</p>
         </div>
 
         {/* Metric 4 */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-3 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
-            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Pending Consents</span>
+            <span className="font-heading text-xs font-bold text-[#475569] uppercase tracking-wider">Active Consents</span>
             <div className="p-2.5 rounded-2xl bg-teal-50 text-[#0891B2] border border-teal-100">
               <BellRing className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">{pendingRequests.length}</span>
+            <span className="font-heading text-2xl sm:text-3xl font-extrabold text-[#0F172A]">
+              {loading ? "..." : stats.pending_consents}
+            </span>
             <span className="text-[11px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
               ZKP Verified
             </span>
           </div>
-          <p className="text-[11px] text-[#475569]">Access Requests Active</p>
-        </div>
-      </div>
-
-      {/* ================= QUICK CLINICAL ACTIONS ================= */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <div className="p-2 rounded-xl bg-cyan-50 text-[#0891B2]">
-            <Activity className="w-4 h-4" />
-          </div>
-          <h2 className="font-heading font-bold text-[#0F172A] text-sm uppercase tracking-wider">
-            Quick Clinical Workflows
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Link
-            href="/doctor/patients"
-            className="p-4 rounded-2xl bg-slate-50 hover:bg-cyan-50/80 border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
-          >
-            <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs group-hover:scale-110 transition-transform">
-              <Search className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-bold text-[#0F172A]">Search Patient</span>
-          </Link>
-
-          <Link
-            href="/doctor/emergency"
-            className="p-4 rounded-2xl bg-cyan-50 hover:bg-cyan-100/80 border border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
-          >
-            <div className="p-2.5 rounded-xl bg-[#0891B2] text-white shadow-xs group-hover:scale-110 transition-transform">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-bold text-[#0891B2]">Emergency Scan</span>
-          </Link>
-
-          <Link
-            href="/doctor/prescriptions"
-            className="p-4 rounded-2xl bg-slate-50 hover:bg-cyan-50/80 border border-slate-200/70 hover:border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
-          >
-            <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs group-hover:scale-110 transition-transform">
-              <Pill className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-bold text-[#0F172A]">Prescriptions</span>
-          </Link>
-
-          <Link
-            href="/doctor/copilot"
-            className="p-4 rounded-2xl bg-gradient-to-br from-cyan-50 to-teal-50 hover:from-cyan-100 hover:to-teal-100 border border-cyan-200 transition-all flex flex-col items-center justify-center text-center gap-2 group min-h-[90px]"
-          >
-            <div className="p-2.5 rounded-xl bg-[#0891B2] text-white shadow-xs group-hover:scale-110 transition-transform">
-              <Bot className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-bold text-[#0891B2] flex items-center gap-1">
-              AI Copilot <Sparkles className="w-3 h-3 text-[#22D3EE]" />
-            </span>
-          </Link>
+          <p className="text-[11px] text-[#475569]">Clinical Access Authorizations</p>
         </div>
       </div>
 
       {/* ================= MAIN DASHBOARD BODY (2 COLUMNS) ================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Left Column: Active Consented Patients List */}
-        <div className="lg:col-span-7 space-y-6">
+        {/* Left Column: Active Registered Patients List */}
+        <div className="lg:col-span-7">
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-[#0891B2]" />
-                <h3 className="font-heading font-bold text-[#0F172A] text-base">Active Consented Patients</h3>
+                <h3 className="font-heading font-bold text-[#0F172A] text-base">Active Registered Patients</h3>
               </div>
               <Link href="/doctor/patients" className="text-xs text-[#0891B2] font-bold hover:underline flex items-center gap-1">
-                <span>View Directory</span>
+                <span>View All ({patients.length})</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             {loading ? (
               <div className="p-12 text-center text-xs text-[#0891B2] font-bold animate-pulse">
-                Loading Consented Patient Directory...
+                Loading Patient Directory from Database...
               </div>
             ) : patients.length === 0 ? (
               <div className="p-10 text-center space-y-2">
                 <Users className="w-10 h-10 text-slate-300 mx-auto" />
-                <p className="text-xs text-slate-500 font-medium">No patient records accessed yet.</p>
+                <p className="text-xs text-slate-500 font-medium">No patient records in database yet.</p>
                 <Link href="/doctor/patients" className="inline-block mt-2 px-4 py-2 rounded-xl bg-[#0891B2] text-white text-xs font-bold">
                   Search Registry
                 </Link>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3 [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent]">
                 {patients.map((patient) => (
                   <div
                     key={patient.id}
@@ -363,9 +278,14 @@ export default function DoctorDashboardPage() {
                           <span className="text-[10px] font-mono font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
                             {patient.uhid}
                           </span>
+                          {patient.riskBadge === "CRITICAL" && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              CRITICAL
+                            </span>
+                          )}
                           {patient.riskBadge === "HIGH_RISK" && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-[#0891B2] border border-cyan-200">
-                              HIGH RISK
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              MONITOR
                             </span>
                           )}
                           {patient.riskBadge === "STABLE" && (
@@ -382,7 +302,7 @@ export default function DoctorDashboardPage() {
                         </div>
 
                         <p className="text-xs text-[#0F172A] font-medium pt-0.5">
-                          Diagnosis: <span className="text-[#475569]">{patient.recentDiagnosis}</span>
+                          Clinical Status: <span className="text-[#475569]">{patient.recentDiagnosis}</span>
                         </p>
                       </div>
                     </div>
@@ -396,7 +316,7 @@ export default function DoctorDashboardPage() {
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
                       <span className="text-[10px] text-[#065F46] font-semibold flex items-center gap-1 bg-[#ECFDF5] px-2 py-0.5 rounded border border-[#A7F3D0]">
-                        <Lock className="w-3 h-3 text-[#22C55E]" /> Consent Active
+                        <Lock className="w-3 h-3 text-[#22C55E]" /> Verified Access
                       </span>
                     </div>
                   </div>
@@ -406,69 +326,58 @@ export default function DoctorDashboardPage() {
           </div>
         </div>
 
-        {/* Right Column: AI Assistant + Lab Alerts + Consultations */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* AI Clinical Copilot Card */}
-          <div className="bg-gradient-to-br from-cyan-50 to-teal-50/70 p-6 rounded-3xl border border-cyan-200/80 shadow-xs space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-2.5 rounded-xl bg-[#0891B2] text-white shadow-xs">
-                    <Bot className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-heading font-bold text-[#0F172A] text-base">AI Clinical Copilot</h3>
-                </div>
-                <span className="text-[10px] font-bold text-[#065F46] bg-[#ECFDF5] px-2.5 py-0.5 rounded-full border border-[#A7F3D0]">
-                  Online
-                </span>
-              </div>
-              <p className="text-xs text-[#475569] leading-relaxed font-medium">
-                Analyze clinical lab trends, generate differential diagnoses, and cross-reference patient drug interactions powered by medical AI.
-              </p>
-            </div>
-
-            <Link
-              href="/doctor/copilot"
-              className="w-full py-3.5 rounded-2xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
-            >
-              <Sparkles className="w-4 h-4 text-[#22D3EE]" />
-              <span>Launch AI Diagnostic Brief</span>
-            </Link>
-          </div>
-
-          {/* Critical Lab & Clinical Alerts Tile */}
+        {/* Right Column: Live Critical Flags */}
+        <div className="lg:col-span-5">
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-heading font-bold text-[#0F172A] text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-[#0891B2]" /> Critical Clinical Flags
+                <AlertTriangle className="w-4 h-4 text-rose-500" /> Live Critical Clinical Flags
               </h3>
-              <span className="text-[10px] font-bold bg-cyan-50 text-[#0891B2] px-2.5 py-0.5 rounded-full border border-cyan-200">
-                1 HIGH PRIORITY
+              <span className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2.5 py-0.5 rounded-full border border-rose-200">
+                {stats.critical_flags.length} ACTIVE
               </span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-              <div className="flex justify-between items-center font-bold text-[#0F172A]">
-                <span>Alex Morgan (PAT-1001)</span>
-                <span className="text-[#0891B2] font-bold font-mono">Hb 10.2 g/dL</span>
+            {stats.critical_flags.length === 0 ? (
+              <div className="p-4 rounded-2xl bg-slate-50 text-slate-500 text-xs text-center">
+                All extracted laboratory and diagnosis parameters are within stable ranges.
               </div>
-              <p className="text-[11px] text-[#475569] leading-relaxed">
-                CBC lab registered low Hemoglobin. Mild iron deficiency anemia flagged by automated lab analyzer.
-              </p>
-              <div className="pt-1 flex items-center justify-between text-[10px]">
-                <span className="text-slate-400">Reported Today</span>
-                <Link href="/doctor/patients/pat-1001/reports" className="text-[#0891B2] font-bold hover:underline flex items-center gap-1">
-                  <span>View Lab Report</span>
-                  <ChevronRight className="w-3 h-3" />
-                </Link>
+            ) : (
+              <div className="max-h-[520px] overflow-y-auto pr-1 space-y-2.5 [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent]">
+                {stats.critical_flags.map((flag, idx) => (
+                  <div key={idx} className="p-3 rounded-2xl bg-slate-50/80 hover:bg-slate-100/90 border border-slate-200/80 space-y-1.5 text-xs transition-all shadow-2xs">
+                    <div className="flex justify-between items-center font-bold text-[#0F172A] gap-2">
+                      <span className="truncate">{flag.patient_name}</span>
+                      <span className={`font-bold font-mono text-[10px] px-2 py-0.5 rounded shrink-0 ${
+                        flag.severity === "CRITICAL" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800"
+                      }`}>
+                        {flag.title}
+                      </span>
+                    </div>
+                    {flag.summary && (
+                      <p className="text-[11px] text-[#475569] leading-relaxed line-clamp-2">
+                        {flag.summary}
+                      </p>
+                    )}
+                    <div className="pt-0.5 flex items-center justify-between text-[10px]">
+                      <span className="text-slate-400 font-mono">{flag.event_date}</span>
+                      {flag.patient_id && (
+                        <Link
+                          href={`/doctor/patients/${flag.patient_id}`}
+                          className="text-[#0891B2] font-bold hover:underline flex items-center gap-1"
+                        >
+                          <span>View Patient Timeline</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
-
         </div>
       </div>
-
     </div>
   );
 }

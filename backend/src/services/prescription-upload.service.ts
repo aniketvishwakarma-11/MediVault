@@ -6,6 +6,7 @@ import { PrescriptionOCRService } from "./prescription-ocr.service";
 import { PrescriptionNormalizerService, StructuredPrescriptionData } from "./prescription-normalizer.service";
 import { PrescriptionService } from "./prescription.service";
 import { ClinicalEventService } from "./clinical-event.service";
+import { ClinicalEpisodeService } from "./clinical-episode.service";
 import { DocumentRepository } from "../repositories/document.repository";
 import { PrescriptionExplainerService } from "./ai/prescription-explainer.service";
 
@@ -369,40 +370,55 @@ export class PrescriptionUploadService {
       ).catch(() => {});
     }
 
-    // 7. Create clinical timeline event
+    // 7. Save to public.ai_analyses and create clinical timeline events
     if (prescriptionId) {
       try {
+        const structuredAnalysis = {
+          document: {
+            document_type: "Prescription",
+            speciality: "General Medicine",
+            category: "Prescription",
+            summary: `External prescription uploaded by patient. ${medicines.length} medication(s) verified.`,
+            confidence: 0.9,
+          },
+          doctor: { name: verifiedData.doctor_name || "Offline Doctor" },
+          hospital: { name: verifiedData.clinic_hospital || "External Clinic" },
+          visit: { visit_date: verifiedData.prescription_date || new Date().toISOString().split("T")[0] },
+          diagnosis: verifiedData.diagnosis ? [verifiedData.diagnosis] : ["External Prescription"],
+          medications: medicines.map((m) => ({
+            name: m.drug_name,
+            dosage: m.strength,
+            frequency: m.schedule_code,
+            duration: `${m.duration_days} days`,
+            instructions: m.food_instructions,
+          })),
+          lab_results: [], vitals: {}, symptoms: [], medical_history: [], allergies: [],
+          procedures: [], surgeries: [], immunizations: [], risk_factors: [],
+          recommendations: [], overall_health_status: "STABLE",
+          plain_language_explanation: `Patient uploaded an external prescription with ${medicines.length} medication(s).`,
+          timeline_events: [],
+          confidence: 0.9,
+        };
+
+        const effectiveDocId = documentId || prescriptionId;
+        const savedAnalysis = await DocumentRepository.saveMedicalAnalysis(
+          effectiveDocId,
+          structuredAnalysis as any,
+          patientUuid
+        );
+        const analysisId = savedAnalysis?.id || prescriptionId;
+
         await ClinicalEventService.generateEventsFromAnalysis(
           patientUuid,
-          documentId || prescriptionId,
-          prescriptionId,
-          {
-            document: {
-              document_type: "Prescription",
-              speciality: "General Medicine",
-              category: "Prescription",
-              summary: `External prescription uploaded by patient. ${medicines.length} medication(s) verified.`,
-              confidence: 0.9,
-            },
-            doctor: { name: verifiedData.doctor_name || "Offline Doctor" },
-            hospital: { name: verifiedData.clinic_hospital || "External Clinic" },
-            visit: { visit_date: verifiedData.prescription_date || new Date().toISOString().split("T")[0] },
-            diagnosis: verifiedData.diagnosis ? [verifiedData.diagnosis] : ["External Prescription"],
-            medications: medicines.map((m) => ({
-              name: m.drug_name,
-              dosage: m.strength,
-              frequency: m.schedule_code,
-              duration: `${m.duration_days} days`,
-              instructions: m.food_instructions,
-            })),
-            lab_results: [], vitals: {}, symptoms: [], medical_history: [], allergies: [],
-            procedures: [], surgeries: [], immunizations: [], risk_factors: [],
-            recommendations: [], overall_health_status: "Unknown",
-            plain_language_explanation: `Patient uploaded an external prescription with ${medicines.length} medication(s).`,
-            timeline_events: [],
-            confidence: 0.9,
-          } as any
+          effectiveDocId,
+          analysisId,
+          structuredAnalysis as any
         );
+
+        // Group into clinical episodes
+        setImmediate(() => {
+          ClinicalEpisodeService.groupEventsIntoEpisodes(patientUuid).catch(() => {});
+        });
       } catch (evtErr: any) {
         logger.warn("[PrescriptionUploadService] Timeline event notice:", evtErr.message);
       }

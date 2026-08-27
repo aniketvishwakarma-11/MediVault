@@ -23,26 +23,6 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { ConsentAPI, getConsentStatusLabel } from "@/lib/consent-api";
 import type { PatientSearchResult, ConsentScope } from "@/types/consent";
-import { mockDoctorPatients, DoctorDemoPatient } from "@/lib/doctorDemoData";
-
-// ── Demo adapter: map DoctorDemoPatient → PatientSearchResult ───────────────
-function demoToSearchResult(p: DoctorDemoPatient): PatientSearchResult {
-  return {
-    id: p.id,
-    uhid: p.uhid,
-    fullName: p.fullName,
-    age: p.age,
-    gender: p.gender,
-    bloodGroup: p.bloodGroup,
-    consentStatus: p.accessStatus === "APPROVED"
-      ? "APPROVED"
-      : p.accessStatus === "PENDING"
-      ? "PENDING"
-      : p.accessStatus === "DENIED"
-      ? "DENIED"
-      : "NONE",
-  };
-}
 
 // ── Modal state type ─────────────────────────────────────────────────────────
 interface AccessModalState {
@@ -63,7 +43,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function DoctorPatientSearchPage() {
-  const { userProfile, isDemo } = useAuth();
+  const { userProfile } = useAuth();
 
   // ── Search state ──────────────────────────────────────────────────────────
   const [patients, setPatients] = useState<PatientSearchResult[]>([]);
@@ -86,28 +66,8 @@ export default function DoctorPatientSearchPage() {
     userProfile?.displayName ||
     (userProfile?.email ? `Dr. ${userProfile.email.split("@")[0]}` : "Doctor");
 
-  // ── Load patients ─────────────────────────────────────────────────────────
+  // ── Load patients from real database API ───────────────────────────────────
   const loadPatients = useCallback(async () => {
-    // ── Demo mode: uses mock data when explicitly in demo mode ──────────────
-    if (isDemo) {
-      const q = debouncedQuery.toLowerCase();
-      let list = mockDoctorPatients.map(demoToSearchResult);
-      if (q) {
-        list = list.filter(
-          (p) =>
-            p.fullName.toLowerCase().includes(q) ||
-            p.uhid.toLowerCase().includes(q) ||
-            p.bloodGroup.toLowerCase().includes(q) ||
-            p.gender.toLowerCase().includes(q)
-        );
-      }
-      if (bloodFilter !== "ALL") list = list.filter((p) => p.bloodGroup === bloodFilter);
-      if (genderFilter !== "ALL") list = list.filter((p) => p.gender === genderFilter);
-      setPatients(list);
-      setTotalPages(1);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     try {
@@ -128,7 +88,7 @@ export default function DoctorPatientSearchPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isDemo, debouncedQuery, bloodFilter, genderFilter, page]);
+  }, [debouncedQuery, bloodFilter, genderFilter, page]);
 
 
 
@@ -145,22 +105,6 @@ export default function DoctorPatientSearchPage() {
     if (!modal) return;
     setSubmitting(true);
     setRequestError(null);
-
-    if (isDemo) {
-      // Demo mode: local state update
-      setPatients((prev) =>
-        prev.map((p) =>
-          p.id === modal.patient.id ? { ...p, consentStatus: "PENDING" as const } : p
-        )
-      );
-      setRequestSent(true);
-      setTimeout(() => {
-        setRequestSent(false);
-        setModal(null);
-      }, 2000);
-      setSubmitting(false);
-      return;
-    }
 
     const { data, error: apiError } = await ConsentAPI.requestAccess(modal.patient.id, {
       purpose: modal.purpose.trim(),

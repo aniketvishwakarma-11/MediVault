@@ -53,7 +53,7 @@ export class MedicationHistoryService {
            med_item->>'start_date' as start_date
          FROM public.clinical_events ce,
               jsonb_array_elements(ce.structured_data->'medications') as med_item
-         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR ce.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))
            AND ce.event_type IN ('PRESCRIPTION', 'MEDICATION_CHANGE')
          ORDER BY ce.event_date ASC`,
         [patientId]

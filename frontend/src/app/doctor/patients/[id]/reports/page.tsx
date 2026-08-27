@@ -19,7 +19,6 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import { mockDoctorPatients, mockDoctorReports, DoctorDemoReport } from "@/lib/doctorDemoData";
 import { useAuth } from "@/context/AuthContext";
 import { ConsentAPI } from "@/lib/consent-api";
 import { supabase } from "@/lib/supabase";
@@ -29,8 +28,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function DoctorReportsComparePage() {
   const params = useParams();
-  const patientId = (params?.id as string) || "pat-1001";
-  const { user, isDemo } = useAuth();
+  const patientId = (params?.id as string) || "";
+  const { user } = useAuth();
 
   const [patient, setPatient] = useState<any>(null);
   const [reports, setReports] = useState<any[]>([]);
@@ -47,69 +46,55 @@ export default function DoctorReportsComparePage() {
   const loadData = useCallback(async () => {
     setLoading(true);
 
-    if (isDemo) {
-      const demoPatient = mockDoctorPatients.find((p) => p.id === patientId) || mockDoctorPatients[0];
-      setPatient(demoPatient);
-      setReports(mockDoctorReports);
-      setActiveReport(mockDoctorReports[0]);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const [consentRes, profileRes] = await Promise.all([
-        ConsentAPI.getConsentStatus(patientId),
-        ConsentAPI.getPatientProfile(patientId),
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const [patientRes, reportsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/doctor/patients/${patientId}`, { headers })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        fetch(`${API_BASE_URL}/doctor/patients/${patientId}/reports`, { headers })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
       ]);
 
-      if (profileRes.data) {
-        setPatient(profileRes.data);
+      if (patientRes?.data) {
+        setPatient(patientRes.data);
       }
 
-      if (consentRes.data?.hasAccess) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (reportsRes?.data?.reports) {
+        const docs = reportsRes.data.reports;
+        const formattedReports = docs.map((d: any) => {
+          const ai = d.aiAnalysis || {};
+          const labs = ai.lab_results || [];
+          const entities = labs.map((l: any) => ({
+            key: l.test_name,
+            value: `${l.value} ${l.unit || ""}`.trim(),
+            status: l.status || "NORMAL",
+          }));
+          const isAbnormal = labs.some((l: any) => l.status !== "NORMAL");
 
-        const docRes = await fetch(
-          `${API_BASE_URL}/documents/search?patient_id=${encodeURIComponent(patientId)}&limit=50`,
-          { headers }
-        );
+          return {
+            id: d.id,
+            title: d.documentName || "Medical Document",
+            category: (d.documentCategory || "GENERAL").toUpperCase(),
+            date: d.visitDate ? new Date(d.visitDate).toLocaleDateString() : "Recent",
+            hospital: d.hospitalName || ai.hospital?.name || "Verified Laboratory",
+            doctorName: d.doctorName || ai.doctor?.name || "Attending Physician",
+            aiSummary: d.summary || ai.document?.summary || "Clinical report processed and verified.",
+            isAbnormal,
+            entities: entities.length > 0 ? entities : [{ key: "Document Type", value: d.documentCategory || "Report", status: "NORMAL" }],
+            ocrText: ai.document?.summary || "Full clinical entities extracted and encrypted on MediVault.",
+            rawDoc: d,
+          };
+        });
 
-        if (docRes.ok) {
-          const docJson = await docRes.json();
-          const docs = docJson.data || [];
-          // Map to report structure
-          const formattedReports = docs.map((d: any) => {
-            const ai = d.ai_analysis || {};
-            const labs = ai.lab_results || [];
-            const entities = labs.map((l: any) => ({
-              key: l.test_name,
-              value: `${l.value} ${l.unit || ""}`.trim(),
-              status: l.status || "NORMAL",
-            }));
-            const isAbnormal = labs.some((l: any) => l.status !== "NORMAL");
-
-            return {
-              id: d.id,
-              title: d.document_name || "Medical Document",
-              category: (d.document_category || "GENERAL").toUpperCase(),
-              date: d.created_at ? new Date(d.created_at).toLocaleDateString() : "Recent",
-              hospital: ai.hospital?.name || "Verified Laboratory",
-              doctorName: ai.doctor?.name || "Attending Physician",
-              aiSummary: ai.document?.summary || ai.plain_language_explanation || "Clinical report processed and verified.",
-              isAbnormal,
-              entities: entities.length > 0 ? entities : [{ key: "Document Type", value: d.document_category || "Report", status: "NORMAL" }],
-              ocrText: ai.document?.summary || "Full clinical entities extracted and encrypted on MediVault.",
-              rawDoc: d,
-            };
-          });
-
-          setReports(formattedReports);
-          if (formattedReports.length > 0) {
-            setActiveReport(formattedReports[0]);
-          }
+        setReports(formattedReports);
+        if (formattedReports.length > 0) {
+          setActiveReport(formattedReports[0]);
         }
       }
     } catch (err) {
@@ -117,7 +102,7 @@ export default function DoctorReportsComparePage() {
     } finally {
       setLoading(false);
     }
-  }, [isDemo, patientId]);
+  }, [patientId]);
 
   useEffect(() => {
     loadData();

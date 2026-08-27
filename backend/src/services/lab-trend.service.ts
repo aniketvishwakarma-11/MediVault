@@ -94,7 +94,7 @@ export class LabTrendService {
            (lab_item->>'test_date') as test_date
          FROM public.clinical_events ce,
               jsonb_array_elements(ce.structured_data->'lab_results') as lab_item
-         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR ce.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))
            AND ce.event_type = 'LAB_TEST'
          ORDER BY ce.event_date ASC, ce.created_at ASC`,
         [patientId]

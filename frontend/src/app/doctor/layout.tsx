@@ -22,7 +22,6 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { mockDoctorProfile } from "@/lib/doctorDemoData";
 
 interface DoctorLayoutProps {
   children: ReactNode;
@@ -56,18 +55,16 @@ export default function DoctorLayout({ children }: DoctorLayoutProps) {
     }
   }, [isProfileCompleted, isDemo, pathname, router, user]);
 
-  const doctorName = isDemo
-    ? mockDoctorProfile.fullName
-    : userProfile?.displayName || (user?.email ? `Dr. ${user.email.split("@")[0]}` : "Dr. Authenticated Doctor");
+  const doctorName =
+    userProfile?.displayName || (user?.email ? `Dr. ${user.email.split("@")[0]}` : "Dr. Physician");
 
-  const doctorInitials = isDemo
-    ? "SJ"
-    : doctorName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase() || "MD";
+  const doctorInitials =
+    doctorName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase() || "MD";
 
   return (
     <div className="min-h-screen bg-[#F0FDFA] text-[#0F172A] relative font-body flex flex-col">

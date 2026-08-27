@@ -19,16 +19,17 @@ import {
   Stethoscope,
   Building2,
 } from "lucide-react";
-import { mockDoctorPatients, mockDoctorTimelineEvents } from "@/lib/doctorDemoData";
 import { useAuth } from "@/context/AuthContext";
 import { ConsentAPI } from "@/lib/consent-api";
 import { TimelineAPI } from "@/lib/timeline-api";
 import DocumentViewerModal from "@/app/components/DocumentViewerModal";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function DoctorPatientTimelinePage() {
   const params = useParams();
-  const patientId = (params?.id as string) || "pat-1001";
-  const { user, isDemo } = useAuth();
+  const patientId = (params?.id as string) || "";
+  const { user } = useAuth();
 
   const [patient, setPatient] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
@@ -44,54 +45,48 @@ export default function DoctorPatientTimelinePage() {
   const loadData = useCallback(async () => {
     setLoading(true);
 
-    if (isDemo) {
-      const demoPatient = mockDoctorPatients.find((p) => p.id === patientId) || mockDoctorPatients[0];
-      setPatient(demoPatient);
-      const demoEvents = mockDoctorTimelineEvents.filter((e) => e.patientId === demoPatient.id);
-      setEvents(demoEvents);
-      if (demoEvents.length > 0) setExpandedEventId(demoEvents[0].id);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const [consentRes, profileRes] = await Promise.all([
-        ConsentAPI.getConsentStatus(patientId),
-        ConsentAPI.getPatientProfile(patientId),
+      const { data: sessionData } = await (await import("@/lib/supabase")).supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const [patientRes, eventsData] = await Promise.all([
+        fetch(`${API_BASE_URL}/doctor/patients/${patientId}`, { headers })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        TimelineAPI.getEvents("ALL", 1, 50, patientId),
       ]);
 
-      if (profileRes.data) {
-        setPatient(profileRes.data);
+      if (patientRes?.data) {
+        setPatient(patientRes.data);
       }
 
-      if (consentRes.data?.hasAccess) {
-        const eventsData = await TimelineAPI.getEvents("ALL", 1, 50, patientId);
-        if (eventsData?.events) {
-          const formatted = eventsData.events.map((e) => ({
-            id: e.id,
-            patientId: patientId,
-            date: e.event_date ? new Date(e.event_date).toLocaleDateString() : "Recent",
-            type: e.event_type || "EVENT",
-            title: e.title,
-            summary: e.summary || "Clinical milestone documented.",
-            hospital: e.facility_name || "Medical Care Facility",
-            doctorName: e.doctor_name || "Attending Physician",
-            details: e.summary || "Extracted longitudinal clinical parameter recorded.",
-            severity: e.severity,
-            structuredData: e.structured_data,
-            documentId: e.document_id,
-            documentName: e.document_name,
-          }));
-          setEvents(formatted);
-          if (formatted.length > 0) setExpandedEventId(formatted[0].id);
-        }
+      if (eventsData?.events) {
+        const formatted = eventsData.events.map((e) => ({
+          id: e.id,
+          patientId: patientId,
+          date: e.event_date ? new Date(e.event_date).toLocaleDateString() : "Recent",
+          type: e.event_type || "EVENT",
+          title: e.title,
+          summary: e.summary || "Clinical milestone documented.",
+          hospital: e.facility_name || "Medical Care Facility",
+          doctorName: e.doctor_name || "Attending Physician",
+          details: e.summary || "Extracted longitudinal clinical parameter recorded.",
+          severity: e.severity,
+          structuredData: e.structured_data,
+          documentId: e.document_id,
+          documentName: e.document_name,
+        }));
+        setEvents(formatted);
+        if (formatted.length > 0) setExpandedEventId(formatted[0].id);
       }
     } catch (err) {
       console.warn("Failed to load doctor patient timeline:", err);
     } finally {
       setLoading(false);
     }
-  }, [isDemo, patientId]);
+  }, [patientId]);
 
   useEffect(() => {
     loadData();

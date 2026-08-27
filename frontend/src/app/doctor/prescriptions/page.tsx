@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ConsentAPI } from "@/lib/consent-api";
+import { useToast } from "@/context/ToastContext";
 
 interface CatalogDrug {
   id: string;
@@ -82,6 +83,7 @@ interface ConsentedPatient {
 
 export default function DoctorPrescriptionsPage() {
   const { user } = useAuth();
+  const { success: showSuccess, error: showError, warning: showWarning } = useToast();
   const [activeTab, setActiveTab] = useState<"builder" | "history" | "refills">("builder");
   const [patients, setPatients] = useState<ConsentedPatient[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
@@ -124,11 +126,14 @@ export default function DoctorPrescriptionsPage() {
 
   // Incoming Refills Queue State
   const [refillQueue, setRefillQueue] = useState<any[]>([]);
+  const [refillQueueLoading, setRefillQueueLoading] = useState(false);
+  const [refillActionLoading, setRefillActionLoading] = useState<string | null>(null);
 
   // Load only patients who have actively granted consent to this doctor
   useEffect(() => {
     fetchConsentedPatients();
     fetchDoctorHistory();
+    fetchRefillQueue();
   }, [user]);
 
   const fetchConsentedPatients = async () => {
@@ -305,12 +310,12 @@ export default function DoctorPrescriptionsPage() {
   const handleGeneratePrescription = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId) {
-      alert("Please select a patient who has granted consent.");
+      showWarning("Validation", "Please select a patient who has granted consent.");
       return;
     }
     const validMeds = medicines.filter((m) => m.drug_name.trim().length > 0);
     if (validMeds.length === 0) {
-      alert("Please enter at least one prescribed medication.");
+      showWarning("Validation", "Please enter at least one prescribed medication.");
       return;
     }
 
@@ -361,11 +366,11 @@ export default function DoctorPrescriptionsPage() {
         }
       } else {
         const errData = await res.json();
-        alert(errData.message || "Failed to create prescription.");
+        showError("Action Failed", errData.message || "Failed to create prescription.");
       }
     } catch (err: any) {
       console.error("Prescription creation error:", err);
-      alert("An unexpected error occurred while creating the prescription.");
+      showError("Action Failed", err.message || "Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -410,10 +415,46 @@ export default function DoctorPrescriptionsPage() {
     }
   };
 
-  const handleApproveRefill = (refillId: string) => {
-    setRefillQueue(
-      refillQueue.map((r) => (r.id === refillId ? { ...r, status: "APPROVED" } : r))
-    );
+  const fetchRefillQueue = async () => {
+    setRefillQueueLoading(true);
+    try {
+      const doctorId = user?.id || "doc-123";
+      const res = await fetch(`/api/prescriptions/refill/queue?doctor_id=${doctorId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data?.refillRequests)) {
+          setRefillQueue(data.data.refillRequests);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load refill queue:", err);
+    } finally {
+      setRefillQueueLoading(false);
+    }
+  };
+
+  const handleApproveRefill = async (refillId: string, action: "APPROVED" | "REJECTED") => {
+    setRefillActionLoading(refillId);
+    try {
+      const res = await fetch(`/api/prescriptions/refill/${refillId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.message || `Server error ${res.status}`);
+      }
+      // Update local queue to reflect resolved state
+      setRefillQueue((prev) =>
+        prev.map((r) => (r.id === refillId ? { ...r, status: action, resolved_at: new Date().toISOString() } : r))
+      );
+    } catch (err: any) {
+      console.error("Refill action error:", err);
+      showError("Action Failed", err.message || "Please try again.");
+    } finally {
+      setRefillActionLoading(null);
+    }
   };
 
   const filteredHistory = historyPrescriptions.filter((rx) => {
@@ -641,7 +682,12 @@ export default function DoctorPrescriptionsPage() {
             <span>Review patient medication renewal requests with verified adherence compliance.</span>
           </div>
 
-          {refillQueue.length === 0 ? (
+          {refillQueueLoading ? (
+            <div className="p-12 rounded-3xl bg-white border border-slate-200/80 text-center shadow-xs">
+              <div className="w-8 h-8 border-2 border-[#0891B2] border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-slate-500 mt-3">Loading refill requests from database…</p>
+            </div>
+          ) : refillQueue.length === 0 ? (
             <div className="p-12 rounded-3xl bg-white border border-slate-200/80 text-center space-y-3 shadow-xs">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                 <RotateCcw className="w-6 h-6" />
@@ -650,6 +696,9 @@ export default function DoctorPrescriptionsPage() {
               <p className="text-xs text-[#475569] max-w-md mx-auto">
                 When consented patients reach their last week of medication and request renewals from their patient portal, they will appear here for 1-click approval.
               </p>
+              <button onClick={fetchRefillQueue} className="mx-auto flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors cursor-pointer">
+                <RotateCcw className="w-3.5 h-3.5" /> Refresh Queue
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -657,32 +706,50 @@ export default function DoctorPrescriptionsPage() {
                 <div key={item.id} className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <div>
-                      <span className="font-heading font-bold text-sm text-[#0F172A]">{item.patient_name}</span>
-                      <span className="text-xs text-slate-400 block mt-0.5">Rx Ref: {item.prescription_id} • Requested {item.requested_at}</span>
+                      <span className="font-heading font-bold text-sm text-[#0F172A]">{item.patient_name || "Patient"}</span>
+                      <span className="text-xs text-slate-400 block mt-0.5">
+                        Rx: {item.prescription_id?.slice(0, 8)}… • Requested {new Date(item.created_at).toLocaleDateString()}
+                      </span>
+                      {item.diagnosis_text && <span className="text-xs text-slate-500 block">{item.diagnosis_text}</span>}
                     </div>
 
                     <div className="flex items-center gap-2">
                       <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
-                        Adherence: {item.adherence_rate}% 🔥
+                        Adherence: {item.adherence_rate ?? "—"}%
                       </span>
                       {item.status === "APPROVED" ? (
                         <span className="px-3 py-1 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1">
-                          <Check className="w-3.5 h-3.5" /> Refill Approved
+                          <Check className="w-3.5 h-3.5" /> Approved
+                        </span>
+                      ) : item.status === "REJECTED" ? (
+                        <span className="px-3 py-1 rounded-xl bg-rose-600 text-white text-xs font-bold flex items-center gap-1">
+                          <X className="w-3.5 h-3.5" /> Rejected
                         </span>
                       ) : (
-                        <button
-                          onClick={() => handleApproveRefill(item.id)}
-                          className="px-4 py-1.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white text-xs font-bold shadow-xs flex items-center gap-1.5"
-                        >
-                          <Check className="w-3.5 h-3.5" /> Approve Renewal
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleApproveRefill(item.id, "APPROVED")}
+                            disabled={refillActionLoading === item.id}
+                            className="px-4 py-1.5 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white text-xs font-bold shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                          >
+                            {refillActionLoading === item.id ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleApproveRefill(item.id, "REJECTED")}
+                            disabled={refillActionLoading === item.id}
+                            className="px-4 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
 
                   <div className="text-xs space-y-1">
-                    <div className="text-slate-700"><strong>Medications:</strong> {item.medicines?.join(", ")}</div>
                     {item.patient_notes && <div className="text-slate-500 italic">"{item.patient_notes}"</div>}
+                    {item.doctor_notes && <div className="text-slate-600"><strong>Your note:</strong> {item.doctor_notes}</div>}
                   </div>
                 </div>
               ))}

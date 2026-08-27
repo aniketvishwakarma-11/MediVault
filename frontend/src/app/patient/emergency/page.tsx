@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/context/ToastContext";
 import EmergencyCardPass from "@/app/components/EmergencyCardPass";
 import {
   emergencyApi,
@@ -197,6 +198,7 @@ function Stethoscope({ className }: { className?: string }) {
 
 export default function PatientEmergencyCenter() {
   const { user, userProfile } = useAuth();
+  const { success: showSuccess, error: showError, warning: showWarning } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("qr");
 
   // Real DB patient profile data state
@@ -362,7 +364,7 @@ export default function PatientEmergencyCenter() {
         saveQrUrlLocally(generated.id, url);
       }
     } catch (err: any) {
-      alert(`Failed to generate credential: ${err.message}`);
+      showError("Action Failed", err.message || "Please try again.");
     } finally {
       setCredAction(null);
     }
@@ -381,7 +383,7 @@ export default function PatientEmergencyCenter() {
         saveQrUrlLocally(generated.id, url);
       }
     } catch (err: any) {
-      alert(`Failed to regenerate credential: ${err.message}`);
+      showError("Action Failed", err.message || "Please try again.");
     } finally {
       setCredAction(null);
     }
@@ -398,7 +400,7 @@ export default function PatientEmergencyCenter() {
       setGeneratedQrUrl(null);
       await loadCredential();
     } catch (err: any) {
-      alert(`Failed to revoke: ${err.message}`);
+      showError("Action Failed", err.message || "Please try again.");
     } finally {
       setCredAction(null);
     }
@@ -464,7 +466,7 @@ export default function PatientEmergencyCenter() {
       setNewContact({ name: "", relationship: "", phone: "", enabled: true });
       setShowAddContact(false);
     } catch (err: any) {
-      alert(`Failed to save contact: ${err.message}`);
+      showError("Action Failed", err.message || "Please try again.");
     } finally {
       setProfileSaving(false);
     }

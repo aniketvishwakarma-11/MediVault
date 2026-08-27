@@ -2,21 +2,31 @@ import { AIProviderRegistry } from './providers/provider.registry';
 import { MedicalAIAnalysis } from '../../types/medical_ai';
 import { AIExecutionMetrics } from './providers/ai_provider.interface';
 import { DocumentRepository } from '../../repositories/document.repository';
+import { SystemSettingsCache } from '../system-settings-cache.service';
 import { logger } from '../../utils/logger';
 
 export class MedicalAIService {
   /**
    * Primary Document Processing Pipeline.
-   * Executes primary provider (Gemini 2.5 Flash) with Exponential Backoff Retries.
-   * On rate limits (429), timeouts, or provider failure, automatically fails over to NVIDIA NIM.
+   * Reads default_model, max_tokens, confidence_threshold, temperature
+   * from the admin settings DB (via SystemSettingsCache) so changes
+   * made on the Settings page take effect immediately without a restart.
+   * Falls back to env vars / defaults if DB is unavailable.
    */
   public static async processDocument(
     ocrText: string,
     originalFilename: string,
     category?: string,
-    documentId?: string
+    documentId?: string,
+    fileBuffer?: Buffer,
+    mimeType?: string
   ): Promise<{ data: MedicalAIAnalysis; metrics: AIExecutionMetrics }> {
-    const primaryName = (process.env.PRIMARY_MEDICAL_MODEL || 'gemini').toLowerCase();
+    // ── Read live settings from DB (cached in memory, invalidated on save) ──
+    const aiSettings = await SystemSettingsCache.getAI().catch(() => null);
+
+    const primaryName = aiSettings
+      ? SystemSettingsCache.resolveProviderName(aiSettings.default_model)
+      : (process.env.PRIMARY_MEDICAL_MODEL || 'gemini').toLowerCase();
     const fallbackName = (process.env.FALLBACK_MEDICAL_MODEL || 'nvidia').toLowerCase();
     const maxRetries = parseInt(process.env.AI_MAX_RETRIES || '3', 10);
 
@@ -37,7 +47,7 @@ export class MedicalAIService {
           logger.info(`[Medical AI Service] Executing primary medical provider "${primaryName}" for document "${originalFilename}"...`);
         }
 
-        const result = await primaryProvider.processMedicalDocument(ocrText, originalFilename, category);
+        const result = await primaryProvider.processMedicalDocument(ocrText, originalFilename, category, fileBuffer, mimeType);
         result.metrics.retries = retries;
         result.metrics.fallbackTriggered = false;
         result.data.analysis_timestamp = new Date().toISOString();
@@ -62,10 +72,10 @@ export class MedicalAIService {
     }
 
     // 2. Trigger Automatic Failover to NVIDIA NIM Provider
-    fallbackTriggered = true;
     try {
-      logger.info(`[Medical AI Service] Executing fallback provider "${fallbackName}" for document "${originalFilename}"...`);
-      const fallbackResult = await fallbackProvider.processMedicalDocument(ocrText, originalFilename, category);
+      fallbackTriggered = true;
+      logger.info(`[Medical AI Service] Executing failover medical provider "${fallbackName}" for document "${originalFilename}"...`);
+      const fallbackResult = await fallbackProvider.processMedicalDocument(ocrText, originalFilename, category, fileBuffer, mimeType);
       fallbackResult.metrics.retries = retries;
       fallbackResult.metrics.fallbackTriggered = true;
       fallbackResult.data.analysis_timestamp = new Date().toISOString();

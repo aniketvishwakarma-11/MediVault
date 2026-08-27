@@ -11,6 +11,7 @@ import consentRoutes from './routes/consent.routes';
 import copilotRoutes from './routes/copilot.routes';
 import doctorCopilotRoutes from './routes/doctor-copilot.routes';
 import prescriptionRoutes from './routes/prescription.routes';
+import adminRoutes from './routes/admin.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -38,6 +39,18 @@ app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'UP', service: 'MediVault Document Management API', timestamp: new Date().toISOString() });
 });
 
+// Public Maintenance Mode Status Endpoint
+app.get('/system/maintenance', async (req: Request, res: Response) => {
+  try {
+    const { AdminService } = await import('./services/admin.service');
+    const settings = await AdminService.getSystemSettings();
+    const maintenance = settings?.settings?.maintenance || { enabled: false, message: '' };
+    res.status(200).json({ success: true, maintenance });
+  } catch (e: any) {
+    res.status(200).json({ success: true, maintenance: { enabled: false, message: '' } });
+  }
+});
+
 // Mount Module Routes
 app.use('/documents', documentRoutes);
 app.use('/api/documents', documentRoutes);
@@ -56,6 +69,8 @@ app.use('/api/copilot', copilotRoutes);
 app.use('/api/doctor/copilot', doctorCopilotRoutes);
 app.use('/prescriptions', prescriptionRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/admin', adminRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {

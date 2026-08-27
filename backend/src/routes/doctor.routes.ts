@@ -9,9 +9,16 @@ router.use(authenticateJWT);
 
 // Doctor Profile
 router.get('/profile', DoctorController.getProfile);
+router.put('/profile', DoctorController.updateProfile);
 
-// Patient Search
+// Dashboard Live Statistics
+router.get('/dashboard/stats', DoctorController.getDashboardStats);
+
+// Patients Directory & Search
+router.get('/patients', DoctorController.getPatients);
 router.get('/patients/search', DoctorController.searchPatients);
+router.get('/patients/:id', DoctorController.getPatientById);
+router.get('/patients/:id/reports', DoctorController.getPatientReports);
 
 // Consent Request
 router.post('/patients/request-access', DoctorController.requestAccess);

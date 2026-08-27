@@ -1,6 +1,7 @@
 import { query, isConnectionError } from '../config/db';
 import { logger } from '../utils/logger';
 import { AIService } from './ai.service';
+import { MinioStorageService } from '../storage/minioStorage';
 import {
   DoctorProfile,
   DoctorConsultation,
@@ -51,6 +52,379 @@ export class DoctorService {
         return this.getDemoDoctorProfile(userId);
       }
       return this.getDemoDoctorProfile(userId);
+    }
+  }
+
+  /**
+   * Get Real Doctor Dashboard Live Statistics & Critical Clinical Flags
+   */
+  public static async getDashboardStats(doctorId: string) {
+    try {
+      const patientsCountRes = await query(`SELECT COUNT(*)::int as count FROM public.patients`);
+      const criticalCasesRes = await query(`
+        SELECT COUNT(DISTINCT patient_id)::int as count 
+        FROM public.clinical_events 
+        WHERE severity IN ('CRITICAL', 'MONITOR')
+      `);
+      const pendingReportsRes = await query(`
+        SELECT COUNT(*)::int as count 
+        FROM public.documents 
+        WHERE (is_archived IS FALSE OR is_archived IS NULL)
+      `);
+      const pendingConsentsRes = await query(`
+        SELECT COUNT(*)::int as count 
+        FROM public.consent_requests 
+        WHERE (requested_by = $1 OR requested_by IS NULL) AND status = 'PENDING'
+      `, [doctorId]);
+
+      // Fetch real critical clinical flags
+      const criticalFlagsRes = await query(`
+        SELECT 
+          ce.id as event_id,
+          ce.document_id,
+          ce.patient_id,
+          ce.title,
+          ce.summary,
+          ce.severity,
+          ce.event_type,
+          ce.event_date::text,
+          COALESCE(prof.full_name, 'Patient') as patient_name,
+          p.blood_group
+        FROM public.clinical_events ce
+        LEFT JOIN public.patients p ON (ce.patient_id = p.id OR ce.patient_id = p.user_id)
+        LEFT JOIN public.users_profile prof ON p.user_id = prof.id
+        WHERE ce.severity IN ('CRITICAL', 'MONITOR')
+        ORDER BY ce.event_date DESC, ce.created_at DESC
+        LIMIT 5
+      `);
+
+      return {
+        total_patients: Number(patientsCountRes.rows[0]?.count || 0),
+        critical_cases: Number(criticalCasesRes.rows[0]?.count || 0),
+        pending_reports: Number(pendingReportsRes.rows[0]?.count || 0),
+        pending_consents: Number(pendingConsentsRes.rows[0]?.count || 0),
+        critical_flags: criticalFlagsRes.rows,
+      };
+    } catch (err: any) {
+      logger.error('[DoctorService.getDashboardStats Error]:', err);
+      return {
+        total_patients: 0,
+        critical_cases: 0,
+        pending_reports: 0,
+        pending_consents: 0,
+        critical_flags: [],
+      };
+    }
+  }
+
+  /**
+   * Get Real Patients Directory with Diagnosis & Live Consent State
+   */
+  public static async getPatientsDirectory(doctorId: string, queryStr = '', filter?: { bloodGroup?: string; gender?: string }) {
+    try {
+      let sql = `
+        SELECT 
+          p.id,
+          p.user_id,
+          p.date_of_birth,
+          p.gender,
+          p.blood_group,
+          p.allergies_json,
+          p.chronic_conditions_json,
+          p.emergency_contact_name,
+          p.emergency_contact_phone,
+          p.vitals_json,
+          prof.full_name,
+          prof.email,
+          prof.phone,
+          prof.avatar_url,
+          (
+            SELECT ce.title 
+            FROM public.clinical_events ce 
+            WHERE (ce.patient_id = p.id OR ce.patient_id = p.user_id) 
+              AND ce.event_type = 'DIAGNOSIS' 
+            ORDER BY ce.event_date DESC, ce.created_at DESC 
+            LIMIT 1
+          ) as latest_diagnosis,
+          (
+            SELECT ce.severity 
+            FROM public.clinical_events ce 
+            WHERE (ce.patient_id = p.id OR ce.patient_id = p.user_id) 
+            ORDER BY CASE ce.severity WHEN 'CRITICAL' THEN 1 WHEN 'MONITOR' THEN 2 ELSE 3 END 
+            LIMIT 1
+          ) as highest_severity,
+          (
+            SELECT MAX(ce.event_date)::text 
+            FROM public.clinical_events ce 
+            WHERE (ce.patient_id = p.id OR ce.patient_id = p.user_id)
+          ) as last_visit,
+          (
+            SELECT COUNT(*)::int 
+            FROM public.documents d 
+            WHERE (d.patient_id = p.id OR d.patient_id = p.user_id)
+              AND (d.is_archived IS FALSE OR d.is_archived IS NULL)
+          ) as documents_count,
+          (
+            SELECT cr.status 
+            FROM public.consent_requests cr 
+            WHERE (cr.patient_id = p.id OR cr.patient_id = p.user_id)
+              AND cr.requested_by = $1 
+            ORDER BY cr.created_at DESC 
+            LIMIT 1
+          ) as consent_request_status,
+          (
+            SELECT ac.status 
+            FROM public.consent_grants ac 
+            WHERE (ac.patient_id = p.id OR ac.patient_id = p.user_id)
+              AND (ac.grantee_id = $1 OR ac.grantee_id IS NULL)
+            ORDER BY ac.created_at DESC 
+            LIMIT 1
+          ) as access_consent_status
+        FROM public.patients p
+        LEFT JOIN public.users_profile prof ON p.user_id = prof.id
+        WHERE 1=1
+      `;
+      const params: any[] = [doctorId];
+
+      if (queryStr && queryStr.trim()) {
+        params.push(`%${queryStr.trim()}%`);
+        sql += ` AND (prof.full_name ILIKE $${params.length} OR prof.email ILIKE $${params.length} OR prof.phone ILIKE $${params.length} OR p.blood_group ILIKE $${params.length} OR p.id::text ILIKE $${params.length})`;
+      }
+
+      if (filter?.bloodGroup && filter.bloodGroup !== 'ALL') {
+        params.push(filter.bloodGroup);
+        sql += ` AND p.blood_group = $${params.length}`;
+      }
+
+      if (filter?.gender && filter.gender !== 'ALL') {
+        params.push(filter.gender);
+        sql += ` AND p.gender = $${params.length}`;
+      }
+
+      sql += ` ORDER BY p.created_at DESC LIMIT 50`;
+      const res = await query(sql, params);
+
+      return res.rows.map((row: any) => {
+        const birthYear = row.date_of_birth ? new Date(row.date_of_birth).getFullYear() : null;
+        const age = birthYear && !isNaN(birthYear) ? new Date().getFullYear() - birthYear : 28;
+        const uhid = `MV-PAT-${(row.id || row.user_id).substring(0, 8).toUpperCase()}`;
+        
+        let accessStatus = 'APPROVED';
+        if (row.access_consent_status) {
+          accessStatus = row.access_consent_status.toUpperCase();
+        } else if (row.consent_request_status) {
+          accessStatus = row.consent_request_status.toUpperCase();
+        }
+
+        const allergies = Array.isArray(row.allergies_json) ? row.allergies_json : (row.allergies_json ? [row.allergies_json] : []);
+        const conditions = Array.isArray(row.chronic_conditions_json) ? row.chronic_conditions_json : (row.chronic_conditions_json ? [row.chronic_conditions_json] : []);
+
+        return {
+          id: row.id,
+          user_id: row.user_id,
+          uhid,
+          fullName: row.full_name || row.email?.split('@')[0] || 'Registered Patient',
+          age,
+          gender: row.gender || 'Not recorded',
+          bloodGroup: row.blood_group || 'Not recorded',
+          phone: row.phone || 'N/A',
+          email: row.email || '',
+          avatarUrl: row.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(row.full_name || 'Patient')}`,
+          riskBadge: row.highest_severity === 'CRITICAL' ? 'CRITICAL' : row.highest_severity === 'MONITOR' ? 'HIGH_RISK' : 'STABLE',
+          recentDiagnosis: row.latest_diagnosis || (row.documents_count > 0 ? `${row.documents_count} Verified Medical Records` : 'Active Clinical Record'),
+          currentMedications: [],
+          lastVisit: row.last_visit ? new Date(row.last_visit).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
+          accessStatus,
+          allergies: allergies.length > 0 ? allergies : ['None recorded'],
+          chronicConditions: conditions.length > 0 ? conditions : ['None reported'],
+          emergencyContact: row.emergency_contact_name || row.emergency_contact_phone || 'N/A',
+          documentsCount: Number(row.documents_count || 0),
+          vitals: row.vitals_json || {},
+        };
+      });
+    } catch (err: any) {
+      logger.error('[DoctorService.getPatientsDirectory Error]:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Get Patient Details By ID
+   */
+  public static async getPatientDetails(patientId: string, doctorId: string) {
+    const list = await this.getPatientsDirectory(doctorId, patientId);
+    if (list.length > 0) return list[0];
+
+    const res = await query(
+      `SELECT p.*, prof.full_name, prof.email, prof.phone, prof.avatar_url
+       FROM public.patients p
+       LEFT JOIN public.users_profile prof ON p.user_id = prof.id
+       WHERE p.id::text = $1 OR p.user_id::text = $1`,
+      [patientId]
+    );
+    if (res.rows.length === 0) return null;
+    const row = res.rows[0];
+    const birthYear = row.date_of_birth ? new Date(row.date_of_birth).getFullYear() : null;
+    const age = birthYear && !isNaN(birthYear) ? new Date().getFullYear() - birthYear : 28;
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      uhid: `MV-PAT-${row.id.substring(0, 8).toUpperCase()}`,
+      fullName: row.full_name || row.email?.split('@')[0] || 'Registered Patient',
+      age,
+      gender: row.gender || 'Not recorded',
+      bloodGroup: row.blood_group || 'Not recorded',
+      phone: row.phone || 'N/A',
+      email: row.email || '',
+      avatarUrl: row.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(row.full_name || 'Patient')}`,
+      riskBadge: 'STABLE',
+      recentDiagnosis: 'Active Clinical Record',
+      currentMedications: [],
+      lastVisit: 'Recent',
+      accessStatus: 'APPROVED',
+      allergies: Array.isArray(row.allergies_json) ? row.allergies_json : ['None recorded'],
+      chronicConditions: Array.isArray(row.chronic_conditions_json) ? row.chronic_conditions_json : ['None reported'],
+      emergencyContact: row.emergency_contact_name || row.emergency_contact_phone || 'N/A',
+      vitals: row.vitals_json || {},
+    };
+  }
+
+  /**
+   * Get Patient Real Medical Documents
+   */
+  public static async getPatientDocuments(patientId: string) {
+    try {
+      const res = await query(
+        `SELECT 
+           d.id,
+           d.patient_id,
+           d.uploader_id,
+           d.document_name,
+           d.document_category,
+           d.storage_path,
+           d.file_extension,
+           d.mime_type,
+           d.file_size_bytes,
+           d.doctor_name,
+           d.hospital_name,
+           d.visit_date::text,
+           d.metadata_json,
+           d.created_at,
+           a.id as analysis_id,
+           a.model_name,
+           a.raw_response_json,
+           a.clinical_summary,
+           a.created_at as analysis_created_at
+         FROM public.documents d
+         LEFT JOIN public.ai_analyses a ON a.document_id = d.id AND a.is_active = TRUE
+         WHERE (d.patient_id = $1 OR d.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1) OR d.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+           AND (d.is_archived IS FALSE OR d.is_archived IS NULL)
+         ORDER BY d.created_at DESC`,
+        [patientId]
+      );
+
+      const docs = await Promise.all(
+        res.rows.map(async (row: any) => {
+          let signedDownloadUrl = null;
+          if (row.storage_path) {
+            try {
+              signedDownloadUrl = await MinioStorageService.generatePreSignedUrl(
+                row.storage_path,
+                3600,
+                row.document_name
+              );
+            } catch (err: any) {
+              logger.warn(`[DoctorService] Signed URL warning for ${row.id}:`, err.message);
+            }
+          }
+
+          let aiData = row.raw_response_json || row.metadata_json?.ai_analysis || null;
+          if (typeof aiData === 'string') {
+            try {
+              aiData = JSON.parse(aiData);
+            } catch (e) {}
+          }
+
+          return {
+            id: row.id,
+            patientId: row.patient_id,
+            documentName: row.document_name,
+            documentCategory: row.document_category,
+            fileExtension: row.file_extension,
+            mimeType: row.mime_type || 'application/pdf',
+            fileSizeBytes: row.file_size_bytes,
+            doctorName: row.doctor_name || aiData?.doctor?.name || null,
+            hospitalName: row.hospital_name || aiData?.hospital?.name || null,
+            visitDate: row.visit_date || aiData?.visit?.visit_date || row.created_at,
+            createdAt: row.created_at,
+            signedDownloadUrl,
+            aiAnalysis: aiData,
+            summary: aiData?.document?.summary || row.metadata_json?.ocr_raw_text?.substring(0, 200) || 'Medical document archived on MediVault.',
+            healthStatus: aiData?.overall_health_status || 'STABLE',
+            diagnoses: Array.isArray(aiData?.diagnosis) ? aiData.diagnosis : [],
+            medicationsCount: Array.isArray(aiData?.medications) ? aiData.medications.length : 0,
+            abnormalLabsCount: Array.isArray(aiData?.lab_results) ? aiData.lab_results.filter((l: any) => l.status === 'HIGH' || l.status === 'LOW' || l.status === 'CRITICAL').length : 0,
+          };
+        })
+      );
+
+      return docs;
+    } catch (err: any) {
+      logger.error(`[DoctorService.getPatientDocuments Error for ${patientId}]:`, err);
+      return [];
+    }
+  }
+
+  /**
+   * Update Doctor Profile
+   */
+  public static async updateDoctorProfile(userId: string, data: any) {
+    try {
+      if (data.fullName || data.phone || data.avatarUrl) {
+        await query(
+          `UPDATE public.users_profile 
+           SET 
+             full_name = COALESCE($1, full_name),
+             phone = COALESCE($2, phone),
+             avatar_url = COALESCE($3, avatar_url),
+             updated_at = CURRENT_TIMESTAMP
+           WHERE id = $4`,
+          [data.fullName || null, data.phone || null, data.avatarUrl || null, userId]
+        );
+      }
+
+      await query(
+        `INSERT INTO public.doctors (
+           user_id, license_number, specialization, hospital_affiliation,
+           registration_council, experience_years, clinic_name, address, languages_spoken, verification_status
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'VERIFIED')
+         ON CONFLICT (user_id) DO UPDATE SET
+           license_number = COALESCE($2, public.doctors.license_number),
+           specialization = COALESCE($3, public.doctors.specialization),
+           hospital_affiliation = COALESCE($4, public.doctors.hospital_affiliation),
+           registration_council = COALESCE($5, public.doctors.registration_council),
+           experience_years = COALESCE($6, public.doctors.experience_years),
+           clinic_name = COALESCE($7, public.doctors.clinic_name),
+           address = COALESCE($8, public.doctors.address),
+           languages_spoken = COALESCE($9, public.doctors.languages_spoken),
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          userId,
+          data.licenseNumber || `DOC-${userId.substring(0, 8).toUpperCase()}`,
+          data.specialization || 'General Physician',
+          data.hospitalAffiliation || 'MediVault EMR',
+          data.registrationCouncil || 'Medical Council of India',
+          data.experienceYears ? parseInt(String(data.experienceYears), 10) : 5,
+          data.clinicName || 'MediVault Clinic',
+          data.address || 'Medical Center',
+          Array.isArray(data.languages) ? data.languages : (typeof data.languages === 'string' ? data.languages.split(',').map((s: string) => s.trim()) : ['English', 'Hindi']),
+        ]
+      );
+
+      return await this.getDoctorProfileByUserId(userId);
+    } catch (err: any) {
+      logger.error('[DoctorService.updateDoctorProfile Error]:', err);
+      throw err;
     }
   }
 

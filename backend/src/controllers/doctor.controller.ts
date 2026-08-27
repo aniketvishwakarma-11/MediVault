@@ -28,15 +28,113 @@ export class DoctorController {
   }
 
   /**
-   * Search Patients
+   * Update Doctor Profile
    */
-  public static async searchPatients(req: Request, res: Response): Promise<void> {
+  public static async updateProfile(req: Request, res: Response): Promise<void> {
     try {
+      const userId = req.user?.id;
+      if (!userId) {
+        sendError(res, 401, 'Authentication required.');
+        return;
+      }
+
+      const updated = await DoctorService.updateDoctorProfile(userId, req.body);
+      sendSuccess(res, 200, updated, 'Doctor profile updated successfully');
+    } catch (err: any) {
+      logger.error('[DoctorController.updateProfile Error]:', err);
+      sendError(res, 500, err.message || 'Failed to update doctor profile');
+    }
+  }
+
+  /**
+   * Get Doctor Dashboard Live Real Statistics & Critical Clinical Flags
+   */
+  public static async getDashboardStats(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = req.user?.id || '';
+      const stats = await DoctorService.getDashboardStats(doctorId);
+      sendSuccess(res, 200, stats, 'Doctor dashboard statistics retrieved.');
+    } catch (err: any) {
+      logger.error('[DoctorController.getDashboardStats Error]:', err);
+      sendError(res, 500, err.message || 'Failed to fetch dashboard statistics');
+    }
+  }
+
+  /**
+   * Get Real Patients Directory
+   */
+  public static async getPatients(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = req.user?.id || '';
       const q = (req.query.q as string) || '';
       const bloodGroup = (req.query.bloodGroup as string) || undefined;
       const gender = (req.query.gender as string) || undefined;
 
-      const patients = await DoctorService.searchPatients(q, { bloodGroup, gender });
+      const patients = await DoctorService.getPatientsDirectory(doctorId, q, { bloodGroup, gender });
+      sendSuccess(res, 200, { patients, total: patients.length }, 'Patients directory retrieved successfully');
+    } catch (err: any) {
+      logger.error('[DoctorController.getPatients Error]:', err);
+      sendError(res, 500, err.message || 'Failed to fetch patients directory');
+    }
+  }
+
+  /**
+   * Get Single Patient Real Clinical Details
+   */
+  public static async getPatientById(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = req.user?.id || '';
+      const patientId = req.params.id as string;
+
+      if (!patientId) {
+        sendError(res, 400, 'Patient ID parameter is required.');
+        return;
+      }
+
+      const patient = await DoctorService.getPatientDetails(patientId, doctorId);
+      if (!patient) {
+        sendError(res, 404, 'Patient record not found.');
+        return;
+      }
+
+      sendSuccess(res, 200, patient, 'Patient details retrieved successfully');
+    } catch (err: any) {
+      logger.error('[DoctorController.getPatientById Error]:', err);
+      sendError(res, 500, err.message || 'Failed to fetch patient details');
+    }
+  }
+
+  /**
+   * Get Patient Real Medical Documents / Reports
+   */
+  public static async getPatientReports(req: Request, res: Response): Promise<void> {
+    try {
+      const patientId = req.params.id as string;
+
+      if (!patientId) {
+        sendError(res, 400, 'Patient ID parameter is required.');
+        return;
+      }
+
+      const reports = await DoctorService.getPatientDocuments(patientId);
+      sendSuccess(res, 200, { reports, total: reports.length }, 'Patient reports retrieved successfully');
+    } catch (err: any) {
+      logger.error('[DoctorController.getPatientReports Error]:', err);
+      sendError(res, 500, err.message || 'Failed to fetch patient reports');
+    }
+  }
+
+  /**
+   * Search Patients (Legacy Search Route)
+   */
+  public static async searchPatients(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = req.user?.id || '';
+      const q = (req.query.q as string) || '';
+      const bloodGroup = (req.query.bloodGroup as string) || undefined;
+      const gender = (req.query.gender as string) || undefined;
+
+      const patients = await DoctorService.getPatientsDirectory(doctorId, q, { bloodGroup, gender });
       sendSuccess(res, 200, patients, 'Patients retrieved successfully');
     } catch (err: any) {
       logger.error('[DoctorController.searchPatients Error]:', err);

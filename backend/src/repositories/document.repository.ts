@@ -2,6 +2,7 @@ import { query } from '../config/db';
 import { DocumentRecord, DocumentSearchFilters } from '../types/document';
 import { logger } from '../utils/logger';
 import { MinioStorageService } from '../storage/minioStorage';
+import { v4 as uuidv4 } from 'uuid';
 
 // In-Memory Fallback Documents Store for local dev resilience
 const inMemoryDocuments: DocumentRecord[] = [];
@@ -33,31 +34,52 @@ export class DocumentRepository {
            VALUES ($1, $2, $3, 'patient')
            ON CONFLICT (id) DO NOTHING;`,
           [targetUploaderId, `user_${targetUploaderId.slice(0, 8)}@medivault.local`, 'MediVault Patient']
-        );
+        ).catch(() => {});
         const pIns = await query(
           `INSERT INTO public.patients (id, user_id)
            VALUES ($1, $2)
            ON CONFLICT (user_id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
            RETURNING id;`,
           [rawPatientId, targetUploaderId]
-        );
+        ).catch(() => ({ rows: [] }));
         if (pIns.rows.length > 0) {
           targetPatientId = pIns.rows[0].id;
+        } else {
+          const fallbackP = await query(`SELECT id FROM public.patients LIMIT 1;`);
+          if (fallbackP.rows.length > 0) {
+            targetPatientId = fallbackP.rows[0].id;
+          }
         }
       }
     } catch (prepErr) {
       logger.warn('[DocumentRepository V2] FK prep warning:', prepErr);
     }
 
+    // Verify if uploader exists in auth.users (foreign key check)
+    let validUploaderId: string | null = null;
+    try {
+      if (targetUploaderId) {
+        const uCheck = await query(`SELECT id FROM auth.users WHERE id = $1 LIMIT 1;`, [targetUploaderId]);
+        if (uCheck.rows.length > 0) {
+          validUploaderId = uCheck.rows[0].id;
+        }
+      }
+    } catch (uErr) {
+      validUploaderId = null;
+    }
+
     const docCategory = (doc.document_category as any) || 'Blood Report';
     const storagePath = doc.storage_path || doc.storage_key || `patients/P-${targetPatientId.slice(0, 8)}/documents/${docCategory}/doc-${Date.now()}/original.pdf`;
     const fileSizeNum = doc.file_size_bytes || doc.file_size || 0;
+    const isHandwritten = doc.is_handwritten === true || doc.document_format === 'HANDWRITTEN';
+    const docFormat = doc.document_format || (isHandwritten ? 'HANDWRITTEN' : 'PRINTED');
+    const ocrEngine = doc.ocr_engine_used || (isHandwritten ? 'chinmays18/medical-prescription-ocr' : 'Tesseract.js');
 
     const newDocRecord: DocumentRecord = {
       id: doc.id || 'doc-' + Date.now(),
       patient_id: targetPatientId,
-      uploaded_by: targetUploaderId,
-      uploader_id: targetUploaderId,
+      uploaded_by: validUploaderId || targetPatientId,
+      uploader_id: validUploaderId || undefined,
       document_name: doc.document_name || 'Untitled Document',
       original_filename: doc.original_filename || 'document.pdf',
       storage_key: storagePath,
@@ -75,6 +97,9 @@ export class DocumentRepository {
       upload_status: doc.upload_status || 'COMPLETED',
       is_deleted: false,
       is_archived: false,
+      is_handwritten: isHandwritten,
+      document_format: docFormat,
+      ocr_engine_used: ocrEngine,
       created_at: now,
       updated_at: now,
       blockchain_hash: doc.blockchain_hash || null,
@@ -89,10 +114,12 @@ export class DocumentRepository {
         INSERT INTO public.documents (
           id, patient_id, uploader_id, document_name, document_category, file_extension,
           mime_type, file_size_bytes, checksum_sha256, storage_path, is_archived,
+          is_handwritten, document_format, ocr_engine_used,
           created_at, updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5::document_category, $6,
+          $1, $2, $3, $4, $5, $6,
           $7, $8, $9, $10, FALSE,
+          $11, $12, $13,
           CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
         RETURNING *;
@@ -101,7 +128,7 @@ export class DocumentRepository {
       const values = [
         newDocRecord.id,
         newDocRecord.patient_id,
-        newDocRecord.uploader_id,
+        validUploaderId,
         newDocRecord.document_name,
         newDocRecord.document_category,
         newDocRecord.file_extension,
@@ -109,6 +136,9 @@ export class DocumentRepository {
         newDocRecord.file_size_bytes,
         newDocRecord.checksum_sha256,
         newDocRecord.storage_path,
+        newDocRecord.is_handwritten,
+        newDocRecord.document_format,
+        newDocRecord.ocr_engine_used,
       ];
 
       const result = await query(sql, values);
@@ -120,6 +150,9 @@ export class DocumentRepository {
         uploaded_by: row.uploader_id || newDocRecord.uploaded_by,
         storage_key: row.storage_path || newDocRecord.storage_key,
         file_size: parseInt(row.file_size_bytes || newDocRecord.file_size_bytes, 10),
+        is_handwritten: row.is_handwritten ?? newDocRecord.is_handwritten,
+        document_format: row.document_format || newDocRecord.document_format,
+        ocr_engine_used: row.ocr_engine_used || newDocRecord.ocr_engine_used,
       };
 
       inMemoryDocuments.unshift(mappedRecord);
@@ -151,12 +184,16 @@ export class DocumentRepository {
             aiAnalysis = typeof row.ai_raw_json === 'string' ? JSON.parse(row.ai_raw_json) : row.ai_raw_json;
           } catch (e) {}
         }
+        const smartName = (row.document_name && !row.document_name.endsWith('.pdf') && !row.document_name.endsWith('.png') && !row.document_name.endsWith('.jpg'))
+          ? row.document_name
+          : aiAnalysis?.document?.suggested_title || row.document_name;
+
         return {
           id: row.id,
           patient_id: row.patient_id,
           uploaded_by: row.uploader_id,
           uploader_id: row.uploader_id,
-          document_name: row.document_name,
+          document_name: smartName,
           original_filename: row.document_name,
           storage_key: row.storage_path,
           storage_path: row.storage_path,
@@ -166,10 +203,16 @@ export class DocumentRepository {
           file_size: parseInt(row.file_size_bytes, 10),
           file_size_bytes: parseInt(row.file_size_bytes, 10),
           document_category: row.document_category,
+          hospital_name: row.hospital_name || aiAnalysis?.hospital?.name || null,
+          doctor_name: row.doctor_name || aiAnalysis?.doctor?.name || null,
+          visit_date: row.visit_date || aiAnalysis?.visit?.visit_date || null,
           checksum_sha256: row.checksum_sha256,
           upload_status: 'COMPLETED',
           is_deleted: false,
           is_archived: row.is_archived,
+          is_handwritten: row.is_handwritten ?? false,
+          document_format: row.document_format || (row.is_handwritten ? 'HANDWRITTEN' : 'PRINTED'),
+          ocr_engine_used: row.ocr_engine_used || null,
           created_at: row.created_at,
           updated_at: row.updated_at,
           ocr_completed: true,
@@ -216,7 +259,17 @@ export class DocumentRepository {
 
       if (filters.document_category) {
         params.push(filters.document_category);
-        conditions.push(`document_category = $${params.length}::document_category`);
+        conditions.push(`document_category = $${params.length}`);
+      }
+
+      if (filters.is_handwritten !== undefined) {
+        params.push(filters.is_handwritten);
+        conditions.push(`is_handwritten = $${params.length}`);
+      }
+
+      if (filters.document_format) {
+        params.push(filters.document_format);
+        conditions.push(`document_format = $${params.length}`);
       }
 
       if (filters.search_query) {
@@ -230,7 +283,7 @@ export class DocumentRepository {
       const countRes = await query(countSql, params);
       const total = parseInt(countRes.rows[0].count, 10);
 
-      const dbWhereClause = whereClause.replace(/\b(patient_id|uploader_id|is_archived|document_category|document_name)\b/g, 'd.$1');
+      const dbWhereClause = whereClause.replace(/\b(patient_id|uploader_id|is_archived|document_category|document_name|is_handwritten|document_format)\b/g, 'd.$1');
 
       const dataSql = `
         SELECT d.*, a.raw_response_json as ai_raw_json 
@@ -250,12 +303,16 @@ export class DocumentRepository {
             aiAnalysis = typeof row.ai_raw_json === 'string' ? JSON.parse(row.ai_raw_json) : row.ai_raw_json;
           } catch (e) {}
         }
+        const smartName = (row.document_name && !row.document_name.endsWith('.pdf') && !row.document_name.endsWith('.png') && !row.document_name.endsWith('.jpg'))
+          ? row.document_name
+          : aiAnalysis?.document?.suggested_title || row.document_name;
+
         return {
           id: row.id,
           patient_id: row.patient_id,
           uploaded_by: row.uploader_id,
           uploader_id: row.uploader_id,
-          document_name: row.document_name,
+          document_name: smartName,
           original_filename: row.document_name,
           storage_key: row.storage_path,
           storage_path: row.storage_path,
@@ -265,10 +322,16 @@ export class DocumentRepository {
           file_size: parseInt(row.file_size_bytes, 10),
           file_size_bytes: parseInt(row.file_size_bytes, 10),
           document_category: row.document_category,
+          hospital_name: row.hospital_name || aiAnalysis?.hospital?.name || null,
+          doctor_name: row.doctor_name || aiAnalysis?.doctor?.name || null,
+          visit_date: row.visit_date || aiAnalysis?.visit?.visit_date || null,
           checksum_sha256: row.checksum_sha256,
           upload_status: 'COMPLETED',
           is_deleted: false,
           is_archived: row.is_archived,
+          is_handwritten: row.is_handwritten ?? false,
+          document_format: row.document_format || (row.is_handwritten ? 'HANDWRITTEN' : 'PRINTED'),
+          ocr_engine_used: row.ocr_engine_used || null,
           created_at: row.created_at,
           updated_at: row.updated_at,
           ocr_completed: true,
@@ -379,7 +442,7 @@ export class DocumentRepository {
       return res.rows[0];
     } catch (err: any) {
       logger.warn('[DocumentRepository V2] saveMedicalAnalysis fallback:', err.message || err);
-      return { id: 'ai-' + Date.now(), document_id: docId, ...analysis };
+      return { id: uuidv4(), document_id: docId, ...analysis };
     }
   }
 
@@ -464,21 +527,34 @@ export class DocumentRepository {
     try {
       const doc = await this.findById(id);
 
-      // 1. Delete AI Analysis records from public.ai_analyses
-      await query(`DELETE FROM public.ai_analyses WHERE document_id = $1`, [id]);
+      // 1. Delete extracted medical intelligence entities
+      try { await query(`DELETE FROM public.lab_results WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`DELETE FROM public.medications WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`DELETE FROM public.diagnoses WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`DELETE FROM public.document_ai_analysis WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`DELETE FROM public.ai_execution_logs WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`DELETE FROM public.ai_analyses WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`DELETE FROM public.blockchain_notarizations WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`DELETE FROM public.document_versions WHERE document_id = $1`, [id]); } catch (e) {}
+      try { await query(`UPDATE public.timeline_events SET related_document_id = NULL WHERE related_document_id = $1`, [id]); } catch (e) {}
 
-      // 2. Delete Document record from public.documents
-      await query(`DELETE FROM public.documents WHERE id = $1`, [id]);
+      // 2. Delete main document record from public.documents
+      const delRes = await query(`DELETE FROM public.documents WHERE id = $1 RETURNING id`, [id]);
 
-      // 3. Delete from MinIO storage & local disk fallback
-      if (doc && doc.storage_key) {
-        await MinioStorageService.deleteFile(doc.storage_key);
+      // 3. Delete from MinIO S3 object storage
+      if (doc && (doc.storage_key || (doc as any).storage_path)) {
+        const keyToDelete = doc.storage_key || (doc as any).storage_path;
+        try {
+          await MinioStorageService.deleteFile(keyToDelete);
+        } catch (storageErr) {
+          logger.warn(`[DocumentRepository] MinIO deletion warning for key ${keyToDelete}:`, storageErr);
+        }
       }
 
       const idx = inMemoryDocuments.findIndex((d) => d.id === id);
       if (idx !== -1) inMemoryDocuments.splice(idx, 1);
 
-      return true;
+      return (delRes.rowCount ?? 0) > 0;
     } catch (err: any) {
       logger.error(`[DocumentRepository] Hard purge delete error for ID ${id}:`, err);
       return false;
@@ -487,8 +563,51 @@ export class DocumentRepository {
 
   public static async updateDocumentMetadata(id: string, updates: Partial<DocumentRecord>): Promise<DocumentRecord | null> {
     try {
+      const setClauses: string[] = ['updated_at = CURRENT_TIMESTAMP'];
+      const values: any[] = [id];
+
       if (updates.document_name) {
-        await query(`UPDATE public.documents SET document_name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [updates.document_name, id]);
+        values.push(updates.document_name);
+        setClauses.push(`document_name = $${values.length}`);
+      }
+      if (updates.document_category) {
+        values.push(updates.document_category);
+        setClauses.push(`document_category = $${values.length}`);
+      }
+      if (updates.doctor_name !== undefined && updates.doctor_name !== null) {
+        values.push(updates.doctor_name);
+        setClauses.push(`doctor_name = $${values.length}`);
+      }
+      if (updates.hospital_name !== undefined && updates.hospital_name !== null) {
+        values.push(updates.hospital_name);
+        setClauses.push(`hospital_name = $${values.length}`);
+      }
+      if (updates.visit_date !== undefined && updates.visit_date !== null) {
+        values.push(updates.visit_date);
+        setClauses.push(`visit_date = $${values.length}`);
+      }
+      if (updates.is_handwritten !== undefined) {
+        values.push(updates.is_handwritten);
+        setClauses.push(`is_handwritten = $${values.length}`);
+      }
+      if (updates.document_format !== undefined) {
+        values.push(updates.document_format);
+        setClauses.push(`document_format = $${values.length}`);
+      }
+      if (updates.ocr_engine_used !== undefined) {
+        values.push(updates.ocr_engine_used);
+        setClauses.push(`ocr_engine_used = $${values.length}`);
+      }
+
+      if (setClauses.length > 1) {
+        try {
+          await query(`UPDATE public.documents SET ${setClauses.join(', ')} WHERE id = $1`, values);
+        } catch (colErr) {
+          // Fallback basic name update if some column is not yet present
+          if (updates.document_name) {
+            await query(`UPDATE public.documents SET document_name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`, [updates.document_name, id]).catch(() => {});
+          }
+        }
       }
 
       if (updates.metadata_json && (updates.metadata_json as any).ai_analysis) {
@@ -497,8 +616,7 @@ export class DocumentRepository {
 
       const doc = inMemoryDocuments.find((d) => d.id === id);
       if (doc) {
-        if (updates.document_name) doc.document_name = updates.document_name;
-        if (updates.metadata_json) doc.metadata_json = updates.metadata_json;
+        Object.assign(doc, updates);
       }
 
       return await this.findById(id);
@@ -506,8 +624,7 @@ export class DocumentRepository {
       logger.warn(`[DocumentRepository] updateDocumentMetadata note:`, err.message || err);
       const doc = inMemoryDocuments.find((d) => d.id === id);
       if (doc) {
-        if (updates.document_name) doc.document_name = updates.document_name;
-        if (updates.metadata_json) doc.metadata_json = updates.metadata_json;
+        Object.assign(doc, updates);
         return doc;
       }
       return null;

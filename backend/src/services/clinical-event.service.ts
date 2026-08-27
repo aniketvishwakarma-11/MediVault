@@ -76,6 +76,12 @@ export class ClinicalEventService {
     const department = analysis.hospital?.department || null;
     const scopeId = documentId || patientId;
 
+    const isUuid = (val?: string | null): boolean =>
+      Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+    const validAnalysisId = isUuid(analysisId) ? analysisId : null;
+    const validDocumentId = isUuid(documentId) ? documentId : null;
+
     // Collect all events to insert
     const events: ClinicalEventPayload[] = [];
 
@@ -85,8 +91,8 @@ export class ClinicalEventService {
       const isFollowUp = encounterType.toLowerCase().includes('follow');
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: isFollowUp ? 'FOLLOW_UP' : 'CONSULTATION',
         event_date: eventDate,
         title: isFollowUp
@@ -114,8 +120,8 @@ export class ClinicalEventService {
       if (!diagnosis || !diagnosis.trim()) continue;
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: 'DIAGNOSIS',
         event_date: eventDate,
         title: diagnosis.trim(),
@@ -146,8 +152,8 @@ export class ClinicalEventService {
 
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: 'LAB_TEST',
         event_date: labDate,
         title: `${analysis.document?.document_type || 'Laboratory'} Results`,
@@ -172,8 +178,8 @@ export class ClinicalEventService {
       const title = [img.modality, img.body_region].filter(Boolean).join(' — ') || 'Imaging Study';
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: 'IMAGING',
         event_date: imgDate,
         title,
@@ -195,8 +201,8 @@ export class ClinicalEventService {
       const hasMedChange = analysis.medications.some((m) => m.status === 'changed' || m.status === 'modified');
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: hasMedChange ? 'MEDICATION_CHANGE' : 'PRESCRIPTION',
         event_date: eventDate,
         title: `${analysis.medications.length} Medication${analysis.medications.length !== 1 ? 's' : ''} Prescribed`,
@@ -208,6 +214,7 @@ export class ClinicalEventService {
         department,
         structured_data: {
           medications: analysis.medications,
+          diagnoses: analysis.diagnosis || [],
         },
         is_milestone: hasMedChange,
         idempotency_key: this.makeKey(scopeId, 'PRESCRIPTION', eventDate, 'medications'),
@@ -219,8 +226,8 @@ export class ClinicalEventService {
       if (!procedure || !procedure.trim()) continue;
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: 'PROCEDURE',
         event_date: eventDate,
         title: procedure.trim(),
@@ -242,8 +249,8 @@ export class ClinicalEventService {
       if (!vaccine || !vaccine.trim()) continue;
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: 'VACCINATION',
         event_date: eventDate,
         title: `Vaccination: ${vaccine.trim()}`,
@@ -263,8 +270,8 @@ export class ClinicalEventService {
     if (analysis.visit?.admission_date) {
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: 'HOSPITALIZATION',
         event_date: analysis.visit.admission_date,
         title: `Admitted${facilityName ? ` to ${facilityName}` : ''}`,
@@ -286,8 +293,8 @@ export class ClinicalEventService {
     if (analysis.visit?.discharge_date) {
       events.push({
         patient_id: patientId,
-        document_id: documentId,
-        analysis_id: analysisId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
         event_type: 'DISCHARGE',
         event_date: analysis.visit.discharge_date,
         title: `Discharged${facilityName ? ` from ${facilityName}` : ''}`,
@@ -303,6 +310,28 @@ export class ClinicalEventService {
         },
         is_milestone: false,
         idempotency_key: this.makeKey(scopeId, 'DISCHARGE', analysis.visit.discharge_date, 'discharge'),
+      });
+    }
+
+    // ── 9. Recommended Follow-ups ───────────────────────────────
+    for (const followup of (analysis.recommended_followup || [])) {
+      if (!followup || !followup.trim()) continue;
+      events.push({
+        patient_id: patientId,
+        document_id: validDocumentId,
+        analysis_id: validAnalysisId,
+        event_type: 'FOLLOW_UP',
+        event_date: eventDate,
+        title: `Follow-up: ${followup.trim()}`,
+        summary: `Recommended follow-up: ${followup.trim()}`,
+        severity: 'NORMAL',
+        status: 'ACTIVE',
+        doctor_name: doctorName,
+        facility_name: facilityName,
+        department,
+        structured_data: { followup },
+        is_milestone: false,
+        idempotency_key: this.makeKey(scopeId, 'FOLLOW_UP', eventDate, followup.trim()),
       });
     }
 

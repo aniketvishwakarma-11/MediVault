@@ -24,13 +24,16 @@ export const ALLOWED_EXTENSIONS: AllowedExtension[] = ['pdf', 'png', 'jpeg', 'jp
 export enum DocumentCategory {
   PRESCRIPTION = 'Prescription',
   BLOOD_REPORT = 'Blood Report',
+  OPD_CONSULTATION = 'OPD Consultation Note',
+  DISCHARGE_SUMMARY = 'Discharge Summary',
+  EMERGENCY_TRIAGE = 'Emergency Triage Tag',
+  IMMUNIZATION = 'Immunization Record',
+  VACCINATION = 'Vaccination',
   MRI = 'MRI',
   CT_SCAN = 'CT Scan',
   X_RAY = 'X-Ray',
   ECG = 'ECG',
-  DISCHARGE_SUMMARY = 'Discharge Summary',
   INSURANCE = 'Insurance',
-  VACCINATION = 'Vaccination',
   PRESCRIPTION_HISTORY = 'Prescription History',
   SURGERY = 'Surgery',
   DENTAL = 'Dental',
@@ -45,6 +48,8 @@ export enum UploadStatus {
   COMPLETED = 'COMPLETED',
   FAILED = 'FAILED',
 }
+
+export type DocumentFormat = 'PRINTED' | 'HANDWRITTEN';
 
 export interface DocumentRecord {
   id: string;
@@ -68,6 +73,9 @@ export interface DocumentRecord {
   upload_status: UploadStatus | string;
   is_deleted: boolean;
   is_archived?: boolean;
+  is_handwritten?: boolean;
+  document_format?: DocumentFormat | string;
+  ocr_engine_used?: string | null;
   created_at: Date | string;
   updated_at: Date | string;
   blockchain_hash?: string | null;
@@ -85,6 +93,8 @@ export interface UploadDocumentInput {
   hospital_name?: string;
   doctor_name?: string;
   visit_date?: string;
+  is_handwritten?: boolean;
+  document_format?: DocumentFormat | string;
   custom_metadata?: Record<string, any>;
 }
 
@@ -93,6 +103,8 @@ export interface DocumentSearchFilters {
   document_category?: string;
   hospital_name?: string;
   doctor_name?: string;
+  is_handwritten?: boolean;
+  document_format?: string;
   visit_date_from?: string;
   visit_date_to?: string;
   upload_date_from?: string;

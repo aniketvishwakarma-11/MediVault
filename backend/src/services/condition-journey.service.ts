@@ -48,19 +48,35 @@ export class ConditionJourneyService {
            ce.structured_data,
            ce.is_milestone
          FROM public.clinical_events ce
-         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1))
+         WHERE (ce.patient_id = $1 OR ce.patient_id IN (SELECT id FROM public.patients WHERE user_id = $1) OR ce.patient_id IN (SELECT user_id FROM public.patients WHERE id = $1))
          ORDER BY ce.event_date ASC`,
         [patientId]
       );
 
       if (res.rows.length === 0) return [];
 
-      // Extract all unique conditions from DIAGNOSIS events
-      const conditionMap = new Map<string, { name: string; events: ConditionEvent[] }>();
-
+      // 1. Build document -> diagnoses index so encounters and prescriptions link to conditions
+      const docDiagnosesMap = new Map<string, string[]>();
       for (const row of res.rows) {
         const sd = row.structured_data;
         const diagnoses: string[] = Array.isArray(sd?.diagnoses) ? sd.diagnoses : [];
+        if (row.document_id && diagnoses.length > 0) {
+          const existing = docDiagnosesMap.get(row.document_id) || [];
+          docDiagnosesMap.set(row.document_id, Array.from(new Set([...existing, ...diagnoses])));
+        }
+      }
+
+      // 2. Map conditions to events
+      const conditionMap = new Map<string, { name: string; events: ConditionEvent[]; rawEventIds: Set<string> }>();
+
+      for (const row of res.rows) {
+        const sd = row.structured_data;
+        let diagnoses: string[] = Array.isArray(sd?.diagnoses) ? sd.diagnoses : [];
+        
+        // If event has no direct diagnoses but shares document_id with a diagnosed condition, inherit
+        if (diagnoses.length === 0 && row.document_id && docDiagnosesMap.has(row.document_id)) {
+          diagnoses = docDiagnosesMap.get(row.document_id)!;
+        }
 
         const eventPayload: ConditionEvent = {
           event_id: row.event_id,
@@ -76,20 +92,20 @@ export class ConditionJourneyService {
 
         // Attribute this event to every condition it mentions
         for (const diagnosis of diagnoses) {
-          if (!diagnosis.trim()) continue;
+          if (!diagnosis || !diagnosis.trim()) continue;
           const normalized = this.normalizeConditionName(diagnosis);
           if (!conditionMap.has(normalized)) {
-            conditionMap.set(normalized, { name: diagnosis.trim(), events: [] });
+            conditionMap.set(normalized, { name: diagnosis.trim(), events: [], rawEventIds: new Set() });
           }
-          // Avoid duplicate event entries
           const existing = conditionMap.get(normalized)!;
-          if (!existing.events.find((e) => e.event_id === row.event_id)) {
+          if (!existing.rawEventIds.has(row.event_id)) {
+            existing.rawEventIds.add(row.event_id);
             existing.events.push(eventPayload);
           }
         }
       }
 
-      // Build journey objects
+      // 3. Build journey objects
       const journeys: ConditionJourney[] = [];
       for (const [normalized, group] of conditionMap.entries()) {
         if (group.events.length === 0) continue;
@@ -98,19 +114,21 @@ export class ConditionJourneyService {
           (a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
         );
 
-        // Collect related lab tests and medications
+        // Collect related lab tests and medications from all events linked to this condition
         const relatedLabs = new Set<string>();
         const relatedMeds = new Set<string>();
         for (const event of sorted) {
-          const sd = (res.rows.find((r: any) => r.event_id === event.event_id)?.structured_data) || {};
+          const rowData = res.rows.find((r: any) => r.event_id === event.event_id);
+          const sd = rowData?.structured_data || {};
           if (Array.isArray(sd.lab_results)) {
             for (const lab of sd.lab_results) {
-              if (lab.test_name) relatedLabs.add(lab.test_name);
+              if (lab && lab.test_name) relatedLabs.add(lab.test_name);
             }
           }
           if (Array.isArray(sd.medications)) {
             for (const med of sd.medications) {
-              if (med.name) relatedMeds.add(med.name);
+              const name = typeof med === 'string' ? med : med?.name;
+              if (name) relatedMeds.add(name);
             }
           }
         }

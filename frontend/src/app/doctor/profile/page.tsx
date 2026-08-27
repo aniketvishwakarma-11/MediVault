@@ -20,7 +20,6 @@ import {
   Phone,
   Calendar,
 } from "lucide-react";
-import { mockDoctorProfile } from "@/lib/doctorDemoData";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
@@ -37,7 +36,7 @@ function DoctorProfileForm() {
   const searchParams = useSearchParams();
   const [isRequired, setIsRequired] = useState(searchParams.get("required") === "true");
 
-  const { user, userProfile, isDemo, setIsProfileCompleted, refreshProfileCompletion } = useAuth();
+  const { user, userProfile, setIsProfileCompleted, refreshProfileCompletion } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,13 +49,13 @@ function DoctorProfileForm() {
     email: "",
     phone: "",
     licenseNumber: "",
-    registrationCouncil: "State Medical Board",
-    specialization: "General Practice & Cardiology",
+    registrationCouncil: "Medical Council of India",
+    specialization: "General Physician",
     experienceYears: "5",
-    hospitalAffiliation: "",
-    clinicName: "",
-    address: "",
-    languages: "English, Spanish",
+    hospitalAffiliation: "MediVault EMR",
+    clinicName: "MediVault Clinic",
+    address: "Medical Center",
+    languages: "English, Hindi",
   });
 
   // Structured Clock Dropdown Consultation Times
@@ -72,22 +71,7 @@ function DoctorProfileForm() {
   const [sunEnd, setSunEnd] = useState("02:00 PM");
 
   useEffect(() => {
-    if (isDemo) {
-      setFormData({
-        fullName: mockDoctorProfile.fullName,
-        email: mockDoctorProfile.email,
-        phone: mockDoctorProfile.phone,
-        licenseNumber: mockDoctorProfile.licenseNumber,
-        registrationCouncil: mockDoctorProfile.registrationCouncil,
-        specialization: mockDoctorProfile.specialization,
-        experienceYears: String(mockDoctorProfile.experienceYears),
-        hospitalAffiliation: mockDoctorProfile.hospitalAffiliation,
-        clinicName: mockDoctorProfile.clinicName,
-        address: mockDoctorProfile.address,
-        languages: mockDoctorProfile.languages.join(", "),
-      });
-      setIsRequired(false);
-    } else if (user) {
+    if (user) {
       setLoading(true);
 
       const savedLocal = localStorage.getItem(`medivault_doctor_data_${user.id}`);
@@ -171,7 +155,7 @@ function DoctorProfileForm() {
 
       fetchRealProfile();
     }
-  }, [isDemo, user, userProfile, setIsProfileCompleted]);
+  }, [user, userProfile, setIsProfileCompleted]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -188,7 +172,7 @@ function DoctorProfileForm() {
       const satHoursStr = satClosed ? "Closed" : `${satStart} - ${satEnd}`;
       const sunHoursStr = sunClosed ? "Closed" : `${sunStart} - ${sunEnd}`;
 
-      if (!isDemo && user) {
+      if (user) {
         localStorage.setItem(`medivault_doctor_completed_${user.id}`, "true");
         localStorage.setItem(
           `medivault_doctor_data_${user.id}`,
@@ -338,11 +322,7 @@ function DoctorProfileForm() {
           {/* Left Column: Avatar & Doctor Summary */}
           <div className="p-6 rounded-3xl bg-white border border-slate-200/80 space-y-6 text-center shadow-xs">
             <div className="w-24 h-24 rounded-2xl bg-[#0891B2] text-white font-extrabold text-2xl border-2 border-cyan-400 overflow-hidden mx-auto shadow-xs flex items-center justify-center">
-              {isDemo ? (
-                <img src={mockDoctorProfile.profilePhotoUrl} alt={formData.fullName} className="w-full h-full object-cover" />
-              ) : (
-                <span>{initials}</span>
-              )}
+              <span>{initials}</span>
             </div>
 
             <div className="space-y-1">

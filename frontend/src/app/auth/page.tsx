@@ -74,7 +74,10 @@ export default function AuthPage() {
       setRole(activeRole);
       localStorage.setItem("medivault_user_role", activeRole);
 
-      const target = activeRole === "doctor" ? "/doctor/dashboard" : "/patient/dashboard";
+      let target = "/patient/dashboard";
+      if (activeRole === "doctor") target = "/doctor/dashboard";
+      else if (activeRole === "admin") target = "/admin/dashboard";
+      else if (activeRole === "hospital") target = "/patient/dashboard";
 
       // If URL has OAuth hash (#access_token=...), wipe hash and perform clean client replace
       if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
@@ -139,7 +142,10 @@ export default function AuthPage() {
         setRole(userRole);
         localStorage.setItem("medivault_user_role", userRole);
 
-        const target = userRole === "doctor" ? "/doctor/dashboard" : "/patient/dashboard";
+        let target = "/patient/dashboard";
+        if (userRole === "doctor") target = "/doctor/dashboard";
+        else if (userRole === "admin") target = "/admin/dashboard";
+        
         router.replace(target);
       } else {
         // ── REGISTER: Create new user with their chosen selectedRole ──

@@ -43,6 +43,9 @@ interface DocumentRecord {
   doctor_name?: string | null;
   visit_date?: string | null;
   checksum_sha256: string;
+  is_handwritten?: boolean;
+  document_format?: string;
+  ocr_engine_used?: string | null;
   created_at: string;
   signedDownloadUrl?: string;
   metadata_json?: any;
@@ -76,7 +79,8 @@ export default function MedicalReportsPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadCategory, setUploadCategory] = useState<string>("Blood Report");
+  const [uploadCategory, setUploadCategory] = useState<string>("OPD Consultation Note");
+  const [isHandwritten, setIsHandwritten] = useState<boolean>(false);
   const [documentName, setDocumentName] = useState<string>("");
   const [hospitalName, setHospitalName] = useState<string>("");
   const [doctorName, setDoctorName] = useState<string>("");
@@ -102,8 +106,9 @@ export default function MedicalReportsPage() {
       console.warn("Category fetch warning:", err);
     }
     setCategories([
-      "Prescription", "Blood Report", "MRI", "CT Scan", "X-Ray", 
-      "ECG", "Discharge Summary", "Insurance", "Vaccination", "Other"
+      "Prescription", "OPD Consultation Note", "Discharge Summary", "Emergency Triage Tag",
+      "Immunization Record", "Blood Report", "MRI", "CT Scan", "X-Ray", 
+      "ECG", "Vaccination", "Surgery", "Other"
     ]);
   };
 
@@ -208,6 +213,8 @@ export default function MedicalReportsPage() {
       formData.append("patient_id", validPatientId);
       formData.append("document_category", uploadCategory || "Other");
       formData.append("document_name", finalDocName);
+      formData.append("is_handwritten", isHandwritten ? "true" : "false");
+      formData.append("document_format", isHandwritten ? "HANDWRITTEN" : "PRINTED");
       if (hospitalName.trim()) formData.append("hospital_name", hospitalName.trim());
       if (doctorName.trim()) formData.append("doctor_name", doctorName.trim());
       if (visitDate.trim()) formData.append("visit_date", visitDate.trim());
@@ -237,6 +244,7 @@ export default function MedicalReportsPage() {
       setHospitalName("");
       setDoctorName("");
       setVisitDate("");
+      setIsHandwritten(false);
       
       // Refresh documents
       fetchDocuments();
@@ -481,6 +489,10 @@ export default function MedicalReportsPage() {
               const hasAbnormal = abnormalLabs.length > 0;
               const cardDoctorName = doc.doctor_name || ai?.doctor?.name || "Attending Physician";
               const cardHospitalName = doc.hospital_name || ai?.hospital?.name || "Verified Facility";
+              const isGenericName = !doc.document_name || doc.document_name.endsWith('.pdf') || doc.document_name.endsWith('.png') || doc.document_name.endsWith('.jpg') || /^hpkp\d+/i.test(doc.document_name) || /^(image|img|doc|scan|file|document)[_-]?\d+/i.test(doc.document_name);
+              const cardTitle = (isGenericName && ai?.document?.suggested_title) 
+                ? ai.document.suggested_title 
+                : (doc.document_name && !isGenericName ? doc.document_name : (ai?.document?.suggested_title || doc.document_name || doc.original_filename));
 
               return (
                 <div
@@ -491,17 +503,24 @@ export default function MedicalReportsPage() {
                   <div className="p-4 pb-2 space-y-2">
                     {/* Category badge + File size */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                        {doc.document_category || "General Record"}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                          {doc.document_category || "General Record"}
+                        </span>
+                        {(doc.is_handwritten || doc.document_format === "HANDWRITTEN") && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            ✍️ Doctor Script
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[11px] font-mono text-slate-400 tabular-nums">
                         {formatBytes(doc.file_size)}
                       </span>
                     </div>
 
                     {/* Document Title */}
-                    <h3 className="font-heading font-bold text-slate-900 text-sm truncate" title={doc.document_name || doc.original_filename}>
-                      {doc.document_name || doc.original_filename}
+                    <h3 className="font-heading font-bold text-slate-900 text-sm truncate" title={cardTitle}>
+                      {cardTitle}
                     </h3>
 
                     {/* Physician & Facility Meta */}
@@ -654,26 +673,42 @@ export default function MedicalReportsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 px-3 font-semibold text-slate-900 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-sky-600" />
-                    <span>{doc.document_name}</span>
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-700 font-medium text-[11px] border border-sky-200">
-                      {doc.document_category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-600">
-                    {doc.doctor_name || doc.hospital_name || "—"}
-                  </td>
-                  <td className="py-3 px-3 text-slate-500 font-mono tabular-nums">
-                    {doc.visit_date || "—"}
-                  </td>
-                  <td className="py-3 px-3 font-mono text-slate-400 tabular-nums">
-                    {formatBytes(doc.file_size)}
-                  </td>
+              {documents.map((doc) => {
+                const ai = doc.metadata_json?.ai_analysis;
+                const isGenericName = !doc.document_name || doc.document_name.endsWith('.pdf') || doc.document_name.endsWith('.png') || doc.document_name.endsWith('.jpg') || /^hpkp\d+/i.test(doc.document_name) || /^(image|img|doc|scan|file|document)[_-]?\d+/i.test(doc.document_name);
+                const displayTitle = (isGenericName && ai?.document?.suggested_title) 
+                  ? ai.document.suggested_title 
+                  : (doc.document_name && !isGenericName ? doc.document_name : (ai?.document?.suggested_title || doc.document_name || doc.original_filename));
+                const rowDoctorHospital = doc.doctor_name || doc.hospital_name || ai?.doctor?.name || ai?.hospital?.name || "—";
+                const rowDate = doc.visit_date || ai?.visit?.visit_date || (doc.created_at ? new Date(doc.created_at).toLocaleDateString() : "—");
+
+                return (
+                  <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3 px-3 font-semibold text-slate-900 flex items-center gap-2 max-w-[280px]">
+                      <FileText className="w-4 h-4 text-sky-600 shrink-0" />
+                      <span className="truncate" title={displayTitle}>{displayTitle}</span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-700 font-medium text-[11px] border border-sky-200">
+                          {doc.document_category}
+                        </span>
+                        {(doc.is_handwritten || doc.document_format === "HANDWRITTEN") && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
+                            ✍️ Script
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-slate-600 max-w-[180px] truncate" title={rowDoctorHospital}>
+                      {rowDoctorHospital}
+                    </td>
+                    <td className="py-3 px-3 text-slate-500 font-mono tabular-nums">
+                      {rowDate}
+                    </td>
+                    <td className="py-3 px-3 font-mono text-slate-400 tabular-nums">
+                      {formatBytes(doc.file_size)}
+                    </td>
                   <td className="py-3 px-3 text-right space-x-1.5">
                     <button
                       onClick={() => handleViewDoc(doc)}
@@ -698,7 +733,8 @@ export default function MedicalReportsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              );
+            })}
             </tbody>
           </table>
         </div>
@@ -724,6 +760,45 @@ export default function MedicalReportsPage() {
             </div>
 
             <form onSubmit={handleUploadSubmit} className="space-y-4 text-xs">
+              {/* Document Format & Script Type Selector */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700">Document Format & Script Type</label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setIsHandwritten(false)}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      !isHandwritten
+                        ? "bg-white text-sky-700 shadow-xs border border-slate-200"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Printed / Digital PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsHandwritten(true)}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      isHandwritten
+                        ? "bg-sky-600 text-white shadow-xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    ✍️ Doctor Handwritten Script
+                  </button>
+                </div>
+                {isHandwritten && (
+                  <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-800 font-medium flex items-center gap-2 animate-in fade-in duration-150">
+                    <Sparkles className="w-4 h-4 text-sky-600 shrink-0" />
+                    <span>
+                      Routed through <strong>Chinmay TrOCR Vision AI</strong> to transcribe doctor handwriting, OPD notes, triage tags, and immunization records into structured timeline events.
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {/* File Dropzone */}
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700">Medical Document File</label>
@@ -822,6 +897,9 @@ export default function MedicalReportsPage() {
           hospitalName={viewerDoc.hospital_name || undefined}
           checksumSha256={viewerDoc.checksum_sha256}
           aiAnalysis={viewerAiAnalysis}
+          isHandwritten={viewerDoc.is_handwritten || viewerDoc.document_format === 'HANDWRITTEN'}
+          documentFormat={viewerDoc.document_format}
+          ocrEngineUsed={viewerDoc.ocr_engine_used || undefined}
           isLoading={viewerLoading}
           error={viewerError}
           onDownload={() => handleDownload(viewerDoc)}

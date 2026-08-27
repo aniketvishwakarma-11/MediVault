@@ -19,7 +19,9 @@ export class GeminiProvider implements AIProvider {
   public async processMedicalDocument(
     ocrText: string,
     originalFilename: string,
-    category?: string
+    category?: string,
+    fileBuffer?: Buffer,
+    mimeType?: string
   ): Promise<{ data: MedicalAIAnalysis; metrics: AIExecutionMetrics }> {
     const startTime = Date.now();
     const apiKey = this.getApiKey();
@@ -30,10 +32,10 @@ export class GeminiProvider implements AIProvider {
 
     const systemPrompt = `
 You are an expert physician, board-certified pathologist, and senior clinical medical analyst.
-Your mandate is to perform an exhaustive medical intelligence extraction on the provided document OCR text.
+Your mandate is to perform an exhaustive medical intelligence extraction on the provided document OCR text and/or visual medical file attachment.
 Read the report thoroughly like an experienced chief of medicine.
 Extract every single lab measurement, numerical parameter, clinical finding, prescription, diagnosis, and care recommendation.
-Never hallucinate or invent data. If a specific field is not present in the document text, return null or an empty array.
+Never hallucinate or invent data. If a specific field is not present in the document text/image, return null or an empty array.
 
 Document Filename: ${originalFilename}
 Document Category Hint: ${category || 'Unspecified'}
@@ -44,27 +46,29 @@ ${ocrText}
 """
 
 Instructions:
-1. "summary": Provide a thorough 2-4 sentence doctor-level clinical executive summary highlighting primary pathology, diagnostic findings, organ system status, and abnormal trends.
-2. "plain_language_explanation": Provide an empathetic 3-4 sentence plain-English explanation translating complex medical terminology into clear, reassuring concepts for the patient.
-3. "lab_results": Extract EVERY single lab parameter, measurement, or vital sign present in the text into an array.
+1. "suggested_title": Generate a concise, clear, and clinically informative title based on the document contents and context (e.g. "OPD Consultation Note - Dr. R. Sharma", "Complete Blood Count (CBC) Panel - Metropolis Labs", "Discharge Summary - Cardiac Care Unit", "Emergency Triage Slip - Acute Trauma", "Pediatric Immunization Record - DTaP/MMR"). NEVER use raw file names like "hpkp0090.pdf" or generic placeholders.
+2. "summary": Provide a thorough 2-4 sentence doctor-level clinical executive summary highlighting primary pathology, diagnostic findings, organ system status, and abnormal trends.
+3. "plain_language_explanation": Provide an empathetic 3-4 sentence plain-English explanation translating complex medical terminology into clear, reassuring concepts for the patient.
+4. "lab_results": Extract EVERY single lab parameter, measurement, or vital sign present in the text into an array.
    - "test_name": Full descriptive name of the test or vital sign (e.g., "Systolic Blood Pressure", "Body Mass Index (BMI)", "Hemoglobin").
    - "value": Exact numerical or qualitative value extracted from report.
    - "unit": Standard unit of measurement (e.g., "mmHg", "kg/m2", "g/dL", "/min", "cm", "kg"). If unitless, use "".
    - "reference_range": Standard medical reference range. If not printed in document, supply standard clinical guidelines (e.g., "90-120 mmHg", "18.5-24.9 kg/m2", "60-100 /min", "13.5-17.5 g/dL"). NEVER output "N/A" or null.
    - "status": MUST be strictly one of: "NORMAL", "LOW", "HIGH", "CRITICAL". Evaluate value against reference range.
    - "clinical_meaning": A clear, insightful 1-sentence medical explanation of what this specific value means for the patient's health. NEVER leave empty, "-", or null.
-4. "medications": Extract all prescribed drugs with name, dosage, frequency, duration, purpose, and special instructions.
-5. "diagnosis": List all primary and secondary clinical diagnoses.
-6. "red_flags": List urgent emergency warning symptoms to watch out for.
-7. "risk_factors": List underlying health risk factors identified.
-8. "recommended_followup": List recommended medical consultation timeframes.
-9. "recommended_tests": List recommended repeat lab tests or imaging.
-10. "overall_health_status": "STABLE" | "ATTENTION_REQUIRED" | "CRITICAL" based on findings.
+5. "medications": Extract all prescribed drugs with name, dosage, frequency, duration, purpose, and special instructions.
+6. "diagnosis": List all primary and secondary clinical diagnoses.
+7. "red_flags": List urgent emergency warning symptoms to watch out for.
+8. "risk_factors": List underlying health risk factors identified.
+9. "recommended_followup": List recommended medical consultation timeframes.
+10. "recommended_tests": List recommended repeat lab tests or imaging.
+11. "overall_health_status": "STABLE" | "ATTENTION_REQUIRED" | "CRITICAL" based on findings.
 
 Output STRICT VALID JSON ONLY conforming exactly to this structure:
 {
   "document": {
     "document_type": "CBC | LFT | Vital Signs | Prescription | Discharge Summary | ECG | Echo | Urine Report | Biopsy | Ultrasound | Vaccination | Other",
+    "suggested_title": "Descriptive Human-Friendly Clinical Title (e.g. OPD Consultation Note - Dr. Sharma)",
     "speciality": "Hematology | Cardiology | Neurology | Internal Medicine | General Practice | Orthopedics | Pathology | Radiology",
     "category": "Blood Report | Prescription | Diagnostic Imaging | Pathology | Discharge Summary | Other",
     "summary": "Detailed doctor-level clinical executive summary...",
@@ -102,6 +106,16 @@ Output STRICT VALID JSON ONLY conforming exactly to this structure:
 }
     `;
 
+    const requestParts: any[] = [{ text: systemPrompt }];
+    if (fileBuffer && fileBuffer.length > 0 && (mimeType === 'application/pdf' || mimeType?.startsWith('image/'))) {
+      requestParts.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: fileBuffer.toString('base64'),
+        },
+      });
+    }
+
     // Strategy 1: Direct HTTP REST call (Supports both AQ.Ab... OAuth/Cloud keys & AIzaSy... keys)
     try {
       const modelName = this.getModelName();
@@ -116,7 +130,7 @@ Output STRICT VALID JSON ONLY conforming exactly to this structure:
           'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
+          contents: [{ parts: requestParts }],
           generationConfig: {
             temperature: 0.1,
             responseMimeType: 'application/json',
@@ -150,7 +164,17 @@ Output STRICT VALID JSON ONLY conforming exactly to this structure:
         },
       });
 
-      const result = await model.generateContent(systemPrompt);
+      const sdkParts: any[] = [systemPrompt];
+      if (fileBuffer && fileBuffer.length > 0 && (mimeType === 'application/pdf' || mimeType?.startsWith('image/'))) {
+        sdkParts.push({
+          inlineData: {
+            mimeType: mimeType,
+            data: fileBuffer.toString('base64'),
+          },
+        });
+      }
+
+      const result = await model.generateContent(sdkParts);
       const responseText = result.response.text();
       return this.parseAndReturn(responseText, startTime);
     } catch (sdkErr: any) {

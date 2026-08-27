@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-export type UserRole = "patient" | "doctor" | "hospital";
+export type UserRole = "patient" | "doctor" | "hospital" | "admin";
 
 interface UserProfile {
   uid: string;
@@ -43,6 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkProfileCompletion = useCallback(async (currentUser: User): Promise<boolean> => {
     try {
       const activeRole = (localStorage.getItem("medivault_user_role") as UserRole) || currentUser.user_metadata?.role || "patient";
+
+      // Admins and hospitals are always considered profile-complete — no patient/doctor form required
+      if (activeRole === "admin" || activeRole === "hospital") {
+        setIsProfileCompleted(true);
+        return true;
+      }
 
       if (activeRole === "doctor") {
         if (typeof window !== "undefined" && currentUser?.id) {

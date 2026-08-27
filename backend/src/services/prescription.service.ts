@@ -704,4 +704,52 @@ export class PrescriptionService {
       throw err;
     }
   }
+
+  /**
+   * Get all pending refill requests for a doctor.
+   */
+  public static async getRefillQueue(doctorId: string): Promise<any[]> {
+    try {
+      const res = await query(
+        `SELECT rr.id, rr.prescription_id, rr.patient_id, rr.patient_notes, rr.status, rr.created_at,
+                rr.doctor_notes, rr.resolved_at,
+                p.diagnosis_text, p.created_at AS prescription_date,
+                up.full_name AS patient_name, up.uhid
+           FROM public.prescription_refill_requests rr
+           JOIN public.prescriptions p ON p.id::text = rr.prescription_id::text
+           LEFT JOIN public.users_profile up ON up.id::text = rr.patient_id::text
+          WHERE rr.doctor_id::text = $1
+          ORDER BY rr.created_at DESC`,
+        [doctorId]
+      );
+      return res.rows;
+    } catch (err: any) {
+      if (isConnectionError(err)) return [];
+      throw err;
+    }
+  }
+
+  /**
+   * Doctor approves or rejects a refill request and saves to DB.
+   */
+  public static async resolveRefill(refillId: string, doctorId: string, action: 'APPROVED' | 'REJECTED', notes?: string): Promise<any> {
+    try {
+      const res = await query(
+        `UPDATE public.prescription_refill_requests
+            SET status = $1, doctor_notes = $2, resolved_at = NOW()
+          WHERE id::text = $3 AND doctor_id::text = $4
+          RETURNING *`,
+        [action, notes || null, refillId, doctorId]
+      );
+      if (res.rowCount === 0) {
+        throw new Error('Refill request not found or not assigned to this doctor.');
+      }
+      return res.rows[0];
+    } catch (err: any) {
+      if (isConnectionError(err)) {
+        return { id: refillId, status: action, resolved_at: new Date().toISOString() };
+      }
+      throw err;
+    }
+  }
 }

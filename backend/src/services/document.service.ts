@@ -17,6 +17,10 @@ import {
 import { query } from '../config/db';
 import { MedicalAIService } from './ai/medical_ai.service';
 import { MedicalAIAnalysis } from '../types/medical_ai';
+import { generateSmartDocumentTitle } from '../utils/jsonSanitizer';
+import { NormalizerService } from './ai/normalizer.service';
+import { ClinicalEventService } from './clinical-event.service';
+import { ClinicalEpisodeService } from './clinical-episode.service';
 
 export class DocumentService {
   /**
@@ -36,8 +40,14 @@ export class DocumentService {
       hospital_name,
       doctor_name,
       visit_date,
+      is_handwritten,
+      document_format,
       custom_metadata,
     } = input;
+
+    const isHandwritten = is_handwritten === true || document_format === 'HANDWRITTEN';
+    const resolvedFormat = document_format || (isHandwritten ? 'HANDWRITTEN' : 'PRINTED');
+    const ocrEngineUsed = isHandwritten ? 'chinmays18/medical-prescription-ocr' : 'Tesseract.js';
 
     // 1. Calculate SHA-256 Integrity Checksum
     const checksumSHA256 = calculateBufferSHA256(file.buffer);
@@ -102,6 +112,9 @@ export class DocumentService {
       visit_date: resolvedVisitDate,
       upload_timestamp: uploadTimestamp,
       storage_key: storageKey,
+      is_handwritten: isHandwritten,
+      document_format: resolvedFormat,
+      ocr_engine_used: ocrEngineUsed,
       ocr_status: 'PROCESSING',
       embedding_status: 'PENDING',
       blockchain_status: 'UNVERIFIED',
@@ -133,6 +146,9 @@ export class DocumentService {
       visit_date: resolvedVisitDate,
       checksum_sha256: checksumSHA256,
       upload_status: 'PROCESSING',
+      is_handwritten: isHandwritten,
+      document_format: resolvedFormat,
+      ocr_engine_used: ocrEngineUsed,
       ocr_completed: false,
       embedding_completed: false,
       metadata_json: fullMetadata,
@@ -149,10 +165,12 @@ export class DocumentService {
       mimeType: file.mimetype,
       originalFilename: file.originalname,
       category: document_category,
+      is_handwritten: isHandwritten,
+      document_format: resolvedFormat,
       ipAddress,
     });
 
-    logger.info(`[Document Service] Document "${resolvedDocName}" (ID: ${documentId}) uploaded & enqueued for background AI processing.`);
+    logger.info(`[Document Service] Document "${resolvedDocName}" (ID: ${documentId}, Format: ${resolvedFormat}) uploaded & enqueued for background AI processing.`);
     return { document: documentRecord, isDuplicate: false };
   }
 
@@ -224,13 +242,51 @@ export class DocumentService {
       ocrResult.rawText,
       document.original_filename || document.document_name,
       document.document_category,
-      documentId
+      documentId,
+      fileBuffer,
+      document.mime_type || 'application/pdf'
     );
 
     // 3. Save to Normalized Database Tables
-    await DocumentRepository.saveMedicalAnalysis(documentId, document.patient_id, aiAnalysis);
+    const savedAnalysis = await DocumentRepository.saveMedicalAnalysis(documentId, aiAnalysis, document.patient_id);
+    const analysisId = savedAnalysis?.id || uuidv4();
 
-    // 4. Update metadata_json & upload_status on public.documents
+    // 4. Normalize + Generate / Refresh Clinical Events for Timeline
+    try {
+      const normalized = NormalizerService.normalize(aiAnalysis);
+      if (normalized) {
+        // First re-link any existing events for this document to the new active analysis ID
+        await query(
+          `UPDATE public.clinical_events 
+           SET analysis_id = $1, patient_id = $2, updated_at = CURRENT_TIMESTAMP 
+           WHERE document_id = $3`,
+          [analysisId, document.patient_id, documentId]
+        ).catch(() => {});
+
+        // Then generate/refresh timeline events
+        await ClinicalEventService.generateEventsFromAnalysis(
+          document.patient_id,
+          documentId,
+          analysisId,
+          normalized
+        );
+
+        // Group into clinical episodes in the background
+        setImmediate(() => {
+          ClinicalEpisodeService.groupEventsIntoEpisodes(document.patient_id).catch(() => {});
+        });
+      }
+    } catch (evtErr: any) {
+      logger.warn(`[DocumentService] Timeline event generation notice for ${documentId}:`, evtErr.message || evtErr);
+    }
+
+    // 5. Generate intelligent clinical title & extract physician/facility metadata
+    const smartTitle = generateSmartDocumentTitle(aiAnalysis, document.original_filename, document.document_category);
+    const extractedDoctor = aiAnalysis?.doctor?.name || undefined;
+    const extractedHospital = aiAnalysis?.hospital?.name || undefined;
+    const extractedVisitDate = aiAnalysis?.visit?.visit_date || undefined;
+
+    // 6. Update metadata_json & upload_status on public.documents
     const updatedMetadata = {
       ...(document.metadata_json || {}),
       ai_analysis: aiAnalysis,
@@ -240,6 +296,10 @@ export class DocumentService {
     };
 
     await DocumentRepository.updateMetadata(documentId, {
+      document_name: smartTitle,
+      doctor_name: extractedDoctor,
+      hospital_name: extractedHospital,
+      visit_date: extractedVisitDate,
       upload_status: 'COMPLETED',
       ocr_completed: true,
       embedding_completed: true,

@@ -1,6 +1,7 @@
 import path from 'path';
 import sharp from 'sharp';
 import { createWorker } from 'tesseract.js';
+import pdfParse from 'pdf-parse';
 import { logger } from '../utils/logger';
 
 export interface OCRResult {
@@ -28,7 +29,7 @@ export class OCRService {
       let confidence = 0.95;
 
       if (mimeType === 'application/pdf') {
-        extractedText = this.extractTextFromPDFBuffer(buffer);
+        extractedText = await this.extractTextFromPDFBuffer(buffer);
       } else if (mimeType.startsWith('image/')) {
         extractedText = await this.extractTextFromImageBuffer(buffer, mimeType);
       } else {
@@ -85,50 +86,19 @@ export class OCRService {
   }
 
   /**
-   * Extracts text blocks directly from PDF binary buffer stream.
+   * Extracts text blocks directly from PDF binary buffer using pdf-parse.
    */
-  private static extractTextFromPDFBuffer(buffer: Buffer): string {
-    const rawContent = buffer.toString('binary');
-    const textPieces: string[] = [];
-
-    // Extract text from PDF stream blocks (BT ... ET)
-    const streamRegex = /BT[\s\S]*?ET/g;
-    let match: RegExpExecArray | null;
-
-    while ((match = streamRegex.exec(rawContent)) !== null) {
-      const block = match[0];
-      
-      const stringLiteralRegex = /\(([^)]+)\)\s*(?:Tj|TJ|'|")/g;
-      let strMatch: RegExpExecArray | null;
-
-      while ((strMatch = stringLiteralRegex.exec(block)) !== null) {
-        const clean = strMatch[1]
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '')
-          .replace(/\\t/g, ' ')
-          .replace(/\\([0-7]{3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)));
-        textPieces.push(clean);
+  private static async extractTextFromPDFBuffer(buffer: Buffer): Promise<string> {
+    try {
+      const pdf = typeof pdfParse === 'function' ? pdfParse : (pdfParse as any).default || (pdfParse as any);
+      const data = await pdf(buffer);
+      if (data && data.text && data.text.trim().length > 0) {
+        return data.text.trim();
       }
-
-      const arrayRegex = /\[\s*((?:\(.*?\)\s*[-0-9.]*\s*)+)\]\s*TJ/g;
-      let arrMatch: RegExpExecArray | null;
-
-      while ((arrMatch = arrayRegex.exec(block)) !== null) {
-        const arrayContent = arrMatch[1];
-        const innerStrRegex = /\((.*?)\)/g;
-        let innerMatch: RegExpExecArray | null;
-        const lineParts: string[] = [];
-
-        while ((innerMatch = innerStrRegex.exec(arrayContent)) !== null) {
-          lineParts.push(innerMatch[1]);
-        }
-        if (lineParts.length > 0) {
-          textPieces.push(lineParts.join(' '));
-        }
-      }
+    } catch (err: any) {
+      logger.warn('[OCR Service] pdf-parse error:', err.message || err);
     }
-
-    return textPieces.join('\n').trim();
+    return '';
   }
 
   private static workerPromise: Promise<any> | null = null;

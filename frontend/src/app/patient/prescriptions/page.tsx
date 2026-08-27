@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/context/ToastContext";
 import OfflinePrescriptionUpload from "./components/OfflinePrescriptionUpload";
 import PrescriptionOCRStatus from "./components/PrescriptionOCRStatus";
 import PrescriptionReviewScreen from "./components/PrescriptionReviewScreen";
@@ -94,6 +95,7 @@ interface PrescriptionRecord {
 
 export default function PatientPrescriptionsPage() {
   const { user } = useAuth();
+  const { success: showSuccess, error: showError, warning: showWarning } = useToast();
   const [activeTab, setActiveTab] = useState<"schedule" | "cabinet" | "archive">("schedule");
   const [doseSlots, setDoseSlots] = useState<DoseSlot[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([]);
@@ -222,7 +224,7 @@ export default function PatientPrescriptionsPage() {
       } else {
         setPrescriptions([]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Prescriptions fetch notice:", err);
       setDoseSlots([]);
       setPrescriptions([]);
@@ -306,11 +308,11 @@ export default function PatientPrescriptionsPage() {
         setPrescriptions((prev) => prev.filter((p) => p.id !== rxId));
         fetchPrescriptionData();
       } else {
-        alert("Failed to delete prescription.");
+        showError("Action Failed", "Failed to delete prescription.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Delete prescription error:", err);
-      alert("An error occurred while deleting the prescription.");
+      showError("Action Failed", err.message || "Please try again.");
     } finally {
       setDeletingId(null);
     }
@@ -327,7 +329,7 @@ export default function PatientPrescriptionsPage() {
     setDoseSlots(updated);
 
     try {
-      await fetch("/api/prescriptions/adherence/log", {
+      const res = await fetch("/api/prescriptions/adherence/log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -336,8 +338,16 @@ export default function PatientPrescriptionsPage() {
           status: newStatus,
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.message || `Server error ${res.status}`);
+      }
     } catch (err) {
       console.error("Adherence log error:", err);
+      // Revert optimistic UI update on failure
+      const reverted = [...doseSlots];
+      reverted[slotIdx].doses[doseIdx].status = dose.status === newStatus ? "PENDING" : dose.status;
+      setDoseSlots(reverted);
     }
   };
 
@@ -395,7 +405,7 @@ export default function PatientPrescriptionsPage() {
     e.preventDefault();
     if (!refillModalRx) return;
     try {
-      await fetch("/api/prescriptions/refill/request", {
+      const res = await fetch("/api/prescriptions/refill/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -403,14 +413,19 @@ export default function PatientPrescriptionsPage() {
           notes: refillNotes,
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.message || `Request failed (${res.status})`);
+      }
       setRefillSuccess(true);
       setTimeout(() => {
         setRefillSuccess(false);
         setRefillModalRx(null);
         setRefillNotes("");
       }, 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Refill error:", err);
+      showError("Action Failed", err.message || "Please try again.");
     }
   };
 

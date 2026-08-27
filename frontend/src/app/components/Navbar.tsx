@@ -55,11 +55,11 @@ export default function Navbar() {
             {userProfile ? (
               <div className="flex items-center gap-2.5">
                 <Link
-                  href={userProfile.role === "doctor" ? "/doctor/dashboard" : "/patient/dashboard"}
+                  href={userProfile.role === "doctor" ? "/doctor/dashboard" : userProfile.role === "admin" ? "/admin/dashboard" : "/patient/dashboard"}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-cyan-50 border border-cyan-200 text-[#0891B2] text-sm font-semibold hover:bg-cyan-100 transition-colors min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0891B2]"
                 >
                   <LayoutDashboard className="w-4 h-4" />
-                  {userProfile.role === "doctor" ? "Doctor Portal" : "Patient Portal"}
+                  {userProfile.role === "doctor" ? "Doctor Portal" : userProfile.role === "admin" ? "Admin Console" : "Patient Portal"}
                 </Link>
                 <button
                   onClick={logout}

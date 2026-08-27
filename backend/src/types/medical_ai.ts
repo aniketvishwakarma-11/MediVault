@@ -45,6 +45,7 @@ export interface TimelineEventItem {
 export interface MedicalAIAnalysis {
   document: {
     document_type: string;
+    suggested_title?: string | null;
     speciality?: string | null;
     category?: string | null;
     summary: string;

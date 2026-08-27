@@ -56,32 +56,36 @@ export const authenticateJWT = async (
       return sendError(res, 401, 'Invalid authentication token payload.');
     }
 
-    // Determine actual role: check doctors table, users_profile table, token metadata, and request headers.
+    // Determine actual role: check users_profile first for admin, then doctors table, then token metadata
     let role = 'patient';
 
-    // 1. Check doctors table
+    // 1. Check users_profile for admin or doctor role (most authoritative source)
     try {
-      const docCheck = await query('SELECT id FROM public.doctors WHERE user_id = $1', [userId]);
-      if (docCheck.rows.length > 0) {
-        role = 'doctor';
+      const profCheck = await query('SELECT role FROM public.users_profile WHERE id = $1', [userId]);
+      if (profCheck.rows.length > 0 && profCheck.rows[0].role) {
+        const pRole = String(profCheck.rows[0].role).toLowerCase();
+        if (pRole === 'admin') {
+          role = 'admin';
+        } else if (pRole === 'doctor') {
+          role = 'doctor';
+        } else if (pRole === 'hospital') {
+          role = 'hospital';
+        }
       }
     } catch {}
 
-    // 2. Check users_profile table
-    if (role !== 'doctor') {
+    // 2. If not admin/hospital, cross-check doctors table
+    if (role === 'patient') {
       try {
-        const profCheck = await query('SELECT role FROM public.users_profile WHERE id = $1', [userId]);
-        if (profCheck.rows.length > 0 && profCheck.rows[0].role) {
-          const pRole = String(profCheck.rows[0].role).toLowerCase();
-          if (pRole === 'doctor') {
-            role = 'doctor';
-          }
+        const docCheck = await query('SELECT id FROM public.doctors WHERE user_id = $1', [userId]);
+        if (docCheck.rows.length > 0) {
+          role = 'doctor';
         }
       } catch {}
     }
 
-    // 3. Fallback to JWT payload metadata & claims
-    if (role !== 'doctor') {
+    // 3. Fallback to JWT payload metadata & claims (only for non-admin)
+    if (role !== 'doctor' && role !== 'admin' && role !== 'hospital') {
       const metaRole =
         decoded.user_metadata?.role ||
         decoded.app_metadata?.role ||
@@ -89,11 +93,13 @@ export const authenticateJWT = async (
         decoded.role;
       if (metaRole === 'doctor') {
         role = 'doctor';
+      } else if (metaRole === 'admin') {
+        role = 'admin';
       }
     }
 
     // 4. Fallback to client request headers (x-user-role, x-role, role)
-    if (role !== 'doctor') {
+    if (role !== 'doctor' && role !== 'admin') {
       const headerRole = (req.headers['x-user-role'] || req.headers['x-role'] || req.headers['role']) as string;
       if (headerRole && headerRole.toLowerCase() === 'doctor') {
         role = 'doctor';
@@ -101,7 +107,7 @@ export const authenticateJWT = async (
     }
 
     // 5. Fallback: if accessing a doctor endpoint (/doctor/*, /consent/doctor/*)
-    if (role !== 'doctor') {
+    if (role !== 'doctor' && role !== 'admin') {
       const isDoctorRoute = req.originalUrl?.includes('/doctor') || req.baseUrl?.includes('/doctor');
       if (isDoctorRoute) {
         role = 'doctor';

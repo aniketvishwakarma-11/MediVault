@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/context/AuthContext";
+import { ToastProvider } from "@/context/ToastContext";
+import { MaintenanceGuard } from "@/app/components/MaintenanceGuard";
 import { MotionConfig } from "motion/react";
 import "./globals.css";
 
@@ -29,9 +31,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full font-sans" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>
-          <MotionConfig reducedMotion="user">
-            {children}
-          </MotionConfig>
+          <ToastProvider>
+            <MaintenanceGuard>
+              <MotionConfig reducedMotion="user">
+                {children}
+              </MotionConfig>
+            </MaintenanceGuard>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

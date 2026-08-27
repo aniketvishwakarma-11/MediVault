@@ -10,9 +10,11 @@
 !/frontend/
 !/services/
 !/contracts/
+!/ocr-service/
 !/docker-compose.yml
 !/.gitignore
 !/README.md
+!/DEPLOYMENT_GUIDE.md
 
 # -------------------------------------------------------------
 # Operating System & IDE Files
