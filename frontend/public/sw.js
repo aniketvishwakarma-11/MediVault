@@ -1,7 +1,7 @@
 // MediVault Production Service Worker
-// Version: 1.0.0
+// Version: 1.1.0
 
-const CACHE_NAME = 'medivault-cache-v1';
+const CACHE_NAME = 'medivault-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -160,25 +160,34 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  const targetUrl = event.notification.data?.url || '/';
+  const rawUrl = event.notification.data?.url || '/';
+  const urlToOpen = new URL(rawUrl, self.location.origin).href;
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // If a window is already open, focus it and navigate
-      for (const client of windowClients) {
-        if ('focus' in client) {
-          client.focus();
-          if ('navigate' in client && targetUrl !== '/') {
-            return client.navigate(targetUrl);
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // 1. If an existing window is already at this exact URL, bring to focus
+        for (const client of windowClients) {
+          if (client.url === urlToOpen && 'focus' in client) {
+            return client.focus();
           }
-          return;
         }
-      }
-      // Otherwise open a new window
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-    })
+
+        // 2. If any MediVault window is active, navigate it and focus
+        for (const client of windowClients) {
+          if ('navigate' in client && 'focus' in client) {
+            return client
+              .navigate(urlToOpen)
+              .then((navClient) => (navClient ? navClient.focus() : client.focus()));
+          }
+        }
+
+        // 3. If no window is currently active, open a new window
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
   );
 });
 
