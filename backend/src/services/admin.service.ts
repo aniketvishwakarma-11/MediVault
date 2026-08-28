@@ -2392,7 +2392,31 @@ export class AdminService {
         ]
       );
 
-      return insertRes.rows[0];
+      const createdNotif = insertRes.rows[0];
+
+      // Dispatch real-time Web Push notification to subscriber devices
+      try {
+        const { PushNotificationService } = await import('./push-notification.service');
+        const pushPayload = {
+          title: data.title,
+          body: data.message,
+          url: data.action_url || (targetRole.toUpperCase() === 'DOCTOR' ? '/doctor/dashboard' : '/patient/dashboard'),
+          tag: 'admin-broadcast',
+        };
+
+        if (targetRole.toUpperCase() === 'ALL' || targetRole.toUpperCase() === 'ALL_ROLES') {
+          // Broadcast to everyone
+          await PushNotificationService.sendToRole('PATIENT', pushPayload);
+          await PushNotificationService.sendToRole('DOCTOR', pushPayload);
+          await PushNotificationService.sendToRole('ADMIN', pushPayload);
+        } else {
+          await PushNotificationService.sendToRole(targetRole.toUpperCase(), pushPayload);
+        }
+      } catch (pushErr: any) {
+        logger.warn('[AdminService.createBroadcastNotification] Web Push broadcast notice:', pushErr.message || pushErr);
+      }
+
+      return createdNotif;
     } catch (error) {
       logger.error('[AdminService.createBroadcastNotification] Error:', error);
       throw error;
@@ -2466,6 +2490,43 @@ export class AdminService {
         SystemSettingsCache.invalidate(key as any);
       } catch {
         // Non-fatal — cache will expire naturally on next read
+      }
+
+      // When maintenance mode changes, broadcast push alerts to all users
+      if (key === 'maintenance') {
+        const isEnabled = Boolean(value?.enabled);
+        const maintenanceMsg =
+          value?.message ||
+          'MediVault is currently undergoing routine maintenance. All services will resume shortly.';
+
+        try {
+          const { PushNotificationService } = await import('./push-notification.service');
+          if (isEnabled) {
+            // Maintenance mode turned ON -> broadcast alert to ALL users
+            const payload = {
+              title: '🚨 Maintenance Alert: System Offline',
+              body: maintenanceMsg,
+              url: '/',
+              tag: 'maintenance-status',
+            };
+            await PushNotificationService.sendToRole('PATIENT', payload);
+            await PushNotificationService.sendToRole('DOCTOR', payload);
+            await PushNotificationService.sendToRole('ADMIN', payload);
+          } else {
+            // Maintenance mode turned OFF -> broadcast service restored notice to ALL users
+            const payload = {
+              title: '✅ Services Restored: MediVault is Back Online',
+              body: 'Scheduled maintenance is complete. All patient vaults, clinical tools, and emergency access are fully operational.',
+              url: '/',
+              tag: 'maintenance-status',
+            };
+            await PushNotificationService.sendToRole('PATIENT', payload);
+            await PushNotificationService.sendToRole('DOCTOR', payload);
+            await PushNotificationService.sendToRole('ADMIN', payload);
+          }
+        } catch (mNotifErr: any) {
+          logger.warn('[AdminService.updateSystemSettings] Maintenance push broadcast notice:', mNotifErr.message || mNotifErr);
+        }
       }
 
       return res.rows[0];

@@ -220,6 +220,13 @@ export default function AdminSettingsPage() {
 
       if (!res.ok) throw new Error("Failed to toggle maintenance mode");
 
+      showSuccess(
+        newState ? "Maintenance Activated" : "Maintenance Deactivated",
+        newState
+          ? "Platform locked. Push alert dispatched to all subscribed users."
+          : "Services restored. Online push alert dispatched to all subscribed users."
+      );
+
       setSaveSuccess("maintenance");
       setTimeout(() => setSaveSuccess(null), 3000);
     } catch (err: any) {

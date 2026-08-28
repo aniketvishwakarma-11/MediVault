@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { supabase } from "@/lib/supabase";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -98,6 +99,31 @@ export default function AdminNotificationsPage() {
     action_url: "",
   });
   const [isSending, setIsSending] = useState(false);
+
+  // Web Push for Admin Testing
+  const {
+    isSupported: isPushSupported,
+    isSubscribed: isPushSubscribed,
+    subscribe: subscribePush,
+    sendTestNotification: sendPushTest,
+    loading: pushLoading,
+  } = usePushNotifications();
+
+  const handleAdminTestPush = async () => {
+    if (!isPushSubscribed) {
+      const res = await subscribePush();
+      if (!res.ok) {
+        showWarning("Push Notification", "Please enable browser notification permissions to receive test push.");
+        return;
+      }
+    }
+    const ok = await sendPushTest();
+    if (ok) {
+      showSuccess("Test Notification Dispatched", "Check your screen or notification shade!");
+    } else {
+      showError("Push Error", "Failed to send test push notification.");
+    }
+  };
 
   // ─── Fetch Data ────────────────────────────────────────────────────────────
   const fetchData = useCallback(
@@ -179,7 +205,7 @@ export default function AdminNotificationsPage() {
         throw new Error(errJson.message || "Failed to dispatch broadcast");
       }
 
-      showSuccess("Broadcast alert successfully dispatched to platform users!");
+      showSuccess("Broadcast & Push Dispatched", "Alert and mobile Web Push notifications sent to target audience!");
       setShowBroadcastModal(false);
       setBroadcastForm({
         title: "",
@@ -295,6 +321,16 @@ export default function AdminNotificationsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleAdminTestPush}
+            disabled={pushLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            title="Test sending a real push notification to this device"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>{pushLoading ? "Testing..." : isPushSubscribed ? "Test Device Push" : "Enable & Test Push"}</span>
+          </button>
+
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -661,9 +697,9 @@ export default function AdminNotificationsPage() {
                 <label className="text-xs font-bold text-slate-700">Delivery Channel</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: "IN_APP", label: "In-App Popup" },
+                    { id: "IN_APP", label: "Web Push & In-App" },
                     { id: "EMAIL", label: "Email Dispatch" },
-                    { id: "ALL_CHANNELS", label: "Omnichannel" },
+                    { id: "ALL_CHANNELS", label: "Omnichannel (All)" },
                   ].map((ch) => (
                     <button
                       type="button"
