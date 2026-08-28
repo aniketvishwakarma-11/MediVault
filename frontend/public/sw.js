@@ -1,4 +1,4 @@
-﻿// MediVault Production Service Worker
+// MediVault Production Service Worker
 // Version: 1.0.0
 
 const CACHE_NAME = 'medivault-cache-v1';
@@ -120,3 +120,65 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// 4. Push Event: Handle background Web Push payloads
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'MediVault Alert', body: event.data.text() };
+    }
+  }
+
+  const title = data.title || 'MediVault Notification';
+  const options = {
+    body: data.body || 'You have an update in your MediVault health vault.',
+    icon: data.icon || '/icons/icon-192.png',
+    badge: '/icons/icon.svg',
+    tag: data.tag || 'medivault-alert',
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || '/',
+      timestamp: Date.now(),
+    },
+    actions: [
+      { action: 'open', title: 'Open MediVault' },
+      { action: 'dismiss', title: 'Dismiss' },
+    ],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// 5. Notification Click Event: Deep-link to target view
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'dismiss') {
+    return;
+  }
+
+  const targetUrl = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If a window is already open, focus it and navigate
+      for (const client of windowClients) {
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client && targetUrl !== '/') {
+            return client.navigate(targetUrl);
+          }
+          return;
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+

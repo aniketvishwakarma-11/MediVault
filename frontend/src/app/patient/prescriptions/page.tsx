@@ -38,6 +38,7 @@ import { useToast } from "@/context/ToastContext";
 import OfflinePrescriptionUpload from "./components/OfflinePrescriptionUpload";
 import PrescriptionOCRStatus from "./components/PrescriptionOCRStatus";
 import PrescriptionReviewScreen from "./components/PrescriptionReviewScreen";
+import MedicationAlarmsWidget from "./components/MedicationAlarmsWidget";
 
 interface DoseItem {
   item_id: string;
@@ -564,6 +565,9 @@ export default function PatientPrescriptionsPage() {
             </div>
             <span className="text-[#475569]">Tap <strong>Take Now</strong> to log your intake and maintain your streak.</span>
           </div>
+
+          {/* Automated Daily Medication Push Alarms Hub */}
+          <MedicationAlarmsWidget />
 
           {totalTodayDoses === 0 ? (
             <div className="p-12 rounded-3xl bg-white border border-slate-200/80 text-center space-y-3 shadow-xs">

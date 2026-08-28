@@ -22,6 +22,7 @@ import {
   Activity
 } from "lucide-react";
 import { BloodPressureChart, RecordsActivityChart } from "@/app/components/ClinicalCharts";
+import PushNotificationBanner from "@/app/components/PushNotificationBanner";
 
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -300,6 +301,8 @@ export default function PatientDashboard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
     >
+      {/* Web Push Notification Opt-in Banner */}
+      <PushNotificationBanner />
       
       {/* ================= GREETING HEADER ================= */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-l-4 border-l-[#0891B2]">

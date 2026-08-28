@@ -212,6 +212,30 @@ export class PrescriptionService {
         logger.warn('[PrescriptionService] Clinical event creation notice:', err.message || err);
       }
 
+      // 6. Auto-Synchronize Daily Medication Reminders
+      try {
+        const { MedicationReminderService } = await import('./medication-reminder.service');
+        await MedicationReminderService.syncPrescriptionReminders(payload.patientId, rxRow.id);
+      } catch (remErr: any) {
+        logger.warn('[PrescriptionService] Medication reminder sync notice:', remErr.message || remErr);
+      }
+
+      // 7. Notify Patient via Web Push
+      try {
+        const { PushNotificationService } = await import('./push-notification.service');
+        const pRes = await query('SELECT user_id FROM public.patients WHERE id = $1', [payload.patientId]);
+        if (pRes.rows.length > 0 && pRes.rows[0].user_id) {
+          await PushNotificationService.sendToUser(pRes.rows[0].user_id, {
+            title: '📋 New Prescription Issued',
+            body: `A new digital prescription (${insertedItems.length} medicines) was issued by your doctor.`,
+            url: '/patient/prescriptions',
+            tag: 'rx-new',
+          });
+        }
+      } catch (pushErr: any) {
+        logger.warn('[PrescriptionService] Push notification notice:', pushErr.message || pushErr);
+      }
+
       return {
         ...rxRow,
         medicines: insertedItems,

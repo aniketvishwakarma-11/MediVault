@@ -12,6 +12,7 @@ import copilotRoutes from './routes/copilot.routes';
 import doctorCopilotRoutes from './routes/doctor-copilot.routes';
 import prescriptionRoutes from './routes/prescription.routes';
 import adminRoutes from './routes/admin.routes';
+import notificationRoutes from './routes/notification.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -122,6 +123,8 @@ app.use('/prescriptions', prescriptionRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {
@@ -153,6 +156,15 @@ export const startServer = async () => {
       MinioStorageService.migrateLegacyPatientFolders().catch((mErr) => {
         logger.warn('[App Startup] Storage folder migration notice:', mErr.message || mErr);
       });
+    });
+
+    // Start Periodic Medication Reminder Dispatcher (every 60s)
+    import('./services/medication-reminder.service').then(({ MedicationReminderService }) => {
+      setInterval(() => {
+        MedicationReminderService.dispatchDueReminders().catch((rErr) => {
+          logger.warn('[MedicationReminderService] Interval dispatch error:', rErr.message || rErr);
+        });
+      }, 60000);
     });
 
     app.listen(PORT, () => {

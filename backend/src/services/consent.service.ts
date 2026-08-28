@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { ethers } from 'ethers';
 import { query, isConnectionError } from '../config/db';
 import { logger } from '../utils/logger';
+import { PushNotificationService } from './push-notification.service';
 import {
   ConsentGrant,
   ConsentStatus,
@@ -831,12 +832,33 @@ export class ConsentService {
     metadata?: Record<string, any>
   ): Promise<void> {
     try {
+      // Resolve auth user_id if recipientId is a patient table id
+      let targetUserId = recipientId;
+      try {
+        const pRes = await query('SELECT user_id FROM public.patients WHERE id = $1', [recipientId]);
+        if (pRes.rows.length > 0 && pRes.rows[0].user_id) {
+          targetUserId = pRes.rows[0].user_id;
+        }
+      } catch {
+        // use recipientId directly
+      }
+
       await query(
         `INSERT INTO public.notifications
            (recipient_id, sender_id, type, title, message, metadata)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [recipientId, senderId, type, title, message, JSON.stringify(metadata || {})]
+        [targetUserId, senderId, type, title, message, JSON.stringify(metadata || {})]
       );
+
+      // Dispatch Web Push Notification (non-blocking)
+      PushNotificationService.sendToUser(targetUserId, {
+        title,
+        body: message,
+        url: type === 'CONSENT_REQUESTED' ? '/patient/consent' : '/patient/dashboard',
+        tag: 'consent-alert',
+      }).catch((err) => {
+        logger.warn('[ConsentService] Push dispatch failed:', err);
+      });
     } catch (err: any) {
       logger.warn('[ConsentService.createPatientNotification] Notification insert failed:', err?.message);
     }
