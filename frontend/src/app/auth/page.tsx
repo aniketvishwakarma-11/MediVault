@@ -245,6 +245,24 @@ export default function AuthPage() {
     try {
       const result = await loginWithBiometrics(email.trim() || undefined);
       setMessage("Biometric verified! Signing in to MediVault...");
+
+      // Establish real Supabase session if token_hash is returned from backend
+      if (result.token_hash) {
+        try {
+          const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+            token_hash: result.token_hash,
+            type: "magiclink",
+          });
+          if (otpError) {
+            console.warn("[WebAuthn] Supabase verifyOtp notice:", otpError.message);
+          } else if (otpData?.session) {
+            console.log("[WebAuthn] Supabase session established successfully!");
+          }
+        } catch (otpErr: any) {
+          console.warn("[WebAuthn] Supabase session bridge notice:", otpErr);
+        }
+      }
+
       loginWithPasskeySession(result.token, result.user, result.role as UserRole);
 
       let target = "/patient/dashboard";

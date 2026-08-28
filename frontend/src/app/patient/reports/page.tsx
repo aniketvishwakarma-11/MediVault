@@ -34,6 +34,7 @@ import { supabase } from "@/lib/supabase";
 import { DEMO_REPORTS } from "@/lib/demoData";
 import DocumentViewerModal from "@/app/components/DocumentViewerModal";
 import { CameraScannerModal } from "@/app/components/scanner/CameraScannerModal";
+import { getAuthHeaders } from "@/lib/auth-token";
 
 interface DocumentRecord {
   id: string;
@@ -181,18 +182,6 @@ export default function MedicalReportsPage() {
       return;
     }
 
-    // Helper to get JWT auth header
-    const getAuthHeaders = async (): Promise<Record<string, string>> => {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        if (token) {
-          return { Authorization: `Bearer ${token}` };
-        }
-      } catch (e) {}
-      return {};
-    };
-
     // IF REAL USER: Fetch STRICTLY real documents from backend API
     try {
       const queryParams = new URLSearchParams();
@@ -264,10 +253,7 @@ export default function MedicalReportsPage() {
       if (doctorName.trim()) formData.append("doctor_name", doctorName.trim());
       if (visitDate.trim()) formData.append("visit_date", visitDate.trim());
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const headers = await getAuthHeaders();
 
       const res = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
@@ -304,10 +290,7 @@ export default function MedicalReportsPage() {
     if (!confirm("Are you sure you want to delete this document from your vault?")) return;
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const headers = await getAuthHeaders();
 
       const res = await fetch(`${API_BASE_URL}/documents/${docId}`, {
         method: "DELETE",
@@ -336,10 +319,7 @@ export default function MedicalReportsPage() {
     setIsViewerOpen(true);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const headers = await getAuthHeaders();
 
       const res = await fetch(`${API_BASE_URL}/documents/${doc.id}`, { headers });
       if (res.ok) {
@@ -368,10 +348,7 @@ export default function MedicalReportsPage() {
 
   const handleDownload = async (doc: DocumentRecord) => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const headers = await getAuthHeaders();
 
       const res = await fetch(`${API_BASE_URL}/documents/${doc.id}`, { headers });
       if (!res.ok) throw new Error("Failed to generate download URL");

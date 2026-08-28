@@ -119,6 +119,7 @@ export async function loginWithBiometrics(email?: string) {
 
   return verifyJson.data as {
     token: string;
+    token_hash?: string;
     user: {
       id: string;
       email: string;

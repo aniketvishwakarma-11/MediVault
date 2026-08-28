@@ -9,8 +9,16 @@ import {
 import { query } from '../config/db';
 import { logger } from '../utils/logger';
 import jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_medivault_chain_ai_2026';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://zzcvqshobbajvcsdjnnm.supabase.co';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAdmin = SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+  : null;
 
 function getRpId(hostname?: string): string {
   if (process.env.RP_ID) return process.env.RP_ID;
@@ -307,8 +315,26 @@ export class WebAuthnService {
 
     logger.info(`[WebAuthn] User ${passkey.user_id} (${passkey.email}) logged in successfully with passkey "${passkey.device_name}"`);
 
+    // Generate Supabase session token_hash if user has real account in auth.users
+    let tokenHash: string | undefined = undefined;
+    if (supabaseAdmin && passkey.email && !passkey.email.includes('@medivault.local')) {
+      try {
+        const linkRes = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: passkey.email,
+        });
+        if (linkRes.data?.properties?.hashed_token) {
+          tokenHash = linkRes.data.properties.hashed_token;
+          logger.info(`[WebAuthn] Generated Supabase magiclink session hash for ${passkey.email}`);
+        }
+      } catch (err: any) {
+        logger.warn('[WebAuthn] Could not generate Supabase session hash:', err.message);
+      }
+    }
+
     return {
       token,
+      token_hash: tokenHash,
       user: {
         id: passkey.user_id,
         email: passkey.email,

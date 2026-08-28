@@ -12,13 +12,9 @@ import type {
   TimelineFilter,
 } from '../types/timeline';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { getAuthHeaders } from './auth-token';
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 async function apiFetch<T>(path: string, params?: Record<string, string>): Promise<T | null> {
   try {

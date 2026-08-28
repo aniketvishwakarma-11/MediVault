@@ -122,7 +122,8 @@ export default function PatientPrescriptionsPage() {
   // Load auth token once for upload requests
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setAuthToken(data?.session?.access_token);
+      const tok = data?.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined) || undefined;
+      setAuthToken(tok);
     });
   }, []);
 
@@ -192,7 +193,7 @@ export default function PatientPrescriptionsPage() {
     setIsLoading(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = sessionData?.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -298,7 +299,7 @@ export default function PatientPrescriptionsPage() {
     setDeletingId(rxId);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = sessionData?.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
       const res = await fetch(`/api/prescriptions/${rxId}`, {
         method: "DELETE",
         headers: {

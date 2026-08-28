@@ -81,7 +81,7 @@ async function api<T = any>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   try {
     const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
+    const token = sessionData?.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }

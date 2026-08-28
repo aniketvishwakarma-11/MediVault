@@ -27,7 +27,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
-  const token = data?.session?.access_token;
+  const token = data?.session?.access_token || (typeof window !== 'undefined' ? (localStorage.getItem('medivault_auth_token') || localStorage.getItem('medivault_demo_jwt')) : null);
   const activeRole = (typeof window !== 'undefined' ? localStorage.getItem('medivault_user_role') : null) || 'doctor';
   return {
     'Content-Type': 'application/json',

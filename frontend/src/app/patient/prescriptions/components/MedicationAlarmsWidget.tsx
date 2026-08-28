@@ -41,7 +41,7 @@ export default function MedicationAlarmsWidget() {
     try {
       setLoading(true);
       const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      const token = data.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
       if (!token) return;
 
       const res = await fetch(`${API_BASE_URL}/api/notifications/reminders`, {
@@ -65,7 +65,7 @@ export default function MedicationAlarmsWidget() {
   const handleToggle = async (id: string, currentStatus: boolean) => {
     try {
       const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      const token = data.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
 
       // Optimistic update
       setReminders((prev) =>
@@ -95,7 +95,7 @@ export default function MedicationAlarmsWidget() {
     try {
       setSyncing(true);
       const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      const token = data.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
 
       const res = await fetch(`${API_BASE_URL}/api/notifications/reminders/sync`, {
         method: "POST",

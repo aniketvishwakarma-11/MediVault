@@ -140,7 +140,7 @@ export default function PatientTimelinePage() {
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = sessionData?.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : null);
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 

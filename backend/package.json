@@ -18,6 +18,7 @@
     "@google/generative-ai": "^0.24.1",
     "@qdrant/js-client-rest": "^1.19.0",
     "@simplewebauthn/server": "^13.3.3",
+    "@supabase/supabase-js": "^2.112.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

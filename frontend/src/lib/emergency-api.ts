@@ -9,7 +9,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();
   let token = session?.access_token;
   if (!token && typeof window !== 'undefined') {
-    token = localStorage.getItem('medivault_demo_jwt') || undefined;
+    token = localStorage.getItem('medivault_auth_token') || localStorage.getItem('medivault_demo_jwt') || undefined;
   }
 
   let activeRole: string | null = null;
