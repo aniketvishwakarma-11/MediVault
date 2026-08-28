@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   FileText, 
   Upload, 
@@ -16,16 +16,18 @@ import {
   Building2, 
   UserCheck, 
   Hash, 
-  RefreshCw,
-  Lock,
-  Grid,
-  List,
-  Eye,
-  Sparkles,
-  ShieldCheck,
-  Stethoscope,
-  AlertTriangle,
-  Camera
+  RefreshCw, 
+  Lock, 
+  Grid, 
+  List, 
+  Eye, 
+  Sparkles, 
+  ShieldCheck, 
+  Stethoscope, 
+  AlertTriangle, 
+  Camera,
+  UploadCloud,
+  FileCheck
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -99,6 +101,34 @@ export default function MedicalReportsPage() {
     if (!documentName) {
       const defaultName = isHandwritten ? "Prescription_Scan" : "Medical_Report_Scan";
       setDocumentName(`${defaultName}_${new Date().toISOString().slice(0, 10)}`);
+    }
+  };
+
+  // Custom File Dropzone State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files?.[0]) {
+      const file = e.dataTransfer.files[0];
+      setUploadFile(file);
+      setScannedPreviewUrls([]);
+      if (!documentName) {
+        setDocumentName(file.name.replace(/\.[^/.]+$/, ""));
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      setUploadFile(file);
+      setScannedPreviewUrls([]);
+      if (!documentName) {
+        setDocumentName(file.name.replace(/\.[^/.]+$/, ""));
+      }
     }
   };
 
@@ -804,87 +834,152 @@ export default function MedicalReportsPage() {
                     ✍️ Doctor Handwritten Script
                   </button>
                 </div>
-                {isHandwritten && (
-                  <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-800 font-medium flex items-center gap-2 animate-in fade-in duration-150">
-                    <Sparkles className="w-4 h-4 text-sky-600 shrink-0" />
-                    <span>
-                      Routed through <strong>Chinmay TrOCR Vision AI</strong> to transcribe doctor handwriting, OPD notes, triage tags, and immunization records into structured timeline events.
-                    </span>
+              </div>
+
+              {/* ─── Document Ingestion: Camera Scanner & File Dropzone ─── */}
+              <div className="space-y-3.5 pt-1">
+                {/* 1. Live Camera Scanner Card */}
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500/10 via-slate-50 to-teal-500/10 border border-cyan-200 p-4 transition-all hover:border-cyan-400 hover:shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0891B2] to-[#0D9488] text-white shadow-md shadow-cyan-500/25">
+                        <Camera className="h-5 w-5" />
+                        <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <span>Live Camera Scanner</span>
+                          <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide bg-cyan-100 text-cyan-800 rounded-full border border-cyan-200">
+                            Recommended
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Auto-framing reticle, shadow removal, &amp; multi-page PDF stitching.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsScannerOpen(true)}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-110 active:scale-[0.98] shadow-md shadow-cyan-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Open Camera Scanner</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Elegant OR Divider */}
+                <div className="relative flex items-center justify-center my-1">
+                  <div className="border-t border-slate-200/80 w-full"></div>
+                  <span className="bg-white px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute">
+                    Or Upload File
+                  </span>
+                </div>
+
+                {/* 2. File Selected Preview OR Custom Drag & Drop Dropzone */}
+                {uploadFile ? (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-slate-800 flex items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {scannedPreviewUrls.length > 0 ? (
+                        <div className="relative w-11 h-14 rounded-xl bg-emerald-100 overflow-hidden border border-emerald-300 shrink-0 shadow-xs">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={scannedPreviewUrls[0]} alt="Scanned document" className="w-full h-full object-cover" />
+                          <div className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] font-mono text-white text-center font-bold">
+                            #{scannedPreviewUrls.length}p
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-11 h-12 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
+                          <FileCheck className="w-6 h-6" />
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 truncate">
+                            {uploadFile.name}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] font-bold uppercase shrink-0 border border-emerald-200">
+                            Ready
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {scannedPreviewUrls.length > 0
+                            ? `Camera Scanned Document (${scannedPreviewUrls.length} Pages) • `
+                            : "Selected File • "}
+                          {(uploadFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-50 text-[11px] font-bold text-emerald-800 transition-colors cursor-pointer"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadFile(null);
+                          setScannedPreviewUrls([]);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Remove attached file"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleFileDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`group relative rounded-2xl border-2 border-dashed p-6 text-center transition-all cursor-pointer ${
+                      isDragging
+                        ? "border-[#0891B2] bg-cyan-50/70 scale-[1.01]"
+                        : "border-slate-300 hover:border-[#0891B2] bg-slate-50/60 hover:bg-cyan-50/30"
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="w-11 h-11 rounded-2xl bg-white border border-slate-200 text-slate-500 group-hover:text-[#0891B2] group-hover:border-cyan-200 group-hover:scale-105 transition-all flex items-center justify-center shadow-xs">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">
+                          Drop your document here, or{" "}
+                          <span className="text-[#0891B2] underline underline-offset-2">
+                            browse files
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Supports PDF, JPG, PNG, WEBP, DOCX (Max 25 MB)
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
-
-              {/* Camera Scanner or File Pick Option */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-50 to-teal-50 border border-cyan-200/80 flex items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs border border-cyan-100">
-                    <Camera className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-[#0F172A]">Scan Paper Document with Camera</div>
-                    <div className="text-[11px] text-slate-500">Live A4 alignment reticle &amp; OCR enhancement</div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsScannerOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 shadow-sm shadow-cyan-500/20 cursor-pointer flex items-center gap-1.5 shrink-0"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Open Scanner</span>
-                </button>
-              </div>
-
-              {/* Scanned Document Preview Badge (if scanned via camera) */}
-              {uploadFile && scannedPreviewUrls.length > 0 && (
-                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-12 rounded-lg bg-emerald-100 overflow-hidden border border-emerald-300 shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={scannedPreviewUrls[0]} alt="Scanned preview" className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <span className="font-bold block">
-                        {scannedPreviewUrls.length > 1
-                          ? `Multi-Page Scanned Document (${scannedPreviewUrls.length} Pages)`
-                          : "Scanned Document Ready"}
-                      </span>
-                      <span className="text-[10px] text-emerald-700 font-mono">
-                        {uploadFile.name} ({(uploadFile.size / 1024).toFixed(1)} KB)
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUploadFile(null);
-                      setScannedPreviewUrls([]);
-                    }}
-                    className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                    title="Remove Scanned File"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* File Dropzone */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 text-xs">
-                  {scannedPreviewUrls.length > 0 ? "Or Replace with File Upload" : "Or Upload Existing File"}
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
-                  required={!uploadFile}
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setUploadFile(e.target.files[0]);
-                      setScannedPreviewUrls([]);
-                    }
-                  }}
-                  className="w-full p-3 border border-dashed border-sky-300 bg-sky-50/50 rounded-2xl text-slate-700 cursor-pointer text-xs"
-                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
