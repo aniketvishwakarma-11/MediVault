@@ -80,6 +80,28 @@ app.post('/system/migrate-storage', async (req: Request, res: Response) => {
   }
 });
 
+// Storage Debug Endpoint
+app.get('/system/storage-debug', async (req: Request, res: Response) => {
+  try {
+    const { getMinioClient, getMinioBucketName } = await import('./config/minio');
+    const client = getMinioClient();
+    const bucket = getMinioBucketName();
+    const allObjects: string[] = [];
+    const stream = client.listObjects(bucket, '', true);
+    for await (const item of stream) {
+      if (item && item.name) allObjects.push(item.name);
+    }
+    res.status(200).json({
+      success: true,
+      bucket,
+      count: allObjects.length,
+      objects: allObjects,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Mount Module Routes
 app.use('/documents', documentRoutes);
 app.use('/api/documents', documentRoutes);

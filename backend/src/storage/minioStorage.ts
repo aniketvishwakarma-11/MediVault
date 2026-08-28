@@ -79,17 +79,17 @@ export class MinioStorageService {
 
       logger.info(`[Storage Migration] Scanning bucket "${bucket}" for legacy "patients/P-" objects...`);
 
-      // 1. Scan storage bucket directly for any objects under 'patients/P-'
+      // 1. Scan storage bucket directly for any objects containing '/P-' or 'patients/P-'
       const bucketObjects: string[] = [];
       try {
-        const stream = client.listObjects(bucket, 'patients/P-', true);
+        const stream = client.listObjects(bucket, '', true);
         for await (const item of stream) {
-          if (item && item.name) {
+          if (item && item.name && (item.name.includes('/P-') || item.name.startsWith('patients/P-'))) {
             bucketObjects.push(item.name);
           }
         }
       } catch (listErr: any) {
-        logger.warn(`[Storage Migration] Failed to list bucket objects under patients/P-:`, listErr.message);
+        logger.warn(`[Storage Migration] Failed to list bucket objects:`, listErr.message);
       }
 
       logger.info(`[Storage Migration] Found ${bucketObjects.length} object(s) in bucket starting with "patients/P-".`);
