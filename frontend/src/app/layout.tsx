@@ -97,6 +97,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: {
+    google: "uy1sq5WoTzGlX2PSa44Z4t-bUjmx2TiEWpePq4jRbaM",
+  },
 };
 
 // ─── Schema.org Structured Data (JSON-LD) ───────────────────────────────────
@@ -202,6 +205,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="h-full font-sans" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
+        <meta name="google-site-verification" content="uy1sq5WoTzGlX2PSa44Z4t-bUjmx2TiEWpePq4jRbaM" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
