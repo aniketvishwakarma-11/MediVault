@@ -11,8 +11,8 @@ This document serves as the authoritative, permanent reference for all engineeri
 | **Phases 1–5** | **Mobile-First Transformation** | ✅ **Completed** | Aug 2026 | Mobile bottom nav, fluid touch cards, responsive charts, swipeable drawers across Patient, Doctor, and Admin portals. |
 | **Phase 6** | **Progressive Web App (PWA) & Offline Caching** | ✅ **Completed** | Aug 28, 2026 | Installable app on iOS & Android, Service Worker (`sw.js` v2), offline emergency card and QR pass caching. |
 | **Phase 7** | **Web Push Notifications & Medication Reminders** | ✅ **Completed** | Aug 29, 2026 | Real-time push alerts, doctor consent requests, daily dosage alarms (1-0-1 schedule), admin broadcasts & maintenance triggers. |
-| **Phase 8** | **Mobile Camera OCR Scanner Viewfinder** | 🎯 **NEXT PHASE** | *Ready to Build* | Guided live camera document scanner with alignment frame reticle, on-device auto-contrast enhancement & multi-page stitching. |
-| **Phase 9** | **Biometric Fast Login (WebAuthn / Passkeys)** | ⏸️ **Upcoming** | *Queued* | 1-tap passwordless sign-in using Face ID, Touch ID, or Android Fingerprint sensors without typing passwords. |
+| **Phase 8** | **Mobile Camera OCR Scanner Viewfinder** | ✅ **Completed** | Aug 29, 2026 | Guided live camera document scanner with alignment frame reticle, on-device auto-contrast enhancement & multi-page stitching. |
+| **Phase 9** | **Biometric Fast Login (WebAuthn / Passkeys)** | 🎯 **NEXT PHASE** | *Ready to Build* | 1-tap passwordless sign-in using Face ID, Touch ID, or Android Fingerprint sensors without typing passwords. |
 
 ---
 

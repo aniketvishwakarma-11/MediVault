@@ -24,12 +24,14 @@ import {
   Sparkles,
   ShieldCheck,
   Stethoscope,
-  AlertTriangle
+  AlertTriangle,
+  Camera
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { DEMO_REPORTS } from "@/lib/demoData";
 import DocumentViewerModal from "@/app/components/DocumentViewerModal";
+import { CameraScannerModal } from "@/app/components/scanner/CameraScannerModal";
 
 interface DocumentRecord {
   id: string;
@@ -86,6 +88,19 @@ export default function MedicalReportsPage() {
   const [doctorName, setDoctorName] = useState<string>("");
   const [visitDate, setVisitDate] = useState<string>("");
   const [patientIdInput, setPatientIdInput] = useState<string>("a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d");
+
+  // Camera Scanner Modal State
+  const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
+  const [scannedPreviewUrls, setScannedPreviewUrls] = useState<string[]>([]);
+
+  const handleScannerComplete = (file: File, previewUrls: string[]) => {
+    setUploadFile(file);
+    setScannedPreviewUrls(previewUrls);
+    if (!documentName) {
+      const defaultName = isHandwritten ? "Prescription_Scan" : "Medical_Report_Scan";
+      setDocumentName(`${defaultName}_${new Date().toISOString().slice(0, 10)}`);
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -799,15 +814,76 @@ export default function MedicalReportsPage() {
                 )}
               </div>
 
+              {/* Camera Scanner or File Pick Option */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-50 to-teal-50 border border-cyan-200/80 flex items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs border border-cyan-100">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[#0F172A]">Scan Paper Document with Camera</div>
+                    <div className="text-[11px] text-slate-500">Live A4 alignment reticle &amp; OCR enhancement</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsScannerOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 shadow-sm shadow-cyan-500/20 cursor-pointer flex items-center gap-1.5 shrink-0"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Open Scanner</span>
+                </button>
+              </div>
+
+              {/* Scanned Document Preview Badge (if scanned via camera) */}
+              {uploadFile && scannedPreviewUrls.length > 0 && (
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-12 rounded-lg bg-emerald-100 overflow-hidden border border-emerald-300 shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={scannedPreviewUrls[0]} alt="Scanned preview" className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <span className="font-bold block">
+                        {scannedPreviewUrls.length > 1
+                          ? `Multi-Page Scanned Document (${scannedPreviewUrls.length} Pages)`
+                          : "Scanned Document Ready"}
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-mono">
+                        {uploadFile.name} ({(uploadFile.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadFile(null);
+                      setScannedPreviewUrls([]);
+                    }}
+                    className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                    title="Remove Scanned File"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {/* File Dropzone */}
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Medical Document File</label>
+                <label className="font-bold text-slate-700 text-xs">
+                  {scannedPreviewUrls.length > 0 ? "Or Replace with File Upload" : "Or Upload Existing File"}
+                </label>
                 <input
                   type="file"
                   accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
-                  required
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  className="w-full p-3 border border-dashed border-sky-300 bg-sky-50/50 rounded-2xl text-slate-700 cursor-pointer"
+                  required={!uploadFile}
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      setUploadFile(e.target.files[0]);
+                      setScannedPreviewUrls([]);
+                    }
+                  }}
+                  className="w-full p-3 border border-dashed border-sky-300 bg-sky-50/50 rounded-2xl text-slate-700 cursor-pointer text-xs"
                 />
               </div>
 
@@ -915,6 +991,15 @@ export default function MedicalReportsPage() {
           }}
         />
       )}
+
+      {/* ─── Mobile Camera OCR Scanner Modal ─── */}
+      <CameraScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onComplete={handleScannerComplete}
+        initialFormat={isHandwritten ? "RX" : "A4"}
+        defaultDocTitle={isHandwritten ? "Prescription_Scan" : "Medical_Report_Scan"}
+      />
 
     </div>
   );

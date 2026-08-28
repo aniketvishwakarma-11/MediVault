@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Upload, AlertTriangle, Info, CheckCircle2, Loader2, X, FileImage, ZapOff,
+  Upload, AlertTriangle, Info, CheckCircle2, Loader2, X, FileImage, ZapOff, Camera,
 } from "lucide-react";
+import { CameraScannerModal } from "@/app/components/scanner/CameraScannerModal";
 
 interface UploadResult {
   jobId: string;
@@ -29,6 +30,7 @@ export default function OfflinePrescriptionUpload({
   const [preview, setPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [ocrServiceAvailable, setOcrServiceAvailable] = useState<boolean | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const checkOcrService = async () => {
@@ -151,6 +153,28 @@ export default function OfflinePrescriptionUpload({
         ))}
       </div>
 
+      {/* ─── Camera Scanner Quick Action ─── */}
+      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-50 to-teal-50 border border-cyan-200/80 flex items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-white text-[#0891B2] shadow-xs border border-cyan-100">
+            <Camera className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[#0F172A]">Scan Paper Prescription with Camera</div>
+            <div className="text-[11px] text-slate-500">Auto-aligns Rx slip &amp; prepares for TrOCR AI</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsScannerOpen(true)}
+          disabled={isUploading}
+          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 shadow-sm shadow-cyan-500/20 cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+        >
+          <Camera className="w-4 h-4" />
+          <span>Scan Prescription</span>
+        </button>
+      </div>
+
       <div
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
@@ -239,6 +263,15 @@ export default function OfflinePrescriptionUpload({
         Your prescription image is encrypted and stored privately in MediVault. Only you and doctors you consent can access it.
         The original image is preserved unchanged - we only read from it, never modify it.
       </p>
+
+      {/* ─── Camera Scanner Modal ─── */}
+      <CameraScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onComplete={(file) => handleFile(file)}
+        initialFormat="RX"
+        defaultDocTitle="Doctor_Prescription"
+      />
     </div>
   );
 }
