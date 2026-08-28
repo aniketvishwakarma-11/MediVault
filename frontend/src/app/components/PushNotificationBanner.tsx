@@ -31,12 +31,17 @@ export default function PushNotificationBanner() {
   };
 
   const handleEnable = async () => {
-    const ok = await subscribe();
-    if (ok) {
+    const res = await subscribe();
+    if (res.ok) {
       showSuccess("Notifications Enabled", "You will receive instant alerts for doctor requests & medication alarms.");
       setDismissed(true);
+    } else if (res.error === "PERMISSION_DENIED") {
+      showError(
+        "Android Notification Blocked",
+        "Open phone Settings ➔ Apps ➔ MediVault ➔ Notifications ➔ Turn ON 'Allow notifications'."
+      );
     } else {
-      showError("Action Cancelled", "Push notification permissions were not granted.");
+      showError("Action Incomplete", res.message || "Please allow notifications in device settings.");
     }
   };
 

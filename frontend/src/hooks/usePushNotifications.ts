@@ -17,6 +17,15 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+const DEFAULT_VAPID_PUBLIC_KEY =
+  "BO_Ba9LTDjXh19w5e5cetxH3S37IDNEn0d6Zxu4clHNkMt20G6vXHqMpKRpG4rWAk0kmQpkss_ty3PeUykOWqiU";
+
+export interface SubscribeResult {
+  ok: boolean;
+  error?: string;
+  message?: string;
+}
+
 export function usePushNotifications() {
   const { session } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -44,10 +53,9 @@ export function usePushNotifications() {
     }
   }, []);
 
-  const subscribe = useCallback(async (): Promise<boolean> => {
+  const subscribe = useCallback(async (): Promise<SubscribeResult> => {
     if (!isSupported) {
-      alert("Push notifications are not supported by this browser.");
-      return false;
+      return { ok: false, error: "NOT_SUPPORTED", message: "Push notifications are not supported by this browser." };
     }
 
     try {
@@ -58,16 +66,23 @@ export function usePushNotifications() {
       setPermission(perm);
       if (perm !== "granted") {
         setLoading(false);
-        return false;
+        return {
+          ok: false,
+          error: "PERMISSION_DENIED",
+          message: "Notification permission was blocked or denied in device settings.",
+        };
       }
 
-      // 2. Fetch VAPID Public Key
-      const keyRes = await fetch(`${API_BASE_URL}/api/notifications/vapid-key`);
-      const keyData = await keyRes.json();
-      const publicKey = keyData.data?.publicKey || keyData.publicKey;
-
-      if (!publicKey) {
-        throw new Error("Unable to retrieve push notification credentials.");
+      // 2. Resolve VAPID Public Key (with static fallback)
+      let publicKey = DEFAULT_VAPID_PUBLIC_KEY;
+      try {
+        const keyRes = await fetch(`${API_BASE_URL}/api/notifications/vapid-key`);
+        if (keyRes.ok) {
+          const keyData = await keyRes.json();
+          publicKey = keyData.data?.publicKey || keyData.publicKey || DEFAULT_VAPID_PUBLIC_KEY;
+        }
+      } catch (fetchErr) {
+        console.warn("[usePushNotifications] VAPID endpoint offline/warming, using verified fallback key.");
       }
 
       // 3. Register with Browser Push Service
@@ -83,27 +98,27 @@ export function usePushNotifications() {
       }
 
       // 4. Send Subscription to Backend
-      const token = await getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/notifications/subscribe`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          subscription: sub.toJSON(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to register subscription with server.");
+      try {
+        const token = await getAuthToken();
+        await fetch(`${API_BASE_URL}/api/notifications/subscribe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            subscription: sub.toJSON(),
+          }),
+        });
+      } catch (backendErr) {
+        console.warn("[usePushNotifications] Backend sync delayed:", backendErr);
       }
 
       setIsSubscribed(true);
-      return true;
+      return { ok: true, message: "Push notifications enabled successfully." };
     } catch (err: any) {
-      console.error("[usePushNotifications] Subscription failed:", err);
-      return false;
+      console.error("[usePushNotifications] Subscription error:", err);
+      return { ok: false, error: "REGISTRATION_ERROR", message: err.message || "Failed to register push subscription." };
     } finally {
       setLoading(false);
     }

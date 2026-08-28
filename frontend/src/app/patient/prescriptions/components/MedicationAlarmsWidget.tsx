@@ -136,11 +136,16 @@ export default function MedicationAlarmsWidget() {
   };
 
   const handleEnablePush = async () => {
-    const ok = await subscribe();
-    if (ok) {
+    const res = await subscribe();
+    if (res.ok) {
       showSuccess("Push Notifications Enabled", "You will now receive daily medication alarms on this device.");
+    } else if (res.error === "PERMISSION_DENIED") {
+      showError(
+        "Android Notification Blocked",
+        "Open phone Settings ➔ Apps ➔ MediVault ➔ Notifications ➔ Turn ON 'Allow notifications'."
+      );
     } else {
-      showError("Permission Denied", "Please allow notifications in your browser settings.");
+      showError("Action Incomplete", res.message || "Please allow notifications in your device settings.");
     }
   };
 

@@ -172,7 +172,7 @@ export class PushNotificationService {
           endpoint: row.endpoint,
           keys: { p256dh: row.p256dh, auth: row.auth },
         };
-        webpush.sendNotification(pushSubscription, notificationData).catch((err) => {
+        webpush.sendNotification(pushSubscription, notificationData).catch((err: any) => {
           if (err.statusCode === 404 || err.statusCode === 410) {
             query('DELETE FROM public.push_subscriptions WHERE id = $1', [row.id]).catch(() => {});
           }
