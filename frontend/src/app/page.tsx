@@ -298,15 +298,15 @@ export default function Home() {
                   variants={fadeUp}
                   className="font-heading text-4xl sm:text-5xl lg:text-[3.25rem] font-black text-slate-900 leading-[1.1] tracking-tight"
                 >
-                  Own Your Health Records.{" "}
-                  <span className="text-[#0891B2]">Control Who Sees Them.</span>
+                  Digital Health Vault &amp;{" "}
+                  <span className="text-[#0891B2]">AI Medical Records Locker</span>
                 </motion.h1>
 
                 <motion.p
                   variants={fadeUp}
                   className="text-base sm:text-lg text-slate-500 max-w-xl mx-auto lg:mx-0 leading-relaxed"
                 >
-                  MediVault unifies fragmented medical records across hospitals into a continuous encrypted timeline — with cryptographic consent and AI-powered clinical summaries.
+                  Patient-owned medical records vault with AI handwritten prescription scanning, instant emergency trauma QR passes, and cryptographic blockchain integrity verification.
                 </motion.p>
 
                 <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-1">
