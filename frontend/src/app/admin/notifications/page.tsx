@@ -125,6 +125,49 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  // Mobile Back Button / Modal History Management
+  const handleOpenBroadcastModal = useCallback(() => {
+    setShowBroadcastModal(true);
+    if (typeof window !== "undefined") {
+      window.history.pushState({ medivault_modal: "broadcast" }, "");
+    }
+  }, []);
+
+  const handleCloseBroadcastModal = useCallback(() => {
+    setShowBroadcastModal(false);
+    if (typeof window !== "undefined" && window.history.state?.medivault_modal === "broadcast") {
+      window.history.back();
+    }
+  }, []);
+
+  const handleOpenDrawer = useCallback((notif: NotificationItem) => {
+    setSelectedNotif(notif);
+    if (typeof window !== "undefined") {
+      window.history.pushState({ medivault_modal: "drawer" }, "");
+    }
+  }, []);
+
+  const handleCloseDrawer = useCallback(() => {
+    setSelectedNotif(null);
+    if (typeof window !== "undefined" && window.history.state?.medivault_modal === "drawer") {
+      window.history.back();
+    }
+  }, []);
+
+  // Intercept mobile hardware back button / popstate event
+  useEffect(() => {
+    const onPopState = () => {
+      // If user hit the phone's back button/gesture, close modal or drawer instead of navigating away
+      setShowBroadcastModal(false);
+      setSelectedNotif(null);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
+
   // ─── Fetch Data ────────────────────────────────────────────────────────────
   const fetchData = useCallback(
     async (pageNumber = 1) => {
@@ -206,7 +249,7 @@ export default function AdminNotificationsPage() {
       }
 
       showSuccess("Broadcast & Push Dispatched", "Alert and mobile Web Push notifications sent to target audience!");
-      setShowBroadcastModal(false);
+      handleCloseBroadcastModal();
       setBroadcastForm({
         title: "",
         message: "",
@@ -341,7 +384,7 @@ export default function AdminNotificationsPage() {
           </button>
 
           <button
-            onClick={() => setShowBroadcastModal(true)}
+            onClick={handleOpenBroadcastModal}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 transition-all shadow-sm shadow-cyan-500/20 cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
@@ -587,7 +630,7 @@ export default function AdminNotificationsPage() {
                       <td className="py-4 px-6 text-right">
                         <div className="inline-flex items-center gap-1.5">
                           <button
-                            onClick={() => setSelectedNotif(notif)}
+                            onClick={() => handleOpenDrawer(notif)}
                             className="p-2 rounded-xl bg-slate-50 hover:bg-cyan-50 text-slate-600 hover:text-[#0891B2] border border-slate-200/80 transition-all cursor-pointer"
                             title="Inspect Notification Preview"
                           >
@@ -641,124 +684,147 @@ export default function AdminNotificationsPage() {
 
       {/* ─── Dispatch Broadcast Modal ─── */}
       {showBroadcastModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 p-6 sm:p-8 space-y-6 animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
-                  <Megaphone className="w-6 h-6" />
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseBroadcastModal();
+          }}
+        >
+          <div
+            className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-7 space-y-4 my-auto max-h-[88vh] flex flex-col animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Pinned Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleCloseBroadcastModal}
+                  className="sm:hidden p-1.5 -ml-1 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+                <div className="hidden sm:flex p-2.5 rounded-2xl bg-cyan-50 text-[#0891B2] border border-cyan-100">
+                  <Megaphone className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-heading font-extrabold text-lg text-[#0F172A]">Dispatch New Broadcast</h3>
-                  <p className="text-xs text-slate-500">Publish a platform announcement to users.</p>
+                  <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#0F172A]">Dispatch New Broadcast</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-500">Publish a platform &amp; Web Push announcement.</p>
                 </div>
               </div>
               <button
-                onClick={() => setShowBroadcastModal(false)}
+                type="button"
+                onClick={handleCloseBroadcastModal}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSendBroadcast} className="space-y-4">
-              {/* Target Audience & Severity */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Target Audience</label>
-                  <select
-                    value={broadcastForm.target_role}
-                    onChange={(e) => setBroadcastForm({ ...broadcastForm, target_role: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
-                  >
-                    <option value="ALL">Entire Platform (All Users)</option>
-                    <option value="PATIENT">Patients Only (Vault Users)</option>
-                    <option value="DOCTOR">Doctors Only (Verified Clinicians)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Severity &amp; Style</label>
-                  <select
-                    value={broadcastForm.severity}
-                    onChange={(e) => setBroadcastForm({ ...broadcastForm, severity: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
-                  >
-                    <option value="INFO">General Information (Blue)</option>
-                    <option value="WARNING">Warning Notice (Yellow)</option>
-                    <option value="CRITICAL">Critical Outage / Alert (Red)</option>
-                    <option value="SUCCESS">Feature Release / Update (Green)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Delivery Channel */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">Delivery Channel</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: "IN_APP", label: "Web Push & In-App" },
-                    { id: "EMAIL", label: "Email Dispatch" },
-                    { id: "ALL_CHANNELS", label: "Omnichannel (All)" },
-                  ].map((ch) => (
-                    <button
-                      type="button"
-                      key={ch.id}
-                      onClick={() => setBroadcastForm({ ...broadcastForm, delivery_channel: ch.id })}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                        broadcastForm.delivery_channel === ch.id
-                          ? "bg-cyan-50 border-[#0891B2] text-[#0891B2]"
-                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                      }`}
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSendBroadcast} className="flex flex-col flex-1 overflow-hidden min-h-0">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 sm:pr-2 py-1">
+                {/* Target Audience & Severity */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">Target Audience</label>
+                    <select
+                      value={broadcastForm.target_role}
+                      onChange={(e) => setBroadcastForm({ ...broadcastForm, target_role: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
                     >
-                      {ch.label}
-                    </button>
-                  ))}
+                      <option value="ALL">Entire Platform (All Users)</option>
+                      <option value="PATIENT">Patients Only (Vault Users)</option>
+                      <option value="DOCTOR">Doctors Only (Verified Clinicians)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">Severity &amp; Style</label>
+                    <select
+                      value={broadcastForm.severity}
+                      onChange={(e) => setBroadcastForm({ ...broadcastForm, severity: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
+                    >
+                      <option value="INFO">General Information (Blue)</option>
+                      <option value="WARNING">Warning Notice (Yellow)</option>
+                      <option value="CRITICAL">Critical Outage / Alert (Red)</option>
+                      <option value="SUCCESS">Feature Release / Update (Green)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Delivery Channel */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Delivery Channel</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "IN_APP", label: "Web Push & In-App" },
+                      { id: "EMAIL", label: "Email Dispatch" },
+                      { id: "ALL_CHANNELS", label: "Omnichannel (All)" },
+                    ].map((ch) => (
+                      <button
+                        type="button"
+                        key={ch.id}
+                        onClick={() => setBroadcastForm({ ...broadcastForm, delivery_channel: ch.id })}
+                        className={`py-2 px-2.5 rounded-xl border text-[11px] sm:text-xs font-bold transition-all cursor-pointer truncate ${
+                          broadcastForm.delivery_channel === ch.id
+                            ? "bg-cyan-50 border-[#0891B2] text-[#0891B2]"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {ch.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Broadcast Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Scheduled Database Maintenance Notice"
+                    value={broadcastForm.title}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
+                    required
+                  />
+                </div>
+
+                {/* Message Content */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Message Body</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Explain the update, maintenance window, or advisory clearly for users..."
+                    value={broadcastForm.message}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
+                    required
+                  />
+                </div>
+
+                {/* Action URL */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Action URL (Optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://medivault.health/updates or https://status.medivault.health"
+                    value={broadcastForm.action_url}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, action_url: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
+                  />
                 </div>
               </div>
 
-              {/* Title */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">Broadcast Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Scheduled Database Maintenance Notice"
-                  value={broadcastForm.title}
-                  onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
-                  required
-                />
-              </div>
-
-              {/* Message Content */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">Message Body</label>
-                <textarea
-                  rows={4}
-                  placeholder="Explain the update, maintenance window, or advisory clearly for users..."
-                  value={broadcastForm.message}
-                  onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
-                  required
-                />
-              </div>
-
-              {/* Action URL */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">Action URL (Optional)</label>
-                <input
-                  type="url"
-                  placeholder="https://medivault.health/updates or https://status.medivault.health"
-                  value={broadcastForm.action_url}
-                  onChange={(e) => setBroadcastForm({ ...broadcastForm, action_url: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-[#0F172A] focus:outline-none focus:border-[#0891B2]"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {/* Pinned Footer */}
+              <div className="flex items-center justify-end gap-3 pt-3.5 border-t border-slate-100 shrink-0 mt-2">
                 <button
                   type="button"
-                  onClick={() => setShowBroadcastModal(false)}
+                  onClick={handleCloseBroadcastModal}
                   className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
@@ -766,7 +832,7 @@ export default function AdminNotificationsPage() {
                 <button
                   type="submit"
                   disabled={isSending}
-                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 transition-all shadow-sm shadow-cyan-500/20 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0891B2] to-[#0D9488] text-white text-xs font-bold hover:brightness-105 transition-all shadow-sm shadow-cyan-500/20 cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{isSending ? "Dispatching..." : "Dispatch Broadcast"}</span>
@@ -781,7 +847,7 @@ export default function AdminNotificationsPage() {
       {selectedNotif && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex justify-end animate-in fade-in"
-          onClick={() => setSelectedNotif(null)}
+          onClick={handleCloseDrawer}
         >
           <div
             className="bg-white w-full max-w-lg h-full shadow-2xl border-l border-slate-200 p-6 sm:p-8 overflow-y-auto space-y-6 animate-in slide-in-from-right duration-300"
@@ -798,7 +864,7 @@ export default function AdminNotificationsPage() {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedNotif(null)}
+                onClick={handleCloseDrawer}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
