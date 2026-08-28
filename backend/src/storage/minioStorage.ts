@@ -66,76 +66,104 @@ export class MinioStorageService {
   /**
    * Automatically migrates legacy `patients/P-xxxxxxxx/` objects in object storage
    * to human-readable `patients/Full Name - email@domain.com/` folders and updates DB.
+   * Scans BOTH object storage directly AND database records.
    */
-  public static async migrateLegacyPatientFolders(): Promise<{ migrated: number; errors: number }> {
+  public static async migrateLegacyPatientFolders(): Promise<{ migrated: number; errors: number; details: string[] }> {
     let migrated = 0;
     let errors = 0;
+    const details: string[] = [];
 
     try {
       const client = getMinioClient();
       const bucket = getMinioBucketName();
 
-      const docRes = await query(
-        `SELECT id, patient_id, storage_path FROM public.documents WHERE storage_path LIKE 'patients/P-%'`
-      );
+      logger.info(`[Storage Migration] Scanning bucket "${bucket}" for legacy "patients/P-" objects...`);
 
-      if (docRes.rows.length === 0) {
-        return { migrated: 0, errors: 0 };
+      // 1. Scan storage bucket directly for any objects under 'patients/P-'
+      const bucketObjects: string[] = [];
+      try {
+        const stream = client.listObjects(bucket, 'patients/P-', true);
+        for await (const item of stream) {
+          if (item && item.name) {
+            bucketObjects.push(item.name);
+          }
+        }
+      } catch (listErr: any) {
+        logger.warn(`[Storage Migration] Failed to list bucket objects under patients/P-:`, listErr.message);
       }
 
-      logger.info(`[Storage Migration] Found ${docRes.rows.length} documents under legacy P-* folders. Starting migration...`);
+      logger.info(`[Storage Migration] Found ${bucketObjects.length} object(s) in bucket starting with "patients/P-".`);
 
-      for (const row of docRes.rows) {
-        const oldKey: string = row.storage_path;
+      for (const oldKey of bucketObjects) {
         try {
+          // Extract shortId e.g. "patients/P-d8a004e4/..." -> "d8a004e4"
+          const match = oldKey.match(/^patients\/P-([a-zA-Z0-9_-]+)\//);
+          if (!match || !match[1]) continue;
+          const shortId = match[1];
+
+          // Lookup user by shortId in users_profile or patients
           const userRes = await query(
             `SELECT u.full_name, u.email FROM public.users_profile u
              LEFT JOIN public.patients p ON p.user_id = u.id
-             WHERE u.id::text = $1 OR p.id::text = $1 LIMIT 1`,
-            [row.patient_id]
+             WHERE u.id::text LIKE $1 OR p.id::text LIKE $1 LIMIT 1`,
+            [`${shortId}%`]
           );
 
-          if (userRes.rows.length === 0) continue;
-
-          const rawName = userRes.rows[0].full_name?.trim() || userRes.rows[0].email?.split('@')[0] || 'Patient';
-          const rawEmail = userRes.rows[0].email?.trim() || '';
-          const cleanName = rawName.replace(/[/\\?%*:|"<>]/g, '-').trim();
-          const cleanEmail = rawEmail.replace(/[/\\?%*:|"<>]/g, '-').trim();
-
-          const humanFolder = cleanName && cleanEmail ? `${cleanName} - ${cleanEmail}` : cleanName || cleanEmail;
-          const newKey = oldKey.replace(/^patients\/P-[^/]+\//, `patients/${humanFolder}/`);
-
-          if (newKey === oldKey) continue;
-
-          // Copy object to new location
-          try {
-            await client.copyObject(bucket, newKey, `/${bucket}/${oldKey}`);
-            // Remove old object
-            await client.removeObject(bucket, oldKey);
-            logger.info(`[Storage Migration] Successfully moved object from "${oldKey}" to "${newKey}".`);
-          } catch (storageErr: any) {
-            logger.warn(`[Storage Migration Notice] MinIO copy for ${oldKey}:`, storageErr.message);
+          let humanFolder = `Patient-${shortId}`;
+          if (userRes.rows.length > 0) {
+            const rawName = userRes.rows[0].full_name?.trim() || userRes.rows[0].email?.split('@')[0] || 'Patient';
+            const rawEmail = userRes.rows[0].email?.trim() || '';
+            const cleanName = rawName.replace(/[/\\?%*:|"<>]/g, '-').trim();
+            const cleanEmail = rawEmail.replace(/[/\\?%*:|"<>]/g, '-').trim();
+            humanFolder = cleanName && cleanEmail ? `${cleanName} - ${cleanEmail}` : cleanName || cleanEmail;
           }
 
-          // Update DB record
-          await query(
-            `UPDATE public.documents SET storage_path = $1 WHERE id = $2`,
-            [newKey, row.id]
-          );
+          const newKey = oldKey.replace(/^patients\/P-[^/]+\//, `patients/${humanFolder}/`);
+          if (newKey === oldKey) continue;
 
-          migrated++;
+          logger.info(`[Storage Migration] Moving "${oldKey}" -> "${newKey}"...`);
+
+          // Resilient stream copy (works on ALL S3/B2 providers reliably)
+          try {
+            const objStream = await client.getObject(bucket, oldKey);
+            const chunks: Buffer[] = [];
+            for await (const chunk of objStream) {
+              chunks.push(chunk as Buffer);
+            }
+            const buffer = Buffer.concat(chunks);
+            await client.putObject(bucket, newKey, buffer, buffer.length);
+            await client.removeObject(bucket, oldKey);
+            logger.info(`[Storage Migration] Successfully moved "${oldKey}" -> "${newKey}".`);
+            details.push(`Moved "${oldKey}" -> "${newKey}"`);
+            migrated++;
+          } catch (copyErr: any) {
+            logger.error(`[Storage Migration Error] Failed to move "${oldKey}":`, copyErr.message);
+            details.push(`Failed "${oldKey}": ${copyErr.message}`);
+            errors++;
+            continue;
+          }
+
+          // Update database record to ensure exact match
+          try {
+            await query(
+              `UPDATE public.documents SET storage_path = $1 WHERE storage_path = $2 OR storage_path = $1`,
+              [newKey, oldKey]
+            );
+          } catch (dbErr: any) {
+            logger.warn(`[Storage Migration DB Notice]:`, dbErr.message);
+          }
         } catch (itemErr: any) {
-          logger.error(`[Storage Migration] Error migrating document ${row.id}:`, itemErr.message);
+          logger.error(`[Storage Migration Error] Exception for object "${oldKey}":`, itemErr.message);
           errors++;
         }
       }
 
-      logger.info(`[Storage Migration Completed] Migrated ${migrated} document(s) to human-readable paths. Errors: ${errors}`);
+      logger.info(`[Storage Migration Finished] Migrated ${migrated} object(s). Errors: ${errors}`);
     } catch (err: any) {
       logger.warn('[Storage Migration Notice] Migration could not complete:', err.message);
     }
 
-    return { migrated, errors };
+    return { migrated, errors, details };
   }
 
   /**

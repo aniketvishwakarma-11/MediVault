@@ -69,6 +69,17 @@ app.get('/system/maintenance', async (req: Request, res: Response) => {
   }
 });
 
+// System Storage Migration Trigger Endpoint
+app.post('/system/migrate-storage', async (req: Request, res: Response) => {
+  try {
+    const { MinioStorageService } = await import('./storage/minioStorage');
+    const result = await MinioStorageService.migrateLegacyPatientFolders();
+    res.status(200).json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Mount Module Routes
 app.use('/documents', documentRoutes);
 app.use('/api/documents', documentRoutes);
