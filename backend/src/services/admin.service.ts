@@ -2405,10 +2405,7 @@ export class AdminService {
         };
 
         if (targetRole.toUpperCase() === 'ALL' || targetRole.toUpperCase() === 'ALL_ROLES') {
-          // Broadcast to everyone
-          await PushNotificationService.sendToRole('PATIENT', pushPayload);
-          await PushNotificationService.sendToRole('DOCTOR', pushPayload);
-          await PushNotificationService.sendToRole('ADMIN', pushPayload);
+          await PushNotificationService.sendToRole('ALL', pushPayload);
         } else {
           await PushNotificationService.sendToRole(targetRole.toUpperCase(), pushPayload);
         }
@@ -2509,9 +2506,7 @@ export class AdminService {
               url: '/',
               tag: 'maintenance-status',
             };
-            await PushNotificationService.sendToRole('PATIENT', payload);
-            await PushNotificationService.sendToRole('DOCTOR', payload);
-            await PushNotificationService.sendToRole('ADMIN', payload);
+            await PushNotificationService.sendToRole('ALL', payload);
           } else {
             // Maintenance mode turned OFF -> broadcast service restored notice to ALL users
             const payload = {
@@ -2520,9 +2515,7 @@ export class AdminService {
               url: '/',
               tag: 'maintenance-status',
             };
-            await PushNotificationService.sendToRole('PATIENT', payload);
-            await PushNotificationService.sendToRole('DOCTOR', payload);
-            await PushNotificationService.sendToRole('ADMIN', payload);
+            await PushNotificationService.sendToRole('ALL', payload);
           }
         } catch (mNotifErr: any) {
           logger.warn('[AdminService.updateSystemSettings] Maintenance push broadcast notice:', mNotifErr.message || mNotifErr);

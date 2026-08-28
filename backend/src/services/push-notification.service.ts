@@ -146,17 +146,38 @@ export class PushNotificationService {
   }
 
   /**
-   * Broadcast a push notification to all users belonging to a specific role (PATIENT, DOCTOR, ADMIN).
+   * Broadcast a push notification to all users or to a specific role (PATIENT, DOCTOR, ADMIN).
    */
-  static async sendToRole(role: string, payload: PushPayload): Promise<void> {
+  static async sendToRole(role: string, payload: PushPayload): Promise<{ sent: number; failed: number }> {
     try {
-      const sql = `
-        SELECT DISTINCT ps.endpoint, ps.p256dh, ps.auth, ps.id
-        FROM public.push_subscriptions ps
-        JOIN public.users_profile up ON up.user_id = ps.user_id
-        WHERE UPPER(up.role) = UPPER($1)
-      `;
-      const res = await query(sql, [role]);
+      const isAll = !role || role.toUpperCase() === 'ALL' || role.toUpperCase() === 'ALL_ROLES';
+
+      let sql: string;
+      let params: any[] = [];
+
+      if (isAll) {
+        // Direct selection of all active push subscriptions without role filtering
+        sql = `
+          SELECT DISTINCT ps.endpoint, ps.p256dh, ps.auth, ps.id
+          FROM public.push_subscriptions ps
+        `;
+      } else {
+        // Safe join on up.id with enum-to-text cast
+        sql = `
+          SELECT DISTINCT ps.endpoint, ps.p256dh, ps.auth, ps.id
+          FROM public.push_subscriptions ps
+          JOIN public.users_profile up ON up.id = ps.user_id
+          WHERE up.role::text ILIKE $1
+        `;
+        params = [role];
+      }
+
+      const res = await query(sql, params);
+      logger.info(`[PushNotificationService] Broadcasting to role '${role}': Found ${res.rows.length} subscribed devices.`);
+
+      if (res.rows.length === 0) {
+        return { sent: 0, failed: 0 };
+      }
 
       const notificationData = JSON.stringify({
         title: payload.title,
@@ -167,19 +188,36 @@ export class PushNotificationService {
         tag: payload.tag || 'medivault-broadcast',
       });
 
-      for (const row of res.rows) {
+      let sentCount = 0;
+      let failedCount = 0;
+
+      const promises = res.rows.map(async (row) => {
         const pushSubscription = {
           endpoint: row.endpoint,
           keys: { p256dh: row.p256dh, auth: row.auth },
         };
-        webpush.sendNotification(pushSubscription, notificationData).catch((err: any) => {
+
+        try {
+          await webpush.sendNotification(pushSubscription, notificationData);
+          sentCount++;
+        } catch (err: any) {
+          failedCount++;
+          logger.warn(`[PushNotificationService] Broadcast dispatch failed for device ${row.id}:`, err.statusCode || err.message);
+
           if (err.statusCode === 404 || err.statusCode === 410) {
-            query('DELETE FROM public.push_subscriptions WHERE id = $1', [row.id]).catch(() => {});
+            logger.info(`[PushNotificationService] Purging dead/expired subscription ${row.id}`);
+            await query('DELETE FROM public.push_subscriptions WHERE id = $1', [row.id]).catch(() => {});
           }
-        });
-      }
+        }
+      });
+
+      await Promise.allSettled(promises);
+
+      logger.info(`[PushNotificationService] Broadcast complete for role '${role}': ${sentCount} sent, ${failedCount} failed.`);
+      return { sent: sentCount, failed: failedCount };
     } catch (err) {
       logger.error(`[PushNotificationService] Error broadcasting to role ${role}:`, err);
+      return { sent: 0, failed: 1 };
     }
   }
 }
