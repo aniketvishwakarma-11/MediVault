@@ -26,6 +26,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import { DEMO_PATIENT_PROFILE } from "@/lib/demoData";
+import { PasskeyManagerCard } from "@/app/components/auth/PasskeyManagerCard";
 
 interface PatientProfileData {
   full_name: string;
@@ -766,6 +767,9 @@ function PatientProfileContent() {
 
         </div>
       </div>
+
+      {/* ─── Biometric Passkeys & Fast Login ─── */}
+      <PasskeyManagerCard userId={user?.id || ""} />
 
     </div>
   );

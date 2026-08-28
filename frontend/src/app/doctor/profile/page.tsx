@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { PasskeyManagerCard } from "@/app/components/auth/PasskeyManagerCard";
 
 const TIME_OPTIONS = [
   "06:00 AM", "06:30 AM", "07:00 AM", "07:30 AM", "08:00 AM", "08:30 AM",
@@ -666,6 +667,11 @@ function DoctorProfileForm() {
           </div>
         </form>
       )}
+
+      {/* ─── Biometric Passkeys & Fast Login ─── */}
+      <div className="mt-6">
+        <PasskeyManagerCard userId={user?.id || ""} />
+      </div>
     </div>
   );
 }

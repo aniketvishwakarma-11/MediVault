@@ -28,6 +28,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   setRole: (role: UserRole) => void;
   setDemoUser: (role: UserRole) => void;
+  loginWithPasskeySession: (token: string, userData: any, passkeyRole: UserRole) => void;
   role: UserRole;
 }
 
@@ -242,6 +243,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: demoRole,
         });
         setIsProfileCompleted(true);
+      } else if (typeof window !== "undefined" && localStorage.getItem("medivault_passkey_user")) {
+        // PASSKEY BIOMETRIC USER LOGGED IN
+        try {
+          const passkeyUser = JSON.parse(localStorage.getItem("medivault_passkey_user") || "{}");
+          const passkeyRole = (localStorage.getItem("medivault_user_role") as UserRole) || "patient";
+          setIsDemo(false);
+          setAuthCookies(passkeyRole, false);
+          setUser({
+            id: passkeyUser.id,
+            email: passkeyUser.email,
+            user_metadata: { role: passkeyRole, full_name: passkeyUser.full_name },
+          } as unknown as User);
+          setUserProfile({
+            uid: passkeyUser.id,
+            email: passkeyUser.email,
+            displayName: passkeyUser.full_name || passkeyUser.email?.split("@")[0] || "User",
+            role: passkeyRole,
+          });
+          setIsProfileCompleted(true);
+        } catch {
+          clearAuthCookies();
+        }
       } else {
         setIsDemo(false);
         setIsProfileCompleted(true);
@@ -311,6 +334,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsProfileCompleted(true);
   }, []);
 
+  const loginWithPasskeySession = useCallback((token: string, userData: any, passkeyRole: UserRole) => {
+    setRoleState(passkeyRole);
+    setIsDemo(false);
+    localStorage.setItem("medivault_auth_token", token);
+    localStorage.setItem("medivault_user_role", passkeyRole);
+    localStorage.setItem("medivault_passkey_user", JSON.stringify(userData));
+    localStorage.removeItem("medivault_is_demo");
+    setAuthCookies(passkeyRole, false);
+
+    const syntheticUser = {
+      id: userData.id,
+      email: userData.email,
+      app_metadata: {},
+      user_metadata: { role: passkeyRole, full_name: userData.full_name },
+      aud: "authenticated",
+      created_at: new Date().toISOString(),
+    } as unknown as User;
+
+    setUser(syntheticUser);
+    setUserProfile({
+      uid: userData.id,
+      email: userData.email,
+      displayName: userData.full_name || userData.email?.split("@")[0] || "User",
+      role: passkeyRole,
+    });
+    setIsProfileCompleted(true);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await supabase.auth.signOut();
@@ -320,6 +371,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("medivault_user_role");
     localStorage.removeItem("medivault_is_demo");
     localStorage.removeItem("medivault_cached_user_profile");
+    localStorage.removeItem("medivault_auth_token");
+    localStorage.removeItem("medivault_passkey_user");
     OfflineEmergencyVault.clearSnapshot();
     clearAuthCookies();
     setIsDemo(false);
@@ -355,6 +408,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithGoogle,
     setRole,
     setDemoUser,
+    loginWithPasskeySession,
     role,
   }), [
     user,
@@ -368,6 +422,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithGoogle,
     setRole,
     setDemoUser,
+    loginWithPasskeySession,
     role,
   ]);
 

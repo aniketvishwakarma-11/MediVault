@@ -24,8 +24,10 @@ import {
   Cpu,
   Check,
   ShieldAlert,
-  Loader2
+  Loader2,
+  Fingerprint
 } from "lucide-react";
+import { isPasskeySupported, loginWithBiometrics } from "@/lib/webauthn";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -38,9 +40,27 @@ export default function AuthPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const { user, userProfile, isDemo, role, loading: authLoading, signInWithGoogle, setRole, setDemoUser } = useAuth();
+  // Biometric WebAuthn Passkey State
+  const [isPasskeyAvailable, setIsPasskeyAvailable] = useState<boolean>(false);
+  const [biometricLoading, setBiometricLoading] = useState<boolean>(false);
+
+  const { 
+    user, 
+    userProfile, 
+    isDemo, 
+    role, 
+    loading: authLoading, 
+    signInWithGoogle, 
+    setRole, 
+    setDemoUser,
+    loginWithPasskeySession 
+  } = useAuth();
   const router = useRouter();
   const isRedirectingRef = useRef(false);
+
+  useEffect(() => {
+    isPasskeySupported().then(setIsPasskeyAvailable);
+  }, []);
 
   // Auto-redirect away from /auth if there is an ACTIVE real user session based on their authoritative role
   useEffect(() => {
@@ -215,6 +235,29 @@ export default function AuthPage() {
       setError(err.message || "An error occurred during authentication.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setError(null);
+    setMessage(null);
+    setBiometricLoading(true);
+    try {
+      const result = await loginWithBiometrics(email.trim() || undefined);
+      setMessage("Biometric verified! Signing in to MediVault...");
+      loginWithPasskeySession(result.token, result.user, result.role as UserRole);
+
+      let target = "/patient/dashboard";
+      if (result.role === "doctor") target = "/doctor/dashboard";
+      else if (result.role === "admin") target = "/admin/dashboard";
+
+      isRedirectingRef.current = true;
+      router.replace(target);
+    } catch (err: any) {
+      console.warn("Biometric sign-in error:", err);
+      setError(err.message || "Biometric sign-in was cancelled or failed. Please use password.");
+    } finally {
+      setBiometricLoading(false);
     }
   };
 
@@ -448,6 +491,30 @@ export default function AuthPage() {
                   </>
                 )}
               </button>
+
+              {/* ─── 1-Tap Biometric Passkey Login ─── */}
+              {isLogin && isPasskeyAvailable && (
+                <div className="pt-2.5">
+                  <button
+                    type="button"
+                    onClick={handleBiometricLogin}
+                    disabled={biometricLoading || loading}
+                    className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 hover:from-slate-800 hover:to-slate-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-cyan-950/40 border border-cyan-500/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2.5 min-h-[48px] cursor-pointer active:scale-[0.99] disabled:opacity-50"
+                  >
+                    {biometricLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+                        <span>Prompting Biometric Sensor...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint className="w-5 h-5 text-cyan-400" />
+                        <span>Sign in with Face ID / Fingerprint</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </form>
 
             <div className="relative flex items-center justify-center py-2">

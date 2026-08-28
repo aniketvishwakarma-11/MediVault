@@ -13,6 +13,7 @@ import doctorCopilotRoutes from './routes/doctor-copilot.routes';
 import prescriptionRoutes from './routes/prescription.routes';
 import adminRoutes from './routes/admin.routes';
 import notificationRoutes from './routes/notification.routes';
+import webauthnRoutes from './routes/webauthn.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -125,6 +126,8 @@ app.use('/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/auth/webauthn', webauthnRoutes);
+app.use('/api/auth/webauthn', webauthnRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {
