@@ -21,6 +21,10 @@ import {
   UserPasskey 
 } from "@/lib/webauthn";
 import { useToast } from "@/context/ToastContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medivault-653s.onrender.com";
 
 interface PasskeyManagerCardProps {
   userId: string;
@@ -32,6 +36,8 @@ export const PasskeyManagerCard: React.FC<PasskeyManagerCardProps> = ({
   token,
 }) => {
   const { success, error: showError } = useToast();
+  const { session, user, isDemo, role } = useAuth();
+
   const [supported, setSupported] = useState<boolean>(false);
   const [passkeys, setPasskeys] = useState<UserPasskey[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -39,15 +45,74 @@ export const PasskeyManagerCard: React.FC<PasskeyManagerCardProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deviceNameInput, setDeviceNameInput] = useState<string>("");
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [activeToken, setActiveToken] = useState<string | null>(token || null);
 
   // Check hardware WebAuthn support
   useEffect(() => {
     isPasskeySupported().then(setSupported);
   }, []);
 
-  const effectiveToken = token || (typeof window !== "undefined" ? localStorage.getItem("medivault_auth_token") : null);
+  /**
+   * Resiliently resolve a valid JWT session token:
+   * 1. Prop token
+   * 2. Supabase active session token
+   * 3. LocalStorage medivault_auth_token
+   * 4. Demo token generation for demo users
+   */
+  const resolveToken = useCallback(async (): Promise<string | null> => {
+    if (activeToken) return activeToken;
+    if (token) {
+      setActiveToken(token);
+      return token;
+    }
+
+    // 1. Check Supabase active session
+    if (session?.access_token) {
+      setActiveToken(session.access_token);
+      return session.access_token;
+    }
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.access_token) {
+        setActiveToken(data.session.access_token);
+        return data.session.access_token;
+      }
+    } catch {}
+
+    // 2. Check localStorage medivault_auth_token
+    if (typeof window !== "undefined") {
+      const localToken = localStorage.getItem("medivault_auth_token");
+      if (localToken) {
+        setActiveToken(localToken);
+        return localToken;
+      }
+
+      // 3. Demo mode fallback: Request a demo session token from backend
+      const isDemoMode = isDemo || localStorage.getItem("medivault_is_demo") === "true";
+      if (isDemoMode) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/auth/webauthn/demo-token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: role || localStorage.getItem("medivault_user_role") || "patient" }),
+          });
+          const json = await res.json();
+          if (json.success && json.data?.token) {
+            localStorage.setItem("medivault_auth_token", json.data.token);
+            setActiveToken(json.data.token);
+            return json.data.token;
+          }
+        } catch (e) {
+          console.warn("Could not get demo token:", e);
+        }
+      }
+    }
+
+    return null;
+  }, [activeToken, token, session, isDemo, role]);
 
   const fetchPasskeys = useCallback(async () => {
+    const effectiveToken = await resolveToken();
     if (!effectiveToken) {
       setIsLoading(false);
       return;
@@ -61,7 +126,7 @@ export const PasskeyManagerCard: React.FC<PasskeyManagerCardProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [effectiveToken]);
+  }, [resolveToken]);
 
   useEffect(() => {
     fetchPasskeys();
@@ -69,8 +134,9 @@ export const PasskeyManagerCard: React.FC<PasskeyManagerCardProps> = ({
 
   // Handle new passkey registration
   const handleRegister = async () => {
+    const effectiveToken = await resolveToken();
     if (!effectiveToken) {
-      showError("Session Required", "Please re-login to enroll biometric passkeys.");
+      showError("Session Required", "Please re-login or refresh your session to enroll biometric passkeys.");
       return;
     }
 
@@ -96,6 +162,7 @@ export const PasskeyManagerCard: React.FC<PasskeyManagerCardProps> = ({
 
   // Handle passkey revocation
   const handleDelete = async (id: string, name: string) => {
+    const effectiveToken = await resolveToken();
     if (!effectiveToken) return;
     if (!confirm(`Are you sure you want to revoke passkey "${name}"?`)) return;
 
@@ -226,7 +293,7 @@ export const PasskeyManagerCard: React.FC<PasskeyManagerCardProps> = ({
               <label className="text-xs font-bold text-slate-700">Device Nickname</label>
               <input
                 type="text"
-                placeholder="e.g. My iPhone 15 Pro, Office Laptop"
+                placeholder="e.g. My iPhone 15 Pro, ANIKET Phone, Work Laptop"
                 value={deviceNameInput}
                 onChange={(e) => setDeviceNameInput(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0891B2]"

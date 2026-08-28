@@ -79,7 +79,9 @@ export class WebAuthnService {
     response: any,
     deviceName?: string,
     originHeader?: string,
-    hostname?: string
+    hostname?: string,
+    userEmail?: string,
+    userRole?: string
   ) {
     const rpID = getRpId(hostname);
     const expectedOrigin = getExpectedOrigin(originHeader);
@@ -124,17 +126,19 @@ export class WebAuthnService {
     const counter = credential.counter;
     const transports = (response as any).response?.transports || ['internal'];
 
-    // Upsert into user_passkeys
+    // Upsert into user_passkeys with user_email and user_role
     const finalDeviceName = deviceName || 'Biometric Device (Face ID / Fingerprint)';
     await query(
-      `INSERT INTO public.user_passkeys (user_id, credential_id, public_key, counter, device_name, transports, aaguid)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO public.user_passkeys (user_id, credential_id, public_key, counter, device_name, transports, aaguid, user_email, user_role)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (credential_id) DO UPDATE
        SET counter = EXCLUDED.counter,
            public_key = EXCLUDED.public_key,
            device_name = EXCLUDED.device_name,
+           user_email = EXCLUDED.user_email,
+           user_role = EXCLUDED.user_role,
            last_used_at = NOW()`,
-      [userId, credentialId, publicKeyBase64, counter, finalDeviceName, JSON.stringify(transports), aaguid]
+      [userId, credentialId, publicKeyBase64, counter, finalDeviceName, JSON.stringify(transports), aaguid, userEmail || null, userRole || 'patient']
     );
 
     // Delete used challenge
@@ -161,7 +165,7 @@ export class WebAuthnService {
     if (email) {
       // Look up credentials for this email
       const userCheck = await query(
-        `SELECT u.id, up.role FROM auth.users u
+        `SELECT u.id::text, up.role FROM auth.users u
          LEFT JOIN public.users_profile up ON up.id = u.id
          WHERE LOWER(u.email) = LOWER($1) LIMIT 1`,
         [email]
@@ -216,12 +220,15 @@ export class WebAuthnService {
       throw new Error('Missing credential ID in biometric assertion response.');
     }
 
-    // Look up credential from database
+    // Look up credential from database with resilient LEFT JOIN
     const passkeyRes = await query(
-      `SELECT p.*, u.email, up.role, up.full_name
+      `SELECT p.*, 
+              COALESCE(u.email, p.user_email, 'patient@medivault.local') AS email, 
+              COALESCE(up.role, p.user_role, 'patient') AS role, 
+              COALESCE(up.full_name, split_part(COALESCE(u.email, p.user_email, 'User'), '@', 1)) AS full_name
        FROM public.user_passkeys p
-       JOIN auth.users u ON u.id = p.user_id
-       LEFT JOIN public.users_profile up ON up.id = p.user_id
+       LEFT JOIN auth.users u ON u.id::text = p.user_id
+       LEFT JOIN public.users_profile up ON up.id::text = p.user_id
        WHERE p.credential_id = $1 LIMIT 1`,
       [credentialId]
     );
@@ -290,6 +297,7 @@ export class WebAuthnService {
         sub: passkey.user_id,
         email: passkey.email,
         role: userRole,
+        full_name: passkey.full_name,
         auth_type: 'webauthn_passkey',
       },
       JWT_SECRET,

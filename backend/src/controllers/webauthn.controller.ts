@@ -2,8 +2,48 @@ import { Request, Response } from 'express';
 import { WebAuthnService } from '../services/webauthn.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { logger } from '../utils/logger';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_medivault_chain_ai_2026';
 
 export class WebAuthnController {
+  /**
+   * POST /api/auth/webauthn/demo-token (Public)
+   * Generates a signed JWT session for demo users to test passkeys and APIs seamlessly
+   */
+  static async getDemoToken(req: Request, res: Response) {
+    try {
+      const { role } = req.body || {};
+      const demoRole = role === 'doctor' ? 'doctor' : 'patient';
+      const demoUserId = demoRole === 'doctor'
+        ? '00000000-0000-0000-0000-000000000002'
+        : '00000000-0000-0000-0000-000000000001';
+      const demoEmail = demoRole === 'doctor' ? 'doctor@hospital.org' : 'patient@medivault.local';
+      const demoName = demoRole === 'doctor' ? 'Dr. Sarah Jenkins (Demo)' : 'Demo Patient (Alex Morgan)';
+
+      const token = jwt.sign(
+        {
+          id: demoUserId,
+          sub: demoUserId,
+          email: demoEmail,
+          role: demoRole,
+          full_name: demoName,
+          is_demo: true,
+        },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return sendSuccess(res, 200, {
+        token,
+        user: { id: demoUserId, email: demoEmail, full_name: demoName, role: demoRole },
+      }, 'Demo session token issued successfully.');
+    } catch (err: any) {
+      logger.error('[WebAuthn Controller] getDemoToken error:', err);
+      return sendError(res, 500, err.message || 'Failed to issue demo session token.');
+    }
+  }
+
   /**
    * POST /api/auth/webauthn/register-options (Protected)
    */
@@ -49,7 +89,9 @@ export class WebAuthnController {
         response,
         deviceName,
         origin,
-        req.hostname
+        req.hostname,
+        user.email,
+        (user as any).role
       );
 
       return sendSuccess(res, 200, result, 'Biometric passkey registered successfully.');

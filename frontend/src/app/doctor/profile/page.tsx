@@ -37,7 +37,7 @@ function DoctorProfileForm() {
   const searchParams = useSearchParams();
   const [isRequired, setIsRequired] = useState(searchParams.get("required") === "true");
 
-  const { user, userProfile, setIsProfileCompleted, refreshProfileCompletion } = useAuth();
+  const { user, session, userProfile, setIsProfileCompleted, refreshProfileCompletion } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -670,7 +670,7 @@ function DoctorProfileForm() {
 
       {/* ─── Biometric Passkeys & Fast Login ─── */}
       <div className="mt-6">
-        <PasskeyManagerCard userId={user?.id || ""} />
+        <PasskeyManagerCard userId={user?.id || ""} token={session?.access_token} />
       </div>
     </div>
   );

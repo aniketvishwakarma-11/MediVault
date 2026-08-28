@@ -4,7 +4,8 @@ import { authenticateJWT } from '../middleware/auth';
 
 const router = Router();
 
-// Public Authentication Endpoints (1-Tap Passkey Sign-In)
+// Public Authentication Endpoints (1-Tap Passkey Sign-In & Demo Access)
+router.post('/demo-token', WebAuthnController.getDemoToken);
 router.post('/login-options', WebAuthnController.getLoginOptions);
 router.post('/login-verify', WebAuthnController.verifyLogin);
 

@@ -59,7 +59,7 @@ function parseValAndUnit(raw: string | null | undefined, defaultUnit: string) {
 }
 
 function PatientProfileContent() {
-  const { user, userProfile, isDemo, isProfileCompleted, refreshProfileCompletion } = useAuth();
+  const { user, session, userProfile, isDemo, isProfileCompleted, refreshProfileCompletion } = useAuth();
   const searchParams = useSearchParams();
   const isRequired = !isDemo && (searchParams.get("required") === "true" || isProfileCompleted === false);
 
@@ -769,7 +769,7 @@ function PatientProfileContent() {
       </div>
 
       {/* ─── Biometric Passkeys & Fast Login ─── */}
-      <PasskeyManagerCard userId={user?.id || ""} />
+      <PasskeyManagerCard userId={user?.id || ""} token={session?.access_token} />
 
     </div>
   );

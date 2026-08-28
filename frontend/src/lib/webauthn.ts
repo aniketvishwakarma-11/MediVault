@@ -100,7 +100,7 @@ export async function loginWithBiometrics(email?: string) {
     assertionResp = await startAuthentication({ optionsJSON: optionsJson.data });
   } catch (err: any) {
     if (err.name === "NotAllowedError") {
-      throw new Error("Biometric scan was cancelled.");
+      throw new Error("No passkey was found on this device, or the scan was cancelled. Please log in with password first to enroll your device in Profile.");
     }
     throw new Error(err.message || "Biometric verification failed.");
   }
