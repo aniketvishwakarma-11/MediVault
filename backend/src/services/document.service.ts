@@ -66,20 +66,7 @@ export class DocumentService {
     }
 
     // 3. Look up Patient Name & Email for Human-Readable MinIO Folder Naming
-    let patientFolder = `P-${patient_id.slice(0, 8)}`;
-    try {
-      const userRes = await query(
-        `SELECT u.full_name, u.email FROM public.users_profile u
-         LEFT JOIN public.patients p ON p.user_id = u.id
-         WHERE u.id = $1 OR p.id = $1 OR u.id = $2 OR p.id = $2 LIMIT 1;`,
-        [patient_id, uploaded_by]
-      );
-      if (userRes.rows.length > 0 && userRes.rows[0].full_name && userRes.rows[0].email) {
-        const cleanName = userRes.rows[0].full_name.trim();
-        const cleanEmail = userRes.rows[0].email.trim();
-        patientFolder = `${cleanName} - ${cleanEmail}`;
-      }
-    } catch (e) {}
+    const patientFolder = await MinioStorageService.resolvePatientFolder(patient_id, uploaded_by);
 
     // 4. Generate UUID & Human-Readable Document Folder Name
     const documentId = uuidv4();

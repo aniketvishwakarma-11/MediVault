@@ -69,7 +69,8 @@ export class DocumentRepository {
     }
 
     const docCategory = (doc.document_category as any) || 'Blood Report';
-    const storagePath = doc.storage_path || doc.storage_key || `patients/P-${targetPatientId.slice(0, 8)}/documents/${docCategory}/doc-${Date.now()}/original.pdf`;
+    const fallbackFolder = await MinioStorageService.resolvePatientFolder(targetPatientId, validUploaderId || undefined);
+    const storagePath = doc.storage_path || doc.storage_key || `patients/${fallbackFolder}/documents/${docCategory}/doc-${Date.now()}/original.pdf`;
     const fileSizeNum = doc.file_size_bytes || doc.file_size || 0;
     const isHandwritten = doc.is_handwritten === true || doc.document_format === 'HANDWRITTEN';
     const docFormat = doc.document_format || (isHandwritten ? 'HANDWRITTEN' : 'PRINTED');

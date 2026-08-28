@@ -80,7 +80,10 @@ export class PrescriptionUploadService {
       logger.info(`[PrescriptionUploadService] Reusing existing document for duplicate image. docId=${documentId}`);
     } else {
       const docId: string = crypto.randomUUID();
-      storageKey = MinioStorageService.getStorageKey(patientId, docId, ext, "Prescription");
+      const patientFolder = await MinioStorageService.resolvePatientFolder(patientId);
+      const cleanFilename = (originalFilename || 'prescription.jpg').replace(/[/\\?%*:|"<>]/g, '-').trim();
+      const docFolder = `Prescription - ${cleanFilename} - ${docId.slice(0, 8)}`;
+      storageKey = MinioStorageService.getStorageKey(patientFolder, docFolder, ext, "Prescription");
 
       // Store original in MinIO
       await MinioStorageService.uploadFile(storageKey, fileBuffer, mimeType, {

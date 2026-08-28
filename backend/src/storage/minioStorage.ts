@@ -1,9 +1,143 @@
 import { getMinioClient, getMinioBucketName } from '../config/minio';
 import { logger } from '../utils/logger';
+import { query } from '../config/db';
 
 const defaultExpirySeconds = parseInt(process.env.SIGNED_URL_EXPIRY_SECONDS || '900', 10);
 
 export class MinioStorageService {
+  /**
+   * Resolves a human-readable patient folder name: "Full Name - email@domain.com".
+   * Queries users_profile / patients table, safely sanitizes invalid path characters,
+   * and falls back gracefully to `P-{shortId}` if no record exists.
+   */
+  public static async resolvePatientFolder(
+    patientIdentifier: string,
+    uploaderId?: string
+  ): Promise<string> {
+    if (!patientIdentifier) return 'Unknown Patient';
+
+    // If it's already human-readable (contains space or email @ while not starting with P-), sanitize and return
+    if (patientIdentifier.includes(' ') || (patientIdentifier.includes('@') && !patientIdentifier.startsWith('P-'))) {
+      return patientIdentifier.replace(/[/\\?%*:|"<>]/g, '-').trim();
+    }
+
+    try {
+      const userRes = await query(
+        `SELECT u.full_name, u.email FROM public.users_profile u
+         LEFT JOIN public.patients p ON p.user_id = u.id
+         WHERE u.id::text = $1 OR p.id::text = $1 OR u.id::text = $2 OR p.id::text = $2 LIMIT 1;`,
+        [patientIdentifier, uploaderId || patientIdentifier]
+      );
+
+      if (userRes.rows.length > 0) {
+        const rawName = userRes.rows[0].full_name?.trim() || userRes.rows[0].email?.split('@')[0] || 'Patient';
+        const rawEmail = userRes.rows[0].email?.trim() || '';
+        const cleanName = rawName.replace(/[/\\?%*:|"<>]/g, '-').trim();
+        const cleanEmail = rawEmail.replace(/[/\\?%*:|"<>]/g, '-').trim();
+
+        if (cleanName && cleanEmail) {
+          return `${cleanName} - ${cleanEmail}`;
+        } else if (cleanName) {
+          return cleanName;
+        } else if (cleanEmail) {
+          return cleanEmail;
+        }
+      }
+    } catch (err: any) {
+      logger.warn(`[MinioStorageService] resolvePatientFolder notice for ${patientIdentifier}:`, err.message);
+    }
+
+    // Graceful fallback for non-profile test IDs or UUIDs
+    return patientIdentifier.length === 36 && !patientIdentifier.includes(' ')
+      ? `P-${patientIdentifier.slice(0, 8)}`
+      : patientIdentifier.replace(/[/\\?%*:|"<>]/g, '-').trim();
+  }
+
+  /**
+   * Copies an existing object within the MinIO bucket to a new key.
+   */
+  public static async copyObject(sourceKey: string, destinationKey: string): Promise<void> {
+    const client = getMinioClient();
+    const bucket = getMinioBucketName();
+    await client.copyObject(bucket, destinationKey, `/${bucket}/${sourceKey}`);
+    logger.info(`[MinIO Storage] Copied object from "${sourceKey}" to "${destinationKey}".`);
+  }
+
+  /**
+   * Automatically migrates legacy `patients/P-xxxxxxxx/` objects in object storage
+   * to human-readable `patients/Full Name - email@domain.com/` folders and updates DB.
+   */
+  public static async migrateLegacyPatientFolders(): Promise<{ migrated: number; errors: number }> {
+    let migrated = 0;
+    let errors = 0;
+
+    try {
+      const client = getMinioClient();
+      const bucket = getMinioBucketName();
+
+      const docRes = await query(
+        `SELECT id, patient_id, storage_path FROM public.documents WHERE storage_path LIKE 'patients/P-%'`
+      );
+
+      if (docRes.rows.length === 0) {
+        return { migrated: 0, errors: 0 };
+      }
+
+      logger.info(`[Storage Migration] Found ${docRes.rows.length} documents under legacy P-* folders. Starting migration...`);
+
+      for (const row of docRes.rows) {
+        const oldKey: string = row.storage_path;
+        try {
+          const userRes = await query(
+            `SELECT u.full_name, u.email FROM public.users_profile u
+             LEFT JOIN public.patients p ON p.user_id = u.id
+             WHERE u.id::text = $1 OR p.id::text = $1 LIMIT 1`,
+            [row.patient_id]
+          );
+
+          if (userRes.rows.length === 0) continue;
+
+          const rawName = userRes.rows[0].full_name?.trim() || userRes.rows[0].email?.split('@')[0] || 'Patient';
+          const rawEmail = userRes.rows[0].email?.trim() || '';
+          const cleanName = rawName.replace(/[/\\?%*:|"<>]/g, '-').trim();
+          const cleanEmail = rawEmail.replace(/[/\\?%*:|"<>]/g, '-').trim();
+
+          const humanFolder = cleanName && cleanEmail ? `${cleanName} - ${cleanEmail}` : cleanName || cleanEmail;
+          const newKey = oldKey.replace(/^patients\/P-[^/]+\//, `patients/${humanFolder}/`);
+
+          if (newKey === oldKey) continue;
+
+          // Copy object to new location
+          try {
+            await client.copyObject(bucket, newKey, `/${bucket}/${oldKey}`);
+            // Remove old object
+            await client.removeObject(bucket, oldKey);
+            logger.info(`[Storage Migration] Successfully moved object from "${oldKey}" to "${newKey}".`);
+          } catch (storageErr: any) {
+            logger.warn(`[Storage Migration Notice] MinIO copy for ${oldKey}:`, storageErr.message);
+          }
+
+          // Update DB record
+          await query(
+            `UPDATE public.documents SET storage_path = $1 WHERE id = $2`,
+            [newKey, row.id]
+          );
+
+          migrated++;
+        } catch (itemErr: any) {
+          logger.error(`[Storage Migration] Error migrating document ${row.id}:`, itemErr.message);
+          errors++;
+        }
+      }
+
+      logger.info(`[Storage Migration Completed] Migrated ${migrated} document(s) to human-readable paths. Errors: ${errors}`);
+    } catch (err: any) {
+      logger.warn('[Storage Migration Notice] Migration could not complete:', err.message);
+    }
+
+    return { migrated, errors };
+  }
+
   /**
    * Generates production storage key path for a document under MediVault V2 hierarchy.
    * Path format: patients/{patientIdentifier}/documents/{category}/{docFolderIdentifier}/original.{ext}

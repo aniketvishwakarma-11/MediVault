@@ -43,6 +43,14 @@ assert(
   'Metadata storage key must follow metadata.json layout'
 );
 
+// 2b. Human-Readable Storage Key Test
+const humanFolder = 'Nikhil Thange - nikhilthange075@gmail.com';
+const humanKey = MinioStorageService.getStorageKey(humanFolder, 'Prescription - rx.jpg - 12345678', 'jpg', 'Prescription');
+assert(
+  humanKey === 'patients/Nikhil Thange - nikhilthange075@gmail.com/documents/Prescription/Prescription - rx.jpg - 12345678/original.jpg',
+  'Storage key must preserve human-readable "Full Name - email" patient folder name'
+);
+
 // 3. Magic Bytes Security Validation Tests
 const fakePdfBuffer = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]); // %PDF-1.4
 assert(validateMagicBytes(fakePdfBuffer, 'application/pdf') === true, 'Magic Bytes: Valid PDF header detection');

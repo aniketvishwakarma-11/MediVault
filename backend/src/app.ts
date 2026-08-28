@@ -115,6 +115,13 @@ export const startServer = async () => {
     logger.info('[App Startup] Initializing MinIO Object Storage connection...');
     await initializeMinioBucket();
 
+    // Migrate any legacy P-* folders in MinIO/DB to human-readable format in background
+    import('./storage/minioStorage').then(({ MinioStorageService }) => {
+      MinioStorageService.migrateLegacyPatientFolders().catch((mErr) => {
+        logger.warn('[App Startup] Storage folder migration notice:', mErr.message || mErr);
+      });
+    });
+
     app.listen(PORT, () => {
       logger.info(`🚀 MediVault Document Management Server running on port ${PORT}`);
     });
