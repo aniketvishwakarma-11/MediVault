@@ -173,17 +173,18 @@ export class WebAuthnService {
 
       if (userCheck.rows.length > 0) {
         targetUserId = userCheck.rows[0].id;
-        const passkeys = await query(
-          'SELECT credential_id, transports FROM public.user_passkeys WHERE user_id = $1',
-          [targetUserId]
-        );
+      }
 
-        if (passkeys.rows.length > 0) {
-          allowCredentials = passkeys.rows.map((row: any) => ({
-            id: row.credential_id,
-            transports: Array.isArray(row.transports) ? row.transports : [],
-          }));
-        }
+      const passkeys = await query(
+        'SELECT credential_id, transports FROM public.user_passkeys WHERE user_id = $1 OR LOWER(user_email) = LOWER($2)',
+        [targetUserId || '', email]
+      );
+
+      if (passkeys.rows.length > 0) {
+        allowCredentials = passkeys.rows.map((row: any) => ({
+          id: row.credential_id,
+          transports: Array.isArray(row.transports) ? row.transports : [],
+        }));
       }
     }
 
@@ -224,7 +225,7 @@ export class WebAuthnService {
     const passkeyRes = await query(
       `SELECT p.*, 
               COALESCE(u.email, p.user_email, 'patient@medivault.local') AS email, 
-              COALESCE(up.role, p.user_role, 'patient') AS role, 
+              COALESCE(up.role::text, p.user_role, 'patient') AS role, 
               COALESCE(up.full_name, split_part(COALESCE(u.email, p.user_email, 'User'), '@', 1)) AS full_name
        FROM public.user_passkeys p
        LEFT JOIN auth.users u ON u.id::text = p.user_id
