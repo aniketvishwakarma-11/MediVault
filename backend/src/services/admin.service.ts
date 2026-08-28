@@ -426,72 +426,105 @@ export class AdminService {
         clinicalDistRes,
         topDiagnosesRes,
         auditActionsRes,
+        userGrowthRes,
+        docGrowthRes,
+        criticalGrowthRes,
+        genderRes,
+        bloodGroupRes,
+        ageBracketRes,
+        topDrugsRes,
       ] = await Promise.all([
-        // 1. Registrations trend by role
+        // 1. Continuous Zero-Filled Registrations trend by role
         query(
-          `SELECT TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD') as date,
-                  COUNT(*) as total,
-                  COUNT(*) FILTER (WHERE role = 'patient') as patients,
-                  COUNT(*) FILTER (WHERE role = 'doctor') as doctors,
-                  COUNT(*) FILTER (WHERE role = 'hospital') as hospitals,
-                  COUNT(*) FILTER (WHERE role = 'admin') as admins
-           FROM public.users_profile
-           WHERE created_at >= NOW() - ($1 || ' days')::interval
-           GROUP BY DATE_TRUNC('day', created_at)
-           ORDER BY date ASC`,
+          `WITH dates AS (
+            SELECT TO_CHAR(d::date, 'YYYY-MM-DD') AS date
+            FROM generate_series(CURRENT_DATE - ($1::int - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') AS d
+          ),
+          regs AS (
+            SELECT TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD') AS date,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE role = 'patient') AS patients,
+                   COUNT(*) FILTER (WHERE role = 'doctor') AS doctors,
+                   COUNT(*) FILTER (WHERE role = 'hospital') AS hospitals,
+                   COUNT(*) FILTER (WHERE role = 'admin') AS admins
+            FROM public.users_profile
+            WHERE created_at >= CURRENT_DATE - ($1::int - 1) * INTERVAL '1 day'
+            GROUP BY DATE_TRUNC('day', created_at)
+          )
+          SELECT d.date,
+                 COALESCE(r.total, 0)::int AS total,
+                 COALESCE(r.patients, 0)::int AS patients,
+                 COALESCE(r.doctors, 0)::int AS doctors,
+                 COALESCE(r.hospitals, 0)::int AS hospitals,
+                 COALESCE(r.admins, 0)::int AS admins
+          FROM dates d
+          LEFT JOIN regs r ON d.date = r.date
+          ORDER BY d.date ASC`,
           [safeDays]
         ),
 
         // 2. Documents by Category
         query(
           `SELECT document_category as category, 
-                  COUNT(*) as count,
-                  COALESCE(SUM(file_size_bytes), 0) as total_bytes
+                  COUNT(*)::int as count,
+                  COALESCE(SUM(file_size_bytes), 0)::bigint as total_bytes
            FROM public.documents
            WHERE is_archived = false
            GROUP BY document_category
            ORDER BY count DESC`
         ),
 
-        // 3. Document upload velocity trend
+        // 3. Continuous Zero-Filled Document upload velocity trend
         query(
-          `SELECT TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD') as date,
-                  COUNT(*) as count
-           FROM public.documents
-           WHERE is_archived = false AND created_at >= NOW() - ($1 || ' days')::interval
-           GROUP BY DATE_TRUNC('day', created_at)
-           ORDER BY date ASC`,
+          `WITH dates AS (
+            SELECT TO_CHAR(d::date, 'YYYY-MM-DD') AS date
+            FROM generate_series(CURRENT_DATE - ($1::int - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') AS d
+          ),
+          docs AS (
+            SELECT TO_CHAR(DATE_TRUNC('day', created_at), 'YYYY-MM-DD') AS date,
+                   COUNT(*)::int AS count,
+                   COALESCE(SUM(file_size_bytes), 0)::bigint AS total_bytes
+            FROM public.documents
+            WHERE is_archived = false AND created_at >= CURRENT_DATE - ($1::int - 1) * INTERVAL '1 day'
+            GROUP BY DATE_TRUNC('day', created_at)
+          )
+          SELECT d.date,
+                 COALESCE(docs.count, 0)::int AS count,
+                 COALESCE(docs.total_bytes, 0)::bigint AS total_bytes
+          FROM dates d
+          LEFT JOIN docs ON d.date = docs.date
+          ORDER BY d.date ASC`,
           [safeDays]
         ),
 
         // 4. AI Performance & Model Usage
         query(
           `SELECT COALESCE(model_name, 'Gemini 1.5 Flash') as model_name,
-                  COUNT(*) as total_analyses,
-                  COALESCE(ROUND(AVG(execution_time_ms)), 0) as avg_execution_ms,
-                  COALESCE(MIN(execution_time_ms), 0) as min_execution_ms,
-                  COALESCE(MAX(execution_time_ms), 0) as max_execution_ms
+                  COUNT(*)::int as total_analyses,
+                  COALESCE(ROUND(AVG(execution_time_ms)), 0)::int as avg_execution_ms,
+                  COALESCE(MIN(execution_time_ms), 0)::int as min_execution_ms,
+                  COALESCE(MAX(execution_time_ms), 0)::int as max_execution_ms
            FROM public.ai_analyses
            GROUP BY model_name`
         ),
 
         // 5. Consent Distribution
         query(
-          `SELECT status, COUNT(*) as count
+          `SELECT status, COUNT(*)::int as count
            FROM public.consent_grants
            GROUP BY status`
         ),
 
         // 6. Clinical Event Severity Distribution
         query(
-          `SELECT severity, COUNT(*) as count
+          `SELECT severity, COUNT(*)::int as count
            FROM public.clinical_events
            GROUP BY severity`
         ),
 
         // 7. Top Diagnoses Platform-Wide
         query(
-          `SELECT title as diagnosis, COUNT(*) as count
+          `SELECT title as diagnosis, COUNT(*)::int as count
            FROM public.clinical_events
            WHERE event_type::text = 'DIAGNOSIS' 
               OR title ILIKE '%diagnosis%' 
@@ -507,13 +540,85 @@ export class AdminService {
 
         // 8. Platform Activity Distribution
         query(
-          `SELECT action, COUNT(*) as count
+          `SELECT action, COUNT(*)::int as count
            FROM public.audit_logs
            WHERE created_at >= NOW() - ($1 || ' days')::interval
            GROUP BY action
            ORDER BY count DESC
            LIMIT 8`,
           [safeDays]
+        ),
+
+        // 9. Period-over-Period User Registrations Growth
+        query(
+          `SELECT 
+            COUNT(*) FILTER (WHERE created_at >= NOW() - ($1::int || ' days')::interval)::int as curr_users,
+            COUNT(*) FILTER (WHERE created_at >= NOW() - (($1::int * 2) || ' days')::interval AND created_at < NOW() - ($1::int || ' days')::interval)::int as prev_users
+          FROM public.users_profile`,
+          [safeDays]
+        ),
+
+        // 10. Period-over-Period Document Ingestion Growth
+        query(
+          `SELECT 
+            COUNT(*) FILTER (WHERE created_at >= NOW() - ($1::int || ' days')::interval)::int as curr_docs,
+            COUNT(*) FILTER (WHERE created_at >= NOW() - (($1::int * 2) || ' days')::interval AND created_at < NOW() - ($1::int || ' days')::interval)::int as prev_docs,
+            COALESCE(SUM(file_size_bytes), 0)::bigint as total_storage_bytes
+          FROM public.documents
+          WHERE is_archived = false`,
+          [safeDays]
+        ),
+
+        // 11. Period-over-Period Critical Events Growth
+        query(
+          `SELECT 
+            COUNT(*) FILTER (WHERE severity = 'CRITICAL' AND created_at >= NOW() - ($1::int || ' days')::interval)::int as curr_critical,
+            COUNT(*) FILTER (WHERE severity = 'CRITICAL' AND created_at >= NOW() - (($1::int * 2) || ' days')::interval AND created_at < NOW() - ($1::int || ' days')::interval)::int as prev_critical
+          FROM public.clinical_events`,
+          [safeDays]
+        ),
+
+        // 12. Demographic: Gender Ratio
+        query(
+          `SELECT COALESCE(gender, 'Unspecified') as gender, COUNT(*)::int as count
+           FROM public.patients
+           GROUP BY gender
+           ORDER BY count DESC`
+        ),
+
+        // 13. Demographic: Blood Groups
+        query(
+          `SELECT COALESCE(NULLIF(TRIM(blood_group), ''), 'Not Recorded') as blood_group, COUNT(*)::int as count
+           FROM public.patients
+           GROUP BY blood_group
+           ORDER BY count DESC`
+        ),
+
+        // 14. Demographic: Age Brackets
+        query(
+          `SELECT 
+            CASE 
+              WHEN date_of_birth IS NULL THEN 'Not Specified'
+              WHEN DATE_PART('year', AGE(date_of_birth)) < 18 THEN '< 18 yrs'
+              WHEN DATE_PART('year', AGE(date_of_birth)) BETWEEN 18 AND 30 THEN '18 - 30 yrs'
+              WHEN DATE_PART('year', AGE(date_of_birth)) BETWEEN 31 AND 50 THEN '31 - 50 yrs'
+              WHEN DATE_PART('year', AGE(date_of_birth)) BETWEEN 51 AND 65 THEN '51 - 65 yrs'
+              ELSE '65+ yrs'
+            END as age_bracket,
+            COUNT(*)::int as count
+          FROM public.patients
+          GROUP BY age_bracket
+          ORDER BY count DESC`
+        ),
+
+        // 15. Pharmacy Intelligence: Top Prescribed Medications
+        query(
+          `SELECT drug_name, COUNT(*)::int as count
+           FROM public.prescription_items
+           WHERE drug_name IS NOT NULL AND drug_name != ''
+           GROUP BY drug_name
+           ORDER BY count DESC
+           LIMIT 6`
         ),
       ]);
 
@@ -524,6 +629,20 @@ export class AdminService {
 
       const totalClinicalEvents = clinicalDistRes.rows.reduce((acc: number, r: any) => acc + parseInt(r.count || '0'), 0);
       const criticalEvents = parseInt(clinicalDistRes.rows.find((r: any) => r.severity === 'CRITICAL')?.count || '0');
+
+      // Helper function for Period-over-Period growth percentage
+      const calcGrowth = (curr: number, prev: number) => {
+        if (prev === 0) return { percent: curr > 0 ? 100 : 0, is_up: curr > 0 };
+        const diff = Math.round(((curr - prev) / prev) * 100);
+        return { percent: Math.abs(diff), is_up: diff >= 0 };
+      };
+
+      const userGrowth = calcGrowth(userGrowthRes.rows[0]?.curr_users || 0, userGrowthRes.rows[0]?.prev_users || 0);
+      const docGrowth = calcGrowth(docGrowthRes.rows[0]?.curr_docs || 0, docGrowthRes.rows[0]?.prev_docs || 0);
+      const criticalGrowth = calcGrowth(criticalGrowthRes.rows[0]?.curr_critical || 0, criticalGrowthRes.rows[0]?.prev_critical || 0);
+
+      // Total storage in bytes
+      const totalStorageBytes = parseInt(docGrowthRes.rows[0]?.total_storage_bytes || '0');
 
       return {
         range_days: safeDays,
@@ -538,6 +657,21 @@ export class AdminService {
         critical_events_count: criticalEvents,
         top_diagnoses: topDiagnosesRes.rows,
         platform_activity: auditActionsRes.rows,
+        growth: {
+          users: userGrowth,
+          documents: docGrowth,
+          critical_events: criticalGrowth,
+        },
+        storage: {
+          total_bytes: totalStorageBytes,
+          total_documents: docCategoryRes.rows.reduce((acc: number, r: any) => acc + parseInt(r.count || '0'), 0),
+        },
+        demographics: {
+          genders: genderRes.rows,
+          blood_groups: bloodGroupRes.rows,
+          age_brackets: ageBracketRes.rows,
+        },
+        top_medications: topDrugsRes.rows,
       };
     } catch (error) {
       logger.error('[AdminService.getAnalyticsData] Error:', error);
