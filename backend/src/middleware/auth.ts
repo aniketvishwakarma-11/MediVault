@@ -5,6 +5,7 @@ import { sendError } from '../utils/response';
 import { query, isConnectionError } from '../config/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_medivault_chain_ai_2026';
+const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // Extend Express Request interface to include user property
 declare global {
@@ -17,6 +18,7 @@ declare global {
 
 /**
  * Authentication middleware validating JWT bearer token.
+ * Strictly verifies cryptographic signatures against MediVault and Supabase keys.
  */
 export const authenticateJWT = async (
   req: Request,
@@ -36,15 +38,36 @@ export const authenticateJWT = async (
   const token = authHeader.split(' ')[1];
 
   try {
-    let decoded: any;
+    let decoded: any = null;
+    let verified = false;
+
+    // 1. Attempt verification with internal MediVault JWT secret
     try {
       decoded = jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-      decoded = jwt.decode(token);
+      verified = true;
+    } catch (err1) {
+      // 2. If internal secret fails, attempt verification with Supabase secret
+      if (SUPABASE_JWT_SECRET) {
+        try {
+          decoded = jwt.verify(token, SUPABASE_JWT_SECRET);
+          verified = true;
+        } catch (err2) {}
+      }
     }
 
-    if (!decoded || typeof decoded !== 'object') {
-      return sendError(res, 401, 'Invalid, expired, or untrusted authentication token.');
+    // 3. For local development / automated tests with mock tokens (ONLY if explicitly enabled)
+    if (!verified && process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_AUTH_TOKENS === 'true') {
+      try {
+        decoded = jwt.decode(token);
+        if (decoded) {
+          verified = true;
+          console.warn('[SECURITY WARNING]: Accepting unverified JWT token in development (ALLOW_MOCK_AUTH_TOKENS=true). This is disabled in production.');
+        }
+      } catch (err3) {}
+    }
+
+    if (!verified || !decoded || typeof decoded !== 'object') {
+      return sendError(res, 401, 'Invalid, untrusted, or forged authentication token signature.');
     }
 
     if (decoded.exp && decoded.exp * 1000 < Date.now()) {

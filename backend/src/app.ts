@@ -15,6 +15,7 @@ import adminRoutes from './routes/admin.routes';
 import notificationRoutes from './routes/notification.routes';
 import webauthnRoutes from './routes/webauthn.routes';
 import governmentRoutes from './routes/government.routes';
+import userRoutes from './routes/user.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
@@ -131,6 +132,8 @@ app.use('/auth/webauthn', webauthnRoutes);
 app.use('/api/auth/webauthn', webauthnRoutes);
 app.use('/government', governmentRoutes);
 app.use('/api/government', governmentRoutes);
+app.use('/users', userRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 Route Handler
 app.use((req: Request, res: Response) => {

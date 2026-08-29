@@ -29,6 +29,7 @@ import { DEMO_PATIENT_PROFILE } from "@/lib/demoData";
 import { PasskeyManagerCard } from "@/app/components/auth/PasskeyManagerCard";
 import { AbhaCardWidget } from "@/app/components/government/AbhaCardWidget";
 import { AbhaEnrollmentModal } from "@/app/components/government/AbhaEnrollmentModal";
+import { AccountErasureCard } from "@/app/components/privacy/AccountErasureCard";
 import { GovernmentAPI } from "@/lib/government-api";
 import { AbhaProfileData } from "@/types/government";
 
@@ -797,6 +798,9 @@ function PatientProfileContent() {
 
       {/* ─── Biometric Passkeys & Fast Login ─── */}
       <PasskeyManagerCard userId={user?.id || ""} token={session?.access_token} />
+
+      {/* ─── Statutory Data Sovereignty & Right to Erasure (DPDPA 2023 § 12) ─── */}
+      <AccountErasureCard userId={user?.id} token={session?.access_token} />
 
       {/* ─── ABHA Enrollment Modal ─── */}
       <AbhaEnrollmentModal
