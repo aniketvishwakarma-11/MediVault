@@ -53,7 +53,12 @@ import {
   ScanLine,
   History,
   Eye,
-  Crosshair
+  Crosshair,
+  Blocks,
+  Network,
+  Cpu,
+  RefreshCw,
+  XCircle
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────
@@ -373,7 +378,96 @@ function ClinicalAiDemo() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// 4. Interactive Demo Deck: Prescription Explainer & Drug Safety
+// 4. Interactive Demo Deck: Web3 Polygon Blockchain Notarization
+// ─────────────────────────────────────────────────────────────────
+function Web3BlockchainDemo() {
+  const [isTampered, setIsTampered] = useState(false);
+
+  return (
+    <div className="space-y-3.5 select-none animate-in fade-in duration-200">
+      {/* Header Banner */}
+      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 text-white text-xs">
+        <div className="flex items-center gap-2">
+          <Blocks className="w-3.5 h-3.5 text-purple-400" />
+          <span className="font-bold text-slate-200 text-[11px]">Polygon Amoy Blockchain Notarization</span>
+        </div>
+        <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-400/30 font-mono font-bold">
+          ChainID 80002
+        </span>
+      </div>
+
+      {/* On-Chain Ledger Record */}
+      <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2.5 text-xs">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-500 font-medium">Record Title:</span>
+          <span className="font-bold text-slate-900">Dr_Cardiology_Metabolic_Report.pdf</span>
+        </div>
+
+        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 font-mono text-[10px]">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">SHA-256 Document Hash:</span>
+            <span className={`font-bold ${isTampered ? "text-rose-600 line-through" : "text-slate-800"}`}>
+              0x8f9a2b4e...3c12d4
+            </span>
+          </div>
+          {isTampered && (
+            <div className="flex items-center justify-between text-rose-600">
+              <span>Tampered Input Hash:</span>
+              <span className="font-bold">0x11111111...BAD_HASH</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between text-slate-500">
+            <span>Polygon Tx Hash:</span>
+            <span className="text-purple-700 font-bold">0x7c49bf8a...2e18d0</span>
+          </div>
+          <div className="flex items-center justify-between text-slate-500">
+            <span>Block Anchored:</span>
+            <span className="text-slate-800 font-bold">#4892104 (128 Confirmations)</span>
+          </div>
+        </div>
+
+        {/* Verification Status */}
+        <div className={`p-2 rounded-xl border text-xs flex items-center justify-between ${
+          isTampered 
+            ? "bg-rose-50 border-rose-200 text-rose-900" 
+            : "bg-emerald-50 border-emerald-200 text-emerald-900"
+        }`}>
+          <div className="flex items-center gap-1.5 font-bold text-[11px]">
+            {isTampered ? (
+              <>
+                <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>TAMPER DETECTED: Hash Mismatch on Polygon</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>CRYPTOGRAPHICALLY VERIFIED ON-CHAIN</span>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsTampered(!isTampered)}
+            className={`px-2 py-1 rounded text-[9px] font-bold transition-colors cursor-pointer ${
+              isTampered 
+                ? "bg-rose-600 text-white hover:bg-rose-700" 
+                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+            }`}
+          >
+            {isTampered ? "Reset to Valid" : "Simulate Tampering"}
+          </button>
+        </div>
+      </div>
+
+      <div className="text-[10px] text-slate-400 font-mono text-center">
+        * Gasless zero-knowledge blockchain anchoring for patients
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 5. Interactive Demo Deck: Prescription Explainer & Drug Safety
 // ─────────────────────────────────────────────────────────────────
 function PrescriptionExplainerDemo() {
   return (
@@ -430,7 +524,7 @@ function PrescriptionExplainerDemo() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// 5. Interactive Demo Deck: Doctor Workstation & Consent Gateway
+// 6. Interactive Demo Deck: Doctor Workstation & Consent Gateway
 // ─────────────────────────────────────────────────────────────────
 function DoctorWorkstationDemo() {
   return (
@@ -509,7 +603,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 // Main Homepage Component
 // ─────────────────────────────────────────────────────────────────
 export default function Home() {
-  const [activeDeckTab, setActiveDeckTab] = useState<"abha" | "emergency" | "ai" | "rx" | "doctor">("abha");
+  const [activeDeckTab, setActiveDeckTab] = useState<"abha" | "emergency" | "ai" | "web3" | "rx" | "doctor">("abha");
   const [selectedRole, setSelectedRole] = useState<"patient" | "doctor" | "admin">("patient");
 
   return (
@@ -540,10 +634,10 @@ export default function Home() {
                 animate="visible"
                 variants={stagger}
               >
-                {/* Official Govt Tag */}
+                {/* Official Govt & Web3 Tag */}
                 <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>The National Health Operating System for India</span>
+                  <span>Web3 Sovereign Health Vault · Polygon Blockchain Notarized · ABDM Integrated</span>
                 </motion.div>
 
                 {/* Main Headline */}
@@ -553,7 +647,7 @@ export default function Home() {
                 >
                   Your Complete Health History.{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-700 via-sky-600 to-emerald-600">
-                    Government Verified.
+                    Blockchain Verified.
                   </span>{" "}
                   Always In Your Pocket.
                 </motion.h1>
@@ -563,7 +657,7 @@ export default function Home() {
                   variants={fadeUp}
                   className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal"
                 >
-                  MediVault unifies 14-digit ABHA IDs, DigiLocker records, AI handwritten prescription scanning, and offline golden-hour emergency passes into a client-side encrypted, zero-trust health vault.
+                  MediVault unifies 14-digit ABHA IDs, DigiLocker records, AI handwritten prescription scanning, and Polygon blockchain notarization into a zero-knowledge, tamper-proof medical vault.
                 </motion.p>
 
                 {/* High-Intent CTAs */}
@@ -591,9 +685,9 @@ export default function Home() {
                   className="flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 pt-2 text-[11px] text-slate-500 font-medium"
                 >
                   {[
+                    "Polygon Amoy Notarized",
                     "ABDM Milestone 1 (M1)",
-                    "DigiLocker Health Sync",
-                    "FIDO2 Biometric Passkeys",
+                    "Gasless Web3 Architecture",
                     "Client-Side AES-256",
                   ].map((signal) => (
                     <span key={signal} className="flex items-center gap-1.5">
@@ -613,19 +707,20 @@ export default function Home() {
               >
                 {/* Floating Micro-Badge */}
                 <div className="absolute -top-3 -right-2 hidden sm:flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-full shadow-md text-[10px] font-bold text-slate-700 z-20">
-                  <Lock className="w-3 h-3 text-cyan-600" />
-                  <span>AES-256 Client-Side Encrypted</span>
+                  <Blocks className="w-3 h-3 text-purple-600" />
+                  <span>Polygon Blockchain Anchored</span>
                 </div>
 
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4">
                   {/* Deck Tabs */}
-                  <div className="grid grid-cols-5 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-[10px] sm:text-[11px]">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-[10px] sm:text-[11px]">
                     {[
-                      { id: "abha", label: "ABHA Card", icon: ShieldCheck },
-                      { id: "emergency", label: "Trauma Pass", icon: QrCode },
-                      { id: "ai", label: "Clinical AI", icon: Bot },
-                      { id: "rx", label: "Rx Explainer", icon: Pill },
-                      { id: "doctor", label: "Doctor EMR", icon: Stethoscope },
+                      { id: "abha", label: "ABHA", icon: ShieldCheck },
+                      { id: "emergency", label: "Trauma", icon: QrCode },
+                      { id: "ai", label: "AI OCR", icon: Bot },
+                      { id: "web3", label: "Web3", icon: Blocks },
+                      { id: "rx", label: "Rx Safety", icon: Pill },
+                      { id: "doctor", label: "Doctor", icon: Stethoscope },
                     ].map((tab) => {
                       const Icon = tab.icon;
                       const active = activeDeckTab === tab.id;
@@ -634,21 +729,21 @@ export default function Home() {
                           key={tab.id}
                           type="button"
                           onClick={() => setActiveDeckTab(tab.id as any)}
-                          className={`flex items-center justify-center gap-1 py-2 px-0.5 sm:px-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          className={`flex items-center justify-center gap-1 py-2 px-1 rounded-lg font-bold transition-all cursor-pointer ${
                             active
                               ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
                               : "text-slate-500 hover:text-slate-900"
                           }`}
                         >
                           <Icon className={`w-3.5 h-3.5 ${active ? "text-cyan-600" : "text-slate-400"}`} />
-                          <span className="hidden sm:inline">{tab.label}</span>
+                          <span>{tab.label}</span>
                         </button>
                       );
                     })}
                   </div>
 
                   {/* Active Simulation */}
-                  <div className="min-h-[295px] flex flex-col justify-center">
+                  <div className="min-h-[305px] flex flex-col justify-center">
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={activeDeckTab}
@@ -660,6 +755,7 @@ export default function Home() {
                         {activeDeckTab === "abha" && <AbhaDemoCard />}
                         {activeDeckTab === "emergency" && <EmergencyPassDemo />}
                         {activeDeckTab === "ai" && <ClinicalAiDemo />}
+                        {activeDeckTab === "web3" && <Web3BlockchainDemo />}
                         {activeDeckTab === "rx" && <PrescriptionExplainerDemo />}
                         {activeDeckTab === "doctor" && <DoctorWorkstationDemo />}
                       </motion.div>
@@ -670,11 +766,11 @@ export default function Home() {
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-mono">
                     <span className="flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span>Live product simulation</span>
+                      <span>Interactive live simulation</span>
                     </span>
-                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                      Sandbox Active
+                    <span className="text-purple-700 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
+                      Polygon Amoy Block #4892104
                     </span>
                   </div>
                 </div>
@@ -691,6 +787,10 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-slate-600 text-xs font-semibold">
               <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                <Blocks className="w-3.5 h-3.5 text-purple-600" />
+                <span>Polygon Blockchain Notarized</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
                 <span className="text-sm">🇮🇳</span>
                 <span>ABDM Milestone 1 (M1) Ready</span>
               </div>
@@ -700,16 +800,119 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
                 <Lock className="w-3.5 h-3.5 text-cyan-600" />
-                <span>AES-256 GCM + SHA-256 Vault</span>
+                <span>AES-256 GCM Client Encrypted</span>
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
                 <Fingerprint className="w-3.5 h-3.5 text-indigo-600" />
                 <span>FIDO2 / WebAuthn Biometrics</span>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
-                <Layers className="w-3.5 h-3.5 text-amber-600" />
-                <span>FHIR R4 &amp; HIPAA Standard</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════
+            WHY WEB3? THE BLOCKCHAIN HEALTHCARE DIFFERENTIATOR
+        ══════════════════════════════════════════════════════ */}
+        <section className="py-20 bg-white border-b border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-800 text-[11px] font-bold uppercase tracking-wider">
+                <Blocks className="w-3.5 h-3.5 text-purple-600" />
+                <span>The Web3 Difference · Healthcare 4.0</span>
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                Why Blockchain? Medical Records Hospitals Cannot Tamper With.
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Centralized hospital databases suffer from data leaks, ransomware, and retroactive alteration in malpractice disputes. Academic crypto projects fail because of gas fees and lack of clinical AI. MediVault solves both.
+              </p>
+            </div>
+
+            {/* 3-Way Architectural Comparison Matrix */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Legacy Hospital Systems */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900">Legacy Hospital Portals</h3>
+                    <p className="text-[10px] text-slate-500 font-mono">Epic, Cerner, Centralized HMIS</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">Centralized</span>
+                </div>
+                <div className="space-y-2.5 text-xs text-slate-600">
+                  <div className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold">✕</span>
+                    <span><strong>Centralized Silos:</strong> Data trapped in hospital servers; you start over if you switch doctors.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold">✕</span>
+                    <span><strong>Malleable History:</strong> Database administrators or bad actors can alter medical notes with no public ledger.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold">✕</span>
+                    <span><strong>Ransomware Magnet:</strong> Single points of failure vulnerable to massive data extortion.</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Typical Academic Web3 Projects */}
+              <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900">Generic Web3 Projects</h3>
+                    <p className="text-[10px] text-slate-500 font-mono">Academic DApps &amp; Whitepapers</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Impractical</span>
+                </div>
+                <div className="space-y-2.5 text-xs text-slate-600">
+                  <div className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold">✕</span>
+                    <span><strong>High Gas Fees &amp; Wallets:</strong> Requires patients to install MetaMask and pay crypto per upload.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold">✕</span>
+                    <span><strong>Fails in Trauma:</strong> Unconscious patients cannot sign crypto transactions; blockchain latency kills.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-rose-500 font-bold">✕</span>
+                    <span><strong>Dumb Storage:</strong> Stores raw PDFs on IPFS without clinical AI OCR or national government IDs.</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MediVault Breakthrough (Healthcare 4.0) */}
+              <div className="p-6 rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-50/50 via-white to-cyan-50/40 shadow-sm space-y-4 relative">
+                <div className="absolute -top-3 right-6 bg-emerald-600 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                  MediVault Breakthrough
+                </div>
+                <div className="flex items-center justify-between border-b border-emerald-100 pb-3">
+                  <div>
+                    <h3 className="font-bold text-base text-emerald-950">MediVault (Healthcare 4.0)</h3>
+                    <p className="text-[10px] text-emerald-800 font-mono">Gasless Web3 + Clinical AI + ABDM</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">Sovereign</span>
+                </div>
+                <div className="space-y-2.5 text-xs text-slate-700">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Gasless Polygon Notarization:</strong> Documents anchored on-chain with zero crypto fees or wallets required.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>Client-Side AES-256 Encryption:</strong> Zero unencrypted PHI on IPFS. True patient self-custody.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>National Government Bridge:</strong> Seamless 14-digit ABHA ID &amp; DigiLocker PM-JAY integration.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span><strong>2-Second Offline Emergency Pass:</strong> Zero blockchain latency during golden-hour trauma triage.</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>
@@ -717,7 +920,7 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             SYSTEM PREVIEW: 3 DEDICATED PORTALS
         ══════════════════════════════════════════════════════ */}
-        <section className="py-20 bg-white border-b border-slate-200">
+        <section className="py-20 bg-[#F8FAFC] border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-12 space-y-2.5">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
@@ -759,7 +962,7 @@ export default function Home() {
             </div>
 
             {/* Portal Showcase Content */}
-            <div className="rounded-3xl border border-slate-200 bg-[#F8FAFC] p-6 sm:p-10 shadow-xs">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-10 shadow-xs">
               {selectedRole === "patient" && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center animate-in fade-in duration-300">
                   <div className="space-y-5">
@@ -781,15 +984,15 @@ export default function Home() {
                       </div>
                       <div className="flex items-center gap-2.5">
                         <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span><strong>Polygon Blockchain Provenance:</strong> Every document hashed and anchored on-chain.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span><strong>Camera Prescription Scanner:</strong> Edge perspective correction and instant encryption.</span>
                       </div>
                       <div className="flex items-center gap-2.5">
                         <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span><strong>Longitudinal Clinical Timeline:</strong> Chronological history across all hospital visits.</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span><strong>Offline Emergency Pass:</strong> Golden-hour paramedic trauma QR for golden hour triage.</span>
                       </div>
                     </div>
 
@@ -804,8 +1007,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                       <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
                         <FolderLock className="w-4 h-4 text-cyan-600" />
                         <span>Encrypted Patient Locker Preview</span>
@@ -817,20 +1020,20 @@ export default function Home() {
 
                     <div className="space-y-2 text-xs">
                       {[
-                        { title: "Dr_Sharma_Prescription_Cardiology.pdf", date: "Today, 02:45 PM", cat: "Prescription", size: "142 KB" },
-                        { title: "Metabolic_Complete_Blood_Panel.pdf", date: "24 Aug 2026", cat: "Blood Report", size: "389 KB" },
-                        { title: "Ayushman_PMJAY_Insurance_Cover.pdf", date: "DigiLocker Sync", cat: "Insurance", size: "210 KB" },
-                        { title: "COVID_Universal_Vaccination_Cert.pdf", date: "MoHFW Verified", cat: "Vaccination", size: "195 KB" },
+                        { title: "Dr_Sharma_Prescription_Cardiology.pdf", date: "Today, 02:45 PM", cat: "Prescription", size: "142 KB", tx: "Polygon Confirmed" },
+                        { title: "Metabolic_Complete_Blood_Panel.pdf", date: "24 Aug 2026", cat: "Blood Report", size: "389 KB", tx: "Block #4892104" },
+                        { title: "Ayushman_PMJAY_Insurance_Cover.pdf", date: "DigiLocker Sync", cat: "Insurance", size: "210 KB", tx: "ABDM Verified" },
+                        { title: "COVID_Universal_Vaccination_Cert.pdf", date: "MoHFW Verified", cat: "Vaccination", size: "195 KB", tx: "SHA-256 Valid" },
                       ].map((doc) => (
-                        <div key={doc.title} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:bg-slate-100/80 transition-colors">
+                        <div key={doc.title} className="p-3 rounded-xl bg-white border border-slate-200 flex items-center justify-between hover:border-slate-300 transition-colors">
                           <div className="flex items-center gap-2.5 truncate">
                             <FileText className="w-4 h-4 text-cyan-600 shrink-0" />
                             <div className="truncate">
                               <div className="font-bold text-slate-900 truncate text-[11px]">{doc.title}</div>
-                              <div className="text-[10px] text-slate-400 font-mono">{doc.date} · {doc.size}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">{doc.date} · {doc.size} · <span className="text-purple-700 font-semibold">{doc.tx}</span></div>
                             </div>
                           </div>
-                          <span className="text-[9px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                          <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shrink-0">
                             {doc.cat}
                           </span>
                         </div>
@@ -861,15 +1064,15 @@ export default function Home() {
                       </div>
                       <div className="flex items-center gap-2.5">
                         <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span><strong>On-Chain Consent Proofs:</strong> Immutable Polygon transaction proof for every session.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
                         <span><strong>15-Minute Emergency Hospital Override:</strong> Trauma access with immutable audit trail.</span>
                       </div>
                       <div className="flex items-center gap-2.5">
                         <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
                         <span><strong>AI Rx Writer &amp; Normalizer:</strong> Dosage calculator and contraindication safety engine.</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
-                        <span><strong>Decrypted Vault Viewer:</strong> Inspect past hospital visits and trends with zero data leakage.</span>
                       </div>
                     </div>
 
@@ -884,8 +1087,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                       <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
                         <Clock className="w-4 h-4 text-amber-600" />
                         <span>Live Consultation Session</span>
@@ -895,7 +1098,7 @@ export default function Home() {
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                    <div className="p-3 rounded-xl bg-white border border-slate-200 space-y-2 text-xs">
                       <div className="font-bold text-slate-900 text-xs">Patient Medical Summary</div>
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div>Blood Group: <strong className="text-rose-700">O+ (Positive)</strong></div>
@@ -932,7 +1135,7 @@ export default function Home() {
                     <div className="space-y-2.5 text-xs text-slate-700">
                       <div className="flex items-center gap-2.5">
                         <CheckCircle className="w-4 h-4 text-slate-700 shrink-0" />
-                        <span><strong>Immutable HIPAA Audit Trails:</strong> Every view and export logged with IP and timestamp.</span>
+                        <span><strong>Immutable HIPAA Audit Trails:</strong> Every view and export logged with IP, timestamp, and on-chain hash.</span>
                       </div>
                       <div className="flex items-center gap-2.5">
                         <CheckCircle className="w-4 h-4 text-slate-700 shrink-0" />
@@ -959,8 +1162,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                       <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
                         <BarChart3 className="w-4 h-4 text-indigo-600" />
                         <span>Real-Time Audit Trail Stream</span>
@@ -973,11 +1176,11 @@ export default function Home() {
                     <div className="space-y-2 text-xs font-mono">
                       {[
                         { event: "ACCESS_CONSENT_GRANTED", actor: "Dr. R. Mehta", target: "Patient #mv-7167", time: "Just now", status: "OK" },
-                        { event: "ABHA_OTP_VERIFIED", actor: "Citizen #91-4920", target: "NHA Gateway", time: "2 min ago", status: "OK" },
-                        { event: "DOC_ENCRYPTED_STORED", actor: "MinIO Cluster #1", target: "SHA-256 Verified", time: "5 min ago", status: "OK" },
-                        { event: "DOC_DOWNLOAD_AUTHORIZED", actor: "Dr. K. Nair", target: "Prescription #892", time: "11 min ago", status: "OK" },
+                        { event: "POLYGON_TX_ANCHORED", actor: "Block #4892104", target: "0x7c49...b18a", time: "1 min ago", status: "OK" },
+                        { event: "ABHA_OTP_VERIFIED", actor: "Citizen #91-4920", target: "NHA Gateway", time: "3 min ago", status: "OK" },
+                        { event: "DOC_ENCRYPTED_STORED", actor: "MinIO Cluster #1", target: "SHA-256 Verified", time: "6 min ago", status: "OK" },
                       ].map((log) => (
-                        <div key={log.event + log.time} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-[10px]">
+                        <div key={log.event + log.time} className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between text-[10px]">
                           <div>
                             <span className="text-indigo-700 font-bold">{log.event}</span>
                             <div className="text-slate-500">{log.actor} ➔ {log.target}</div>
@@ -996,7 +1199,7 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             STATS COUNTER
         ══════════════════════════════════════════════════════ */}
-        <section className="bg-[#F8FAFC] border-b border-slate-200 py-12">
+        <section className="bg-white border-b border-slate-200 py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <CounterStats />
           </div>
@@ -1005,7 +1208,7 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             "HOW MEDIVAULT WORKS" — 4-Step Patient Passport Journey
         ══════════════════════════════════════════════════════ */}
-        <section className="py-20 bg-white border-b border-slate-200">
+        <section className="py-20 bg-[#F8FAFC] border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-14 space-y-2.5">
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
@@ -1015,7 +1218,7 @@ export default function Home() {
                 How MediVault Protects Your Health Journey
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                From 30-second government ABHA verification to offline trauma care — four simple steps to complete medical sovereignty.
+                From 30-second government ABHA verification to gasless blockchain notarization and offline trauma care — four simple steps to complete medical sovereignty.
               </p>
             </div>
 
@@ -1037,10 +1240,10 @@ export default function Home() {
                 },
                 {
                   step: "03",
-                  title: "Clinical AI Extraction",
-                  desc: "Multimodal Gemini AI parses medication dosages, compares lab biomarkers to clinical reference ranges, and alerts on drug interactions.",
-                  icon: Brain,
-                  badge: "Gemini 2.5 Flash",
+                  title: "Clinical AI & Notarization",
+                  desc: "Gemini AI extracts biomarkers and schedules. A SHA-256 fingerprint is gaslessly anchored to the Polygon blockchain for tamper proofing.",
+                  icon: Blocks,
+                  badge: "Polygon + Gemini",
                 },
                 {
                   step: "04",
@@ -1054,7 +1257,7 @@ export default function Home() {
                 return (
                   <div
                     key={item.step}
-                    className="bg-[#F8FAFC] rounded-2xl border border-slate-200 p-6 space-y-4 shadow-2xs hover:shadow-sm hover:border-slate-300 transition-all hover:-translate-y-0.5"
+                    className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-2xs hover:shadow-sm hover:border-slate-300 transition-all hover:-translate-y-0.5"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-black font-mono text-slate-300">{item.step}</span>
@@ -1063,7 +1266,7 @@ export default function Home() {
                       </span>
                     </div>
 
-                    <div className="w-10 h-10 rounded-xl bg-white text-cyan-700 flex items-center justify-center border border-slate-200 shadow-2xs">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 text-cyan-700 flex items-center justify-center border border-slate-200 shadow-2xs">
                       <Icon className="w-5 h-5" />
                     </div>
 
@@ -1081,22 +1284,28 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             8 CORE CAPABILITIES (The Entire System Ecosystem)
         ══════════════════════════════════════════════════════ */}
-        <section id="features" className="py-20 bg-[#F8FAFC] border-b border-slate-200">
+        <section id="features" className="py-20 bg-white border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-14 space-y-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-wider shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-wider">
                 Platform Intelligence
               </span>
               <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                 Enterprise Clinical Features
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                A complete healthcare operating system spanning government interoperability, clinical AI, emergency triage, and hospital compliance.
+                A complete healthcare operating system spanning Web3 blockchain integrity, government interoperability, clinical AI, and emergency triage.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {[
+                {
+                  icon: Blocks,
+                  title: "Polygon Blockchain Notarization",
+                  desc: "Gasless cryptographic hash anchoring permanently records document fingerprints on Polygon Amoy. Eliminates medical fraud and record tampering.",
+                  badge: "Web3 Notarized",
+                },
                 {
                   icon: ShieldCheck,
                   title: "14-Digit ABHA & NHA Card",
@@ -1134,12 +1343,6 @@ export default function Home() {
                   badge: "Emergency Care",
                 },
                 {
-                  icon: History,
-                  title: "Longitudinal Health Timeline",
-                  desc: "Connects doctor consultations, lab reports, surgeries, and prescriptions across all healthcare providers into one coherent interactive timeline.",
-                  badge: "Clinical History",
-                },
-                {
                   icon: Server,
                   title: "HIPAA Audit & Hospital Console",
                   desc: "Immutable cryptographic audit trails tracking all PHI access. Telemetry monitors storage health, doctor verification, and consent scopes.",
@@ -1150,13 +1353,13 @@ export default function Home() {
                 return (
                   <div
                     key={feat.title}
-                    className="p-5.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition-all space-y-3"
+                    className="p-5.5 rounded-2xl border border-slate-200 bg-[#F8FAFC] hover:bg-white hover:border-slate-300 hover:shadow-sm transition-all space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-cyan-700 shadow-2xs">
+                      <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-cyan-700 shadow-2xs">
                         <Icon className="w-4.5 h-4.5" />
                       </div>
-                      <span className="text-[9px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                      <span className="text-[9px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
                         {feat.badge}
                       </span>
                     </div>
@@ -1202,22 +1405,22 @@ export default function Home() {
               </div>
 
               <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-800/40 text-purple-400 flex items-center justify-center">
+                  <Blocks className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-white">Polygon Blockchain Proofs</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Every document hash is anchored to Polygon Amoy. Any unauthorized alteration breaks the cryptographic proof, guaranteeing permanent document integrity.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-800/40 text-emerald-400 flex items-center justify-center">
                   <Fingerprint className="w-5 h-5" />
                 </div>
                 <h3 className="font-bold text-base text-white">Hardware-Backed FIDO2</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Private keys are locked inside your phone&apos;s Secure Enclave or PC TPM. Protects your medical identity from credential theft, SIM swapping, and phishing.
-                </p>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-950/80 border border-indigo-800/40 text-indigo-400 flex items-center justify-center">
-                  <Database className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-base text-white">Indian Data Localization</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Strictly complies with the Indian Digital Personal Data Protection (DPDP) Act and NHA guidelines. All databases hosted exclusively in India (AWS Mumbai).
                 </p>
               </div>
             </div>
@@ -1239,6 +1442,14 @@ export default function Home() {
             </div>
 
             <div className="divide-y divide-slate-200">
+              <FAQItem
+                question="Do I need cryptocurrency, gas fees, or a MetaMask wallet to use MediVault?"
+                answer="No. MediVault is built with a Gasless Web3 Architecture. All on-chain notarizations and state anchors on the Polygon blockchain are sponsored and computed automatically in the background. You get all the cryptographic security of Web3 without needing crypto tokens, gas fees, or browser extensions."
+              />
+              <FAQItem
+                question="Why does healthcare data need blockchain technology?"
+                answer="Traditional hospital databases have a major vulnerability: administrators or rogue employees can edit, delete, or retroactively alter medical records in malpractice lawsuits or insurance disputes. With MediVault, every document's cryptographic SHA-256 hash is anchored onto the Polygon blockchain. Once notarized, the record is mathematically tamper-proof—neither hospital staff nor MediVault can ever alter it."
+              />
               <FAQItem
                 question="Is linking an Aadhaar or ABHA ID compulsory to use MediVault?"
                 answer="No, government ID integration is 100% voluntary. You can use MediVault as a standalone private health locker without providing Aadhaar or ABHA. However, linking an ABHA ID allows you to fetch official lab reports from AIIMS, Apollo, Max, and sync your Ayushman PM-JAY card in one click."
@@ -1276,7 +1487,7 @@ export default function Home() {
               Ready to Own Your Complete Health Record?
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-              Join thousands of citizens, physicians, and hospitals taking control of their medical records with official government ABHA integration, AI clinical intelligence, and zero-knowledge encryption.
+              Join thousands of citizens, physicians, and hospitals taking control of their medical records with official government ABHA integration, Polygon blockchain integrity, and zero-knowledge encryption.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
