@@ -97,9 +97,9 @@ export default function Footer() {
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>&copy; {new Date().getFullYear()} MediVault Chain AI Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <a href="#" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center">Privacy Policy</a>
-            <a href="#" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center">Terms of Service</a>
-            <a href="#" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center">Security Disclosure</a>
+            <Link href="/privacy" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center cursor-pointer">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center cursor-pointer">Terms of Service</Link>
+            <Link href="/#security" className="hover:text-slate-200 transition-colors py-1 min-h-[36px] flex items-center cursor-pointer">Security Disclosure</Link>
           </div>
         </div>
       </div>
