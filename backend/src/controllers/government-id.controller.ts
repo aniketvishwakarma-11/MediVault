@@ -119,8 +119,13 @@ export class GovernmentIdController {
         return sendError(res, 401, 'Unauthorized.');
       }
 
-      const { docTypes } = req.body || { docTypes: [] };
-      const result = await GovernmentIdService.importDigiLockerDocs(user.id, Array.isArray(docTypes) ? docTypes : []);
+      const { docTypes, aadhaarOrMobile, pin } = req.body || {};
+      const result = await GovernmentIdService.importDigiLockerDocs(
+        user.id, 
+        Array.isArray(docTypes) ? docTypes : [],
+        aadhaarOrMobile,
+        pin
+      );
       return sendSuccess(res, 200, result, 'Official health documents imported from DigiLocker.');
     } catch (err: any) {
       logger.error('[GovernmentIdController] importDigiLocker error:', err);

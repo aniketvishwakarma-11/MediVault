@@ -297,9 +297,20 @@ export class GovernmentIdService {
   /**
    * 6. Import Official Health Documents from DigiLocker
    */
-  static async importDigiLockerDocs(userId: string, docTypes: string[]) {
+  static async importDigiLockerDocs(
+    userId: string, 
+    docTypes: string[],
+    aadhaarOrMobile?: string,
+    pin?: string
+  ) {
     const userRes = await query('SELECT full_name FROM public.users_profile WHERE id = $1', [userId]);
-    const name = userRes.rows[0]?.full_name || 'Aniket Vishwakarma';
+    const name = userRes.rows[0]?.full_name || 'MediVault Patient';
+
+    const cleanId = (aadhaarOrMobile || '').replace(/\s+/g, '');
+    const isAadhaar = cleanId.length === 12;
+    const maskedId = cleanId.length >= 4 
+      ? (isAadhaar ? `XXXX-XXXX-${cleanId.slice(-4)}` : `+91-XXXXX-${cleanId.slice(-4)}`) 
+      : 'XXXX-XXXX-9024';
 
     const sampleDocs = [
       {
@@ -307,11 +318,12 @@ export class GovernmentIdService {
         name: 'Ayushman Bharat PM-JAY Health Card (₹5 Lakh Cover)',
         issuer: 'National Health Authority (NHA), Govt of India',
         category: 'Insurance',
-        uri: 'in.gov.nha.pmjay/AB-PMJAY-99214',
+        uri: `in.gov.nha.pmjay/AB-PMJAY-${cleanId.slice(-5) || '99214'}`,
         data: {
-          policyNumber: 'PMJAY-MH-2024-88392',
+          policyNumber: `PMJAY-MH-2024-${cleanId.slice(-5) || '88392'}`,
           coverageAmount: '₹5,00,000 / Year',
           beneficiaryName: name,
+          aadhaarMasked: maskedId,
           familyMembersCovered: 4,
           validTill: '2028-12-31',
         },
@@ -321,13 +333,15 @@ export class GovernmentIdService {
         name: 'COVID-19 Universal Vaccination Certificate (Final Dose)',
         issuer: 'Ministry of Health & Family Welfare (MoHFW), Govt of India',
         category: 'Vaccination',
-        uri: 'in.gov.cowin/COWIN-VACC-44910',
+        uri: `in.gov.cowin/COWIN-VACC-${cleanId.slice(-5) || '44910'}`,
         data: {
           vaccineName: 'Covishield (ChAdOx1-S)',
           dose1Date: '2021-06-15',
           dose2Date: '2021-09-12',
           precautionDoseDate: '2022-07-20',
-          beneficiaryId: '984128919241',
+          beneficiaryName: name,
+          beneficiaryId: cleanId || '984128919241',
+          aadhaarMasked: maskedId,
         },
       },
     ];
@@ -377,6 +391,7 @@ export class GovernmentIdService {
               is_digilocker_verified: true,
               issuer: doc.issuer,
               uri: doc.uri,
+              aadhaar_masked: maskedId,
               data: doc.data,
             }),
           ]
@@ -386,10 +401,14 @@ export class GovernmentIdService {
       }
     }
 
-    // Set digilocker_linked = true on patient
+    // Set digilocker_linked = true and update gov_id_masked on patient
     await query(
-      `UPDATE public.patients SET digilocker_linked = TRUE, updated_at = NOW() WHERE user_id = $1`,
-      [userId]
+      `UPDATE public.patients 
+       SET digilocker_linked = TRUE, 
+           gov_id_masked = COALESCE(gov_id_masked, $2),
+           updated_at = NOW() 
+       WHERE user_id = $1`,
+      [userId, maskedId]
     );
 
     return {

@@ -109,12 +109,16 @@ export const GovernmentAPI = {
   /**
    * 6. Import verified health credentials from DigiLocker
    */
-  async importDigiLocker(docTypes: string[]): Promise<{ importedCount: number; documents: DigiLockerDoc[] }> {
+  async importDigiLocker(
+    docTypes: string[],
+    aadhaarOrMobile?: string,
+    pin?: string
+  ): Promise<{ importedCount: number; documents: DigiLockerDoc[] }> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE_URL}/api/government/digilocker/import`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ docTypes }),
+      body: JSON.stringify({ docTypes, aadhaarOrMobile, pin }),
     });
     const json = await res.json();
     if (!res.ok || !json.success) {

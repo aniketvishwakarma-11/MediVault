@@ -389,12 +389,12 @@ export default function MedicalReportsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  const formatUploadDateTime = (createdDateStr?: string | null, visitDateStr?: string | null) => {
-    const target = createdDateStr || visitDateStr;
+  const formatUploadDateTime = (createdDateStr?: string | null, fallbackDateStr?: string | null) => {
+    const target = createdDateStr || fallbackDateStr;
     if (!target) return "—";
     try {
       const d = new Date(target);
-      if (isNaN(d.getTime())) return target;
+      if (isNaN(d.getTime())) return String(target).slice(0, 10);
 
       const datePart = d.toLocaleDateString("en-IN", {
         day: "2-digit",
@@ -412,7 +412,22 @@ export default function MedicalReportsPage() {
       }
       return datePart;
     } catch {
-      return target;
+      return String(target).slice(0, 10);
+    }
+  };
+
+  const formatDateOnly = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr).slice(0, 10);
+      return d.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return String(dateStr).slice(0, 10);
     }
   };
 
@@ -614,17 +629,17 @@ export default function MedicalReportsPage() {
                     </div>
 
                     {/* Upload Date & Time Meta */}
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
-                      <div className="flex items-center gap-1.5 truncate">
+                    <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100 gap-y-1">
+                      <div className="flex items-center gap-1.5 text-slate-600">
                         <Clock className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                        <span className="truncate">
-                          Uploaded: <strong className="text-slate-700 font-mono text-[10px]">{formatUploadDateTime(doc.created_at, doc.visit_date)}</strong>
+                        <span className="text-[11px]">
+                          Uploaded: <strong className="text-slate-800 font-mono font-medium">{formatUploadDateTime(doc.created_at, doc.visit_date)}</strong>
                         </span>
                       </div>
                       {doc.visit_date && (
-                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono shrink-0">
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
                           <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>Visit: {doc.visit_date}</span>
+                          <span>Visit: {formatDateOnly(doc.visit_date)}</span>
                         </div>
                       )}
                     </div>
