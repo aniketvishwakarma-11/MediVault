@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { motion, type Variants } from "motion/react";
+import { motion, AnimatePresence, type Variants } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -44,7 +44,16 @@ import {
   Check,
   Smartphone,
   CheckCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Pill,
+  Server,
+  BarChart3,
+  SlidersHorizontal,
+  FolderLock,
+  ScanLine,
+  History,
+  Eye,
+  Crosshair
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────
@@ -62,6 +71,7 @@ const stagger: Variants = {
 
 // ─────────────────────────────────────────────────────────────────
 // 1. Interactive Demo Deck: Government ABHA ID & DigiLocker
+// (Clean light style matching the Emergency Pass!)
 // ─────────────────────────────────────────────────────────────────
 function AbhaDemoCard() {
   const [flipped, setFlipped] = useState(false);
@@ -81,27 +91,27 @@ function AbhaDemoCard() {
         onClick={() => setFlipped(!flipped)}
         className="cursor-pointer [perspective:1000px] w-full"
       >
-        <div className={`relative w-full rounded-2xl transition-transform duration-500 [transform-style:preserve-3d] shadow-lg border border-slate-700/60 ${flipped ? "[transform:rotateY(180deg)]" : ""}`}>
+        <div className={`relative w-full rounded-2xl transition-transform duration-500 [transform-style:preserve-3d] shadow-sm border-2 border-slate-200 ${flipped ? "[transform:rotateY(180deg)]" : ""}`}>
           
-          {/* ── CARD FRONT ── */}
-          <div className={`w-full bg-gradient-to-br from-slate-900 via-slate-850 to-slate-950 text-white p-5 rounded-2xl [backface-visibility:hidden] ${flipped ? "hidden" : "block"}`}>
+          {/* ── CARD FRONT (Clean Light Style) ── */}
+          <div className={`w-full bg-gradient-to-br from-white via-slate-50 to-emerald-50/20 text-[#0F172A] p-4.5 sm:p-5 rounded-2xl [backface-visibility:hidden] ${flipped ? "hidden" : "block"}`}>
             {/* Header Ribbon */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3.5">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5 mb-3.5">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xs font-black">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-xs font-black shadow-xs">
                   🇮🇳
                 </div>
                 <div>
-                  <div className="text-[9px] uppercase font-bold tracking-widest text-amber-400 leading-none">
+                  <div className="text-[9px] uppercase font-bold tracking-widest text-amber-700 leading-none">
                     Government of India
                   </div>
-                  <div className="text-[11px] font-extrabold tracking-wide text-white mt-0.5">
+                  <div className="text-[11px] font-extrabold tracking-wide text-slate-900 mt-0.5">
                     National Health Authority (NHA)
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-[9px] text-emerald-300 font-bold">
-                <ShieldCheck className="w-3 h-3" />
+              <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[9px] text-emerald-800 font-extrabold">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>ABDM Verified</span>
               </div>
             </div>
@@ -114,80 +124,80 @@ function AbhaDemoCard() {
                   <img
                     src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80"
                     alt="Citizen Photo"
-                    className="w-14 h-16 rounded-xl object-cover border border-white/20 bg-slate-800"
+                    className="w-14 h-16 rounded-xl object-cover border-2 border-slate-200 bg-slate-100 shadow-2xs"
                   />
-                  <span className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 text-[8px] font-black px-1 rounded shadow-xs">
+                  <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-xs">
                     KYC
                   </span>
                 </div>
-                <div className="min-w-0 flex-1 space-y-0.5 text-slate-300">
-                  <div className="text-sm font-bold text-white truncate">Aarav Sharma</div>
-                  <div className="text-[10px] text-slate-400">DOB: <span className="text-white font-medium">12/08/1996</span></div>
-                  <div className="text-[10px] text-slate-400">Gender: <span className="text-white font-medium">MALE</span> · State: <span className="text-white font-medium">MH</span></div>
+                <div className="min-w-0 flex-1 space-y-0.5 text-slate-600">
+                  <div className="text-sm font-extrabold text-slate-900 truncate">Aarav Sharma</div>
+                  <div className="text-[10px] text-slate-500">DOB: <span className="text-slate-900 font-semibold">12/08/1996</span></div>
+                  <div className="text-[10px] text-slate-500">Gender: <span className="text-slate-900 font-semibold">MALE</span> · State: <span className="text-slate-900 font-semibold">MH</span></div>
                 </div>
               </div>
 
               {/* Verified ABDM QR */}
-              <div className="p-1.5 rounded-xl bg-white text-slate-950 shrink-0 shadow-xs">
-                <QRCodeSVG value="https://abdm.gov.in/profile/91492018490192" size={62} level="M" />
+              <div className="p-1.5 rounded-xl bg-white text-slate-950 shrink-0 shadow-xs border border-slate-200">
+                <QRCodeSVG value="https://abdm.gov.in/profile/91492018490192" size={64} level="M" />
               </div>
             </div>
 
             {/* 14-Digit ABHA ID Box */}
-            <div className="mt-3.5 p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+            <div className="mt-3.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div>
-                <div className="text-[8px] uppercase font-bold tracking-widest text-slate-400">ABHA Health Number</div>
-                <div className="text-xs sm:text-sm font-mono font-bold text-amber-300 tracking-wider">
+                <div className="text-[8px] uppercase font-bold tracking-widest text-slate-500">ABHA Health Number</div>
+                <div className="text-xs sm:text-sm font-mono font-bold text-amber-800 tracking-wider">
                   91-4920-1849-0192
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer shadow-2xs"
                 title="Copy ABHA Number"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
 
             {/* Footer Handle */}
-            <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-white/5">
+            <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-100">
               <div className="truncate">
-                Address: <span className="font-bold text-emerald-400 font-mono">aarav.sharma96@abdm</span>
+                Address: <span className="font-bold text-emerald-700 font-mono">aarav.sharma96@abdm</span>
               </div>
-              <div className="text-[9px] text-slate-500 italic shrink-0">Tap to flip ↻</div>
+              <div className="text-[9px] text-slate-400 italic shrink-0">Tap to flip ↻</div>
             </div>
           </div>
 
-          {/* ── CARD BACK (Unmirrored & Clean) ── */}
-          <div className={`w-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900 text-white p-5 rounded-2xl space-y-3.5 [backface-visibility:hidden] [transform:rotateY(180deg)] ${!flipped ? "hidden" : "block"}`}>
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div className="text-xs font-bold text-slate-200">Emergency &amp; Helpline Information</div>
-              <div className="text-[9px] text-amber-400 font-bold">Ayushman Bharat</div>
+          {/* ── CARD BACK (Clean Light Style) ── */}
+          <div className={`w-full bg-gradient-to-br from-white via-slate-50 to-cyan-50/20 text-[#0F172A] p-4.5 sm:p-5 rounded-2xl space-y-3.5 [backface-visibility:hidden] [transform:rotateY(180deg)] ${!flipped ? "hidden" : "block"}`}>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <div className="text-xs font-bold text-slate-900">Emergency &amp; Helpline Information</div>
+              <div className="text-[9px] text-amber-700 font-bold uppercase">Ayushman Bharat</div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <div className="text-[9px] text-slate-400">National Health Helpline</div>
-                <div className="text-xs font-bold text-emerald-400 mt-0.5 flex items-center gap-1">
-                  <PhoneCall className="w-3 h-3 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="text-[9px] text-slate-500 font-medium">National Health Helpline</div>
+                <div className="text-xs font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
+                  <PhoneCall className="w-3 h-3 shrink-0 text-emerald-600" />
                   <span>14555 / 1800-111-565</span>
                 </div>
               </div>
-              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <div className="text-[9px] text-slate-400">Aadhaar Status</div>
-                <div className="text-xs font-bold text-slate-200 mt-0.5 font-mono">
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="text-[9px] text-slate-500 font-medium">Aadhaar Verification</div>
+                <div className="text-xs font-bold text-slate-800 mt-0.5 font-mono">
                   XXXX-XXXX-9024 🔒
                 </div>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] text-slate-400 leading-relaxed">
-              <span className="font-bold text-slate-200">Legal Notice:</span> Issued under Ayushman Bharat Digital Mission (ABDM). Authorizes consent-based hospital record sharing nationwide.
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10px] text-slate-600 leading-relaxed">
+              <span className="font-bold text-slate-900">Legal Notice:</span> Issued under the Ayushman Bharat Digital Mission (ABDM). Authorizes consent-based hospital record sharing nationwide.
             </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-white/10 text-[9px] text-slate-500">
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[9px] text-slate-500">
               <span>National Health Authority (NHA)</span>
               <span className="text-slate-400 italic">Tap to flip back ↻</span>
             </div>
@@ -222,7 +232,7 @@ function EmergencyPassDemo() {
   return (
     <div className="space-y-3.5 select-none animate-in fade-in duration-200">
       {/* Wallet Pass Container */}
-      <div className="rounded-2xl border-2 border-slate-200 bg-white p-4.5 shadow-sm space-y-3">
+      <div className="rounded-2xl border-2 border-slate-200 bg-white p-4.5 sm:p-5 shadow-sm space-y-3">
         {/* Pass Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <div className="flex items-center gap-2">
@@ -363,7 +373,64 @@ function ClinicalAiDemo() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// 4. Interactive Demo Deck: Doctor Workstation & Consent Gateway
+// 4. Interactive Demo Deck: Prescription Explainer & Drug Safety
+// ─────────────────────────────────────────────────────────────────
+function PrescriptionExplainerDemo() {
+  return (
+    <div className="space-y-3.5 select-none animate-in fade-in duration-200">
+      {/* Header Banner */}
+      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 text-white text-xs">
+        <div className="flex items-center gap-2">
+          <Pill className="w-3.5 h-3.5 text-amber-400" />
+          <span className="font-bold text-slate-200 text-[11px]">AI Prescription Normalizer &amp; Safety</span>
+        </div>
+        <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-400/30 font-mono font-bold">
+          0 Contraindications
+        </span>
+      </div>
+
+      {/* Parsed Rx Schedule Rows */}
+      <div className="space-y-2 text-xs">
+        <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-900">Metformin 500mg</span>
+            <span className="text-[10px] font-mono text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200 font-bold">
+              1-0-1 (BD)
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600">
+            Take <strong>1 tablet twice daily</strong> with meals (Morning &amp; Night). Helps control blood glucose.
+          </p>
+        </div>
+
+        <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-900">Montelukast 10mg</span>
+            <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 font-bold">
+              0-0-1 (HS)
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600">
+            Take <strong>1 tablet at bedtime</strong>. Prevents asthma airway constriction.
+          </p>
+        </div>
+      </div>
+
+      {/* Latin Abbreviation Resolver Tag */}
+      <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[10px] text-slate-600 flex items-center justify-between font-mono">
+        <span>Latin Decoder: BD ➔ Twice Daily · HS ➔ Bedtime</span>
+        <span className="text-emerald-600 font-bold">✓ Verified</span>
+      </div>
+
+      <div className="text-[10px] text-slate-400 font-mono text-center">
+        * Dummy prescription schedule for demonstration only
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 5. Interactive Demo Deck: Doctor Workstation & Consent Gateway
 // ─────────────────────────────────────────────────────────────────
 function DoctorWorkstationDemo() {
   return (
@@ -442,7 +509,8 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 // Main Homepage Component
 // ─────────────────────────────────────────────────────────────────
 export default function Home() {
-  const [activeDeckTab, setActiveDeckTab] = useState<"abha" | "emergency" | "ai" | "doctor">("abha");
+  const [activeDeckTab, setActiveDeckTab] = useState<"abha" | "emergency" | "ai" | "rx" | "doctor">("abha");
+  const [selectedRole, setSelectedRole] = useState<"patient" | "doctor" | "admin">("patient");
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-900">
@@ -450,7 +518,7 @@ export default function Home() {
       <main className="flex-1 pt-16">
 
         {/* ══════════════════════════════════════════════════════
-            HERO SECTION — Enterprise Clinical Precision
+            HERO SECTION — High Impact Clinical OS Preview
         ══════════════════════════════════════════════════════ */}
         <section className="bg-white border-b border-slate-200 pt-12 pb-16 sm:pt-16 sm:pb-24 relative overflow-hidden">
           {/* Subtle Grid Background */}
@@ -475,7 +543,7 @@ export default function Home() {
                 {/* Official Govt Tag */}
                 <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Ayushman Bharat (ABDM) &amp; DigiLocker Integrated</span>
+                  <span>The National Health Operating System for India</span>
                 </motion.div>
 
                 {/* Main Headline */}
@@ -495,7 +563,7 @@ export default function Home() {
                   variants={fadeUp}
                   className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal"
                 >
-                  MediVault unifies your 14-digit ABHA ID, DigiLocker health records, AI handwritten prescription scanning, and offline golden-hour emergency passes into a client-side encrypted, zero-trust health vault.
+                  MediVault unifies 14-digit ABHA IDs, DigiLocker records, AI handwritten prescription scanning, and offline golden-hour emergency passes into a client-side encrypted, zero-trust health vault.
                 </motion.p>
 
                 {/* High-Intent CTAs */}
@@ -510,7 +578,7 @@ export default function Home() {
 
                   <Link
                     href="/doctor/auth/login"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 font-semibold text-xs sm:text-sm shadow-2xs hover:bg-slate-50 transition-colors"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 font-semibold text-xs sm:text-sm shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
                   >
                     <Stethoscope className="w-4 h-4 text-cyan-600" />
                     <span>Doctor Terminal Login</span>
@@ -538,18 +606,25 @@ export default function Home() {
 
               {/* Right Column: Live Interactive Product Deck */}
               <motion.div
-                className="lg:col-span-6"
+                className="lg:col-span-6 relative"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.15 }}
               >
+                {/* Floating Micro-Badge */}
+                <div className="absolute -top-3 -right-2 hidden sm:flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-full shadow-md text-[10px] font-bold text-slate-700 z-20">
+                  <Lock className="w-3 h-3 text-cyan-600" />
+                  <span>AES-256 Client-Side Encrypted</span>
+                </div>
+
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-4 sm:p-6 space-y-4">
                   {/* Deck Tabs */}
-                  <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px]">
+                  <div className="grid grid-cols-5 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-[10px] sm:text-[11px]">
                     {[
                       { id: "abha", label: "ABHA Card", icon: ShieldCheck },
                       { id: "emergency", label: "Trauma Pass", icon: QrCode },
-                      { id: "ai", label: "AI Copilot", icon: Bot },
+                      { id: "ai", label: "Clinical AI", icon: Bot },
+                      { id: "rx", label: "Rx Explainer", icon: Pill },
                       { id: "doctor", label: "Doctor EMR", icon: Stethoscope },
                     ].map((tab) => {
                       const Icon = tab.icon;
@@ -559,7 +634,7 @@ export default function Home() {
                           key={tab.id}
                           type="button"
                           onClick={() => setActiveDeckTab(tab.id as any)}
-                          className={`flex items-center justify-center gap-1.5 py-2 px-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          className={`flex items-center justify-center gap-1 py-2 px-0.5 sm:px-1 rounded-lg font-bold transition-all cursor-pointer ${
                             active
                               ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
                               : "text-slate-500 hover:text-slate-900"
@@ -573,11 +648,22 @@ export default function Home() {
                   </div>
 
                   {/* Active Simulation */}
-                  <div className="min-h-[290px] flex flex-col justify-center">
-                    {activeDeckTab === "abha" && <AbhaDemoCard />}
-                    {activeDeckTab === "emergency" && <EmergencyPassDemo />}
-                    {activeDeckTab === "ai" && <ClinicalAiDemo />}
-                    {activeDeckTab === "doctor" && <DoctorWorkstationDemo />}
+                  <div className="min-h-[295px] flex flex-col justify-center">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={activeDeckTab}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {activeDeckTab === "abha" && <AbhaDemoCard />}
+                        {activeDeckTab === "emergency" && <EmergencyPassDemo />}
+                        {activeDeckTab === "ai" && <ClinicalAiDemo />}
+                        {activeDeckTab === "rx" && <PrescriptionExplainerDemo />}
+                        {activeDeckTab === "doctor" && <DoctorWorkstationDemo />}
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
 
                   {/* Deck Footer Note */}
@@ -629,9 +715,288 @@ export default function Home() {
         </section>
 
         {/* ══════════════════════════════════════════════════════
+            SYSTEM PREVIEW: 3 DEDICATED PORTALS
+        ══════════════════════════════════════════════════════ */}
+        <section className="py-20 bg-white border-b border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-12 space-y-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
+                Full System Architecture
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                One Platform. Three Unified Healthcare Portals.
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                MediVault delivers dedicated, zero-trust environments tailored specifically for patients, doctors, and hospital administrators.
+              </p>
+            </div>
+
+            {/* Portal Role Switcher Buttons */}
+            <div className="flex items-center justify-center max-w-md mx-auto mb-10 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+              {[
+                { id: "patient", label: "Patient Vault", icon: Heart },
+                { id: "doctor", label: "Doctor Workstation", icon: Stethoscope },
+                { id: "admin", label: "Admin & Compliance", icon: Server },
+              ].map((role) => {
+                const Icon = role.icon;
+                const active = selectedRole === role.id;
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    onClick={() => setSelectedRole(role.id as any)}
+                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      active
+                        ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${active ? "text-cyan-600" : "text-slate-400"}`} />
+                    <span>{role.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Portal Showcase Content */}
+            <div className="rounded-3xl border border-slate-200 bg-[#F8FAFC] p-6 sm:p-10 shadow-xs">
+              {selectedRole === "patient" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center animate-in fade-in duration-300">
+                  <div className="space-y-5">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                      <Heart className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Patient Health Sovereignty</span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+                      Your Lifetime Medical Passport in Your Pocket
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Store every prescription, lab report, scan, and vaccine card in a decentralized, client-side encrypted vault. Never lose a blood test or medical history again.
+                    </p>
+
+                    <div className="space-y-2.5 text-xs text-slate-700">
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span><strong>Official 14-Digit ABHA ID:</strong> 3D NHA card with scannable ABDM QR code.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span><strong>Camera Prescription Scanner:</strong> Edge perspective correction and instant encryption.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span><strong>Longitudinal Clinical Timeline:</strong> Chronological history across all hospital visits.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span><strong>Offline Emergency Pass:</strong> Golden-hour paramedic trauma QR for golden hour triage.</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <Link
+                        href="/auth"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-colors"
+                      >
+                        <span>Open Free Patient Vault</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
+                        <FolderLock className="w-4 h-4 text-cyan-600" />
+                        <span>Encrypted Patient Locker Preview</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                        Zero-Knowledge
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      {[
+                        { title: "Dr_Sharma_Prescription_Cardiology.pdf", date: "Today, 02:45 PM", cat: "Prescription", size: "142 KB" },
+                        { title: "Metabolic_Complete_Blood_Panel.pdf", date: "24 Aug 2026", cat: "Blood Report", size: "389 KB" },
+                        { title: "Ayushman_PMJAY_Insurance_Cover.pdf", date: "DigiLocker Sync", cat: "Insurance", size: "210 KB" },
+                        { title: "COVID_Universal_Vaccination_Cert.pdf", date: "MoHFW Verified", cat: "Vaccination", size: "195 KB" },
+                      ].map((doc) => (
+                        <div key={doc.title} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:bg-slate-100/80 transition-colors">
+                          <div className="flex items-center gap-2.5 truncate">
+                            <FileText className="w-4 h-4 text-cyan-600 shrink-0" />
+                            <div className="truncate">
+                              <div className="font-bold text-slate-900 truncate text-[11px]">{doc.title}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">{doc.date} · {doc.size}</div>
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                            {doc.cat}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedRole === "doctor" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center animate-in fade-in duration-300">
+                  <div className="space-y-5">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold">
+                      <Stethoscope className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Physician Clinical Workstation</span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+                      Instant Patient Context with Cryptographic Safeguards
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Treat patients with complete medical history clarity. Doctors receive time-limited, encrypted access to patient timelines, abnormal biomarker trends, and drug interaction alerts.
+                    </p>
+
+                    <div className="space-y-2.5 text-xs text-slate-700">
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span><strong>Time-Bound Consent Token:</strong> Automatic expiration in 15m, 1h, or 24h.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span><strong>15-Minute Emergency Hospital Override:</strong> Trauma access with immutable audit trail.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span><strong>AI Rx Writer &amp; Normalizer:</strong> Dosage calculator and contraindication safety engine.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span><strong>Decrypted Vault Viewer:</strong> Inspect past hospital visits and trends with zero data leakage.</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <Link
+                        href="/doctor/auth/login"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow-xs transition-colors"
+                      >
+                        <span>Access Doctor Workstation</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        <span>Live Consultation Session</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                        14m 32s Remaining
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                      <div className="font-bold text-slate-900 text-xs">Patient Medical Summary</div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>Blood Group: <strong className="text-rose-700">O+ (Positive)</strong></div>
+                        <div>Chronic: <strong>Mild Asthma</strong></div>
+                        <div className="col-span-2 text-rose-700 font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          Severe Penicillin Allergy (Anaphylaxis Risk)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex items-center justify-between">
+                      <span className="font-bold text-emerald-950 text-[11px]">Drug-Drug Cross Check</span>
+                      <span className="font-mono text-emerald-800 font-bold text-[10px]">0 Dangerous Interactions</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedRole === "admin" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center animate-in fade-in duration-300">
+                  <div className="space-y-5">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold">
+                      <Server className="w-3.5 h-3.5 text-slate-700" />
+                      <span>Hospital Administrator &amp; Compliance Hub</span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+                      Enterprise Compliance, Audit Trails &amp; Infrastructure
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Hospital networks and health authorities maintain 100% HIPAA and DPDP compliance. Real-time telemetry tracks document access, doctor verification status, and storage clusters.
+                    </p>
+
+                    <div className="space-y-2.5 text-xs text-slate-700">
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-slate-700 shrink-0" />
+                        <span><strong>Immutable HIPAA Audit Trails:</strong> Every view and export logged with IP and timestamp.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-slate-700 shrink-0" />
+                        <span><strong>Doctor License Verification:</strong> NMC &amp; State Medical Council credential checks.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-slate-700 shrink-0" />
+                        <span><strong>Cluster Health Monitoring:</strong> MinIO distributed storage, DB latency &amp; AI metrics.</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-slate-700 shrink-0" />
+                        <span><strong>Consent &amp; Data Residency Oversight:</strong> Verify zero cross-border data leakage.</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <Link
+                        href="/admin/dashboard"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors"
+                      >
+                        <span>Open Admin Telemetry</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-indigo-600" />
+                        <span>Real-Time Audit Trail Stream</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                        100% Compliant
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-xs font-mono">
+                      {[
+                        { event: "ACCESS_CONSENT_GRANTED", actor: "Dr. R. Mehta", target: "Patient #mv-7167", time: "Just now", status: "OK" },
+                        { event: "ABHA_OTP_VERIFIED", actor: "Citizen #91-4920", target: "NHA Gateway", time: "2 min ago", status: "OK" },
+                        { event: "DOC_ENCRYPTED_STORED", actor: "MinIO Cluster #1", target: "SHA-256 Verified", time: "5 min ago", status: "OK" },
+                        { event: "DOC_DOWNLOAD_AUTHORIZED", actor: "Dr. K. Nair", target: "Prescription #892", time: "11 min ago", status: "OK" },
+                      ].map((log) => (
+                        <div key={log.event + log.time} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-[10px]">
+                          <div>
+                            <span className="text-indigo-700 font-bold">{log.event}</span>
+                            <div className="text-slate-500">{log.actor} ➔ {log.target}</div>
+                          </div>
+                          <span className="text-slate-400 shrink-0">{log.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════
             STATS COUNTER
         ══════════════════════════════════════════════════════ */}
-        <section className="bg-white border-b border-slate-200 py-12">
+        <section className="bg-[#F8FAFC] border-b border-slate-200 py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <CounterStats />
           </div>
@@ -640,7 +1005,7 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             "HOW MEDIVAULT WORKS" — 4-Step Patient Passport Journey
         ══════════════════════════════════════════════════════ */}
-        <section className="py-20 bg-[#F8FAFC] border-b border-slate-200">
+        <section className="py-20 bg-white border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-14 space-y-2.5">
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
@@ -689,7 +1054,7 @@ export default function Home() {
                 return (
                   <div
                     key={item.step}
-                    className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-2xs hover:shadow-sm transition-all"
+                    className="bg-[#F8FAFC] rounded-2xl border border-slate-200 p-6 space-y-4 shadow-2xs hover:shadow-sm hover:border-slate-300 transition-all hover:-translate-y-0.5"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-black font-mono text-slate-300">{item.step}</span>
@@ -698,7 +1063,7 @@ export default function Home() {
                       </span>
                     </div>
 
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-cyan-700 flex items-center justify-center border border-slate-200">
+                    <div className="w-10 h-10 rounded-xl bg-white text-cyan-700 flex items-center justify-center border border-slate-200 shadow-2xs">
                       <Icon className="w-5 h-5" />
                     </div>
 
@@ -714,78 +1079,90 @@ export default function Home() {
         </section>
 
         {/* ══════════════════════════════════════════════════════
-            CORE CAPABILITIES — 6 Precision Modules
+            8 CORE CAPABILITIES (The Entire System Ecosystem)
         ══════════════════════════════════════════════════════ */}
-        <section id="features" className="py-20 bg-white border-b border-slate-200">
+        <section id="features" className="py-20 bg-[#F8FAFC] border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-14 space-y-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-wider">
-                Enterprise Clinical Features
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-wider shadow-2xs">
+                Platform Intelligence
               </span>
               <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                Built for Precision Healthcare
+                Enterprise Clinical Features
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Purpose-built architecture adhering to Indian national health standards (ABDM) and global cryptographic privacy guidelines.
+                A complete healthcare operating system spanning government interoperability, clinical AI, emergency triage, and hospital compliance.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
               {[
                 {
                   icon: ShieldCheck,
-                  title: "Official 14-Digit ABHA ID & NHA Card",
-                  desc: "Instant enrollment via Aadhaar OTP or Mobile OTP. Generates official 3D flippable health card with scannable ABDM QR code and printable wallet PDF.",
-                  badge: "ABDM Milestone 1",
+                  title: "14-Digit ABHA & NHA Card",
+                  desc: "Instant enrollment via Aadhaar or Mobile OTP. Generates official 3D flippable health card with scannable ABDM QR code and printable wallet PDF.",
+                  badge: "ABDM M1",
                 },
                 {
                   icon: Building2,
                   title: "DigiLocker & MeriPehchan Sync",
-                  desc: "2-Step authenticated citizen sync imports official Ayushman Bharat PM-JAY ₹5L cover and CoWIN immunization certificates directly into your vault.",
-                  badge: "National Registry",
+                  desc: "2-Step authenticated citizen sync imports official Ayushman Bharat PM-JAY ₹5L cover and CoWIN immunization certificates directly into vault.",
+                  badge: "DigiLocker",
+                },
+                {
+                  icon: Camera,
+                  title: "Smart Camera Rx Scanner",
+                  desc: "In-browser edge scanner with perspective flattening and auto-contrast. Client-side encrypts documents before cloud sync.",
+                  badge: "Edge Vision",
+                },
+                {
+                  icon: Brain,
+                  title: "Multimodal Clinical OCR",
+                  desc: "AI reading engine transcribes messy physician handwriting, normalizes medications to clinical databases, and flags abnormal lab biomarkers.",
+                  badge: "Gemini AI",
+                },
+                {
+                  icon: Pill,
+                  title: "Rx Explainer & Drug Safety",
+                  desc: "Translates Latin abbreviations (OD, BD, TDS, HS) into patient-friendly daily schedules. Detects fatal drug-drug interactions automatically.",
+                  badge: "Safety Engine",
                 },
                 {
                   icon: QrCode,
                   title: "Golden Hour Paramedic Pass",
-                  desc: "Offline-scannable QR pass providing ambulance medics and emergency rooms instant access to blood group, severe allergies, and emergency contacts.",
+                  desc: "Offline-scannable QR pass providing ambulance medics and emergency rooms instant access to blood group, severe allergies, and ICE contacts.",
                   badge: "Emergency Care",
                 },
                 {
-                  icon: Brain,
-                  title: "Multimodal Prescription OCR",
-                  desc: "AI reading engine transcribes messy physician handwriting, normalizes medications to clinical databases, and highlights abnormal blood test results.",
-                  badge: "Clinical AI",
+                  icon: History,
+                  title: "Longitudinal Health Timeline",
+                  desc: "Connects doctor consultations, lab reports, surgeries, and prescriptions across all healthcare providers into one coherent interactive timeline.",
+                  badge: "Clinical History",
                 },
                 {
-                  icon: Fingerprint,
-                  title: "FIDO2 WebAuthn Passkeys",
-                  desc: "Log in seamlessly using FaceID, TouchID, or Windows Hello. Zero passwords to remember and completely immune to phishing attacks.",
-                  badge: "Zero-Trust Auth",
-                },
-                {
-                  icon: KeyRound,
-                  title: "Granular Doctor Access Delegation",
-                  desc: "Authorize treating doctors for 15 minutes, 1 hour, or 30 days. Revoke access instantly with an immutable cryptographic audit trail.",
-                  badge: "Consent Control",
+                  icon: Server,
+                  title: "HIPAA Audit & Hospital Console",
+                  desc: "Immutable cryptographic audit trails tracking all PHI access. Telemetry monitors storage health, doctor verification, and consent scopes.",
+                  badge: "Compliance",
                 },
               ].map((feat) => {
                 const Icon = feat.icon;
                 return (
                   <div
                     key={feat.title}
-                    className="p-6 rounded-2xl border border-slate-200 bg-[#F8FAFC] hover:bg-white hover:border-slate-300 transition-all space-y-3.5"
+                    className="p-5.5 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition-all space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-cyan-700 shadow-2xs">
-                        <Icon className="w-5 h-5" />
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-cyan-700 shadow-2xs">
+                        <Icon className="w-4.5 h-4.5" />
                       </div>
-                      <span className="text-[9px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      <span className="text-[9px] font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
                         {feat.badge}
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="font-bold text-base text-slate-900">{feat.title}</h3>
+                      <h3 className="font-bold text-sm text-slate-900">{feat.title}</h3>
                       <p className="text-xs text-slate-600 leading-relaxed">{feat.desc}</p>
                     </div>
                   </div>
@@ -879,6 +1256,10 @@ export default function Home() {
                 answer="Our multimodal vision model (Gemini 2.5 Flash) is tuned for clinical handwriting, abbreviations (OD, BD, TDS), and medical nomenclature. It extracts dosages and cross-checks them against a clinical drug database with over 99% accuracy."
               />
               <FAQItem
+                question="How does the Doctor Portal access my records?"
+                answer="Doctors cannot browse your records at will. When you visit a clinic, you grant a time-bound access scope (e.g. 15 minutes or 1 hour). When the timer expires, the cryptographic access token invalidates instantly with an immutable audit log."
+              />
+              <FAQItem
                 question="Is MediVault free for individual patients?"
                 answer="Yes. Individual patient accounts with unlimited cloud storage, ABHA health card issuance, DigiLocker sync, and the emergency trauma pass are completely free."
               />
@@ -895,7 +1276,7 @@ export default function Home() {
               Ready to Own Your Complete Health Record?
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-              Join thousands of citizens and physicians taking control of their medical records with official government ABHA integration and zero-knowledge encryption.
+              Join thousands of citizens, physicians, and hospitals taking control of their medical records with official government ABHA integration, AI clinical intelligence, and zero-knowledge encryption.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
