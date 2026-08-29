@@ -129,8 +129,9 @@ This document serves as the authoritative, permanent reference for all engineeri
 | :---: | :--- | :--- | :--- | :---: |
 | **6** | Progressive Web App & Offline Pass | Patient, Public Emergency | Service Worker, Manifest, IndexedDB | ✅ **Done** |
 | **7** | Web Push & Dosage Reminders | Patient, Doctor, Admin | Web-Push, VAPID, PostgreSQL, Service Worker | ✅ **Done** |
-| **8** | Camera OCR Scanner Viewfinder | Patient, Doctor | MediaDevices API, HTML5 Canvas, TrOCR, Gemini | 🎯 **Next** |
-| **9** | Biometric WebAuthn Passkeys | Patient, Doctor, Admin | WebAuthn, FIDO2, SimpleWebAuthn | ⏸️ **Queued** |
+| **8** | Camera OCR Scanner & Crop Viewfinder | Patient, Doctor | MediaDevices API, HTML5 Canvas, Cropper, Gemini | ✅ **Done** |
+| **9** | Biometric WebAuthn Passkeys | Patient, Doctor, Admin | WebAuthn, FIDO2, SimpleWebAuthn, Touch ID/Face ID | ✅ **Done** |
+| **10** | Government ID & ABHA Health Integration | Patient, Public Emergency | ABDM Gateway, NHA Sandbox, DigiLocker MeriPehchan | ✅ **Done** |
 
 ---
 
