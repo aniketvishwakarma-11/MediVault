@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Suspense } from "react";
 import { 
   User, 
@@ -27,6 +27,10 @@ import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 import { DEMO_PATIENT_PROFILE } from "@/lib/demoData";
 import { PasskeyManagerCard } from "@/app/components/auth/PasskeyManagerCard";
+import { AbhaCardWidget } from "@/app/components/government/AbhaCardWidget";
+import { AbhaEnrollmentModal } from "@/app/components/government/AbhaEnrollmentModal";
+import { GovernmentAPI } from "@/lib/government-api";
+import { AbhaProfileData } from "@/types/government";
 
 interface PatientProfileData {
   full_name: string;
@@ -69,6 +73,22 @@ function PatientProfileContent() {
   const [hasDraft, setHasDraft] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [abhaProfile, setAbhaProfile] = useState<AbhaProfileData | null>(null);
+  const [showAbhaModal, setShowAbhaModal] = useState<boolean>(false);
+
+  const fetchAbhaProfile = useCallback(async () => {
+    try {
+      const data = await GovernmentAPI.getProfile();
+      setAbhaProfile(data);
+    } catch (e) {
+      console.warn("Could not fetch ABHA profile:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAbhaProfile();
+  }, [fetchAbhaProfile]);
 
   const draftKey = `medivault_profile_draft_${user?.id || "guest"}`;
 
@@ -768,8 +788,25 @@ function PatientProfileContent() {
         </div>
       </div>
 
+      {/* ─── Government ID & ABHA National Health Card ─── */}
+      <AbhaCardWidget 
+        profile={abhaProfile}
+        onEnrollClick={() => setShowAbhaModal(true)}
+        onProfileUpdated={fetchAbhaProfile}
+      />
+
       {/* ─── Biometric Passkeys & Fast Login ─── */}
       <PasskeyManagerCard userId={user?.id || ""} token={session?.access_token} />
+
+      {/* ─── ABHA Enrollment Modal ─── */}
+      <AbhaEnrollmentModal
+        isOpen={showAbhaModal}
+        onClose={() => setShowAbhaModal(false)}
+        onSuccess={() => {
+          fetchAbhaProfile();
+          setShowAbhaModal(false);
+        }}
+      />
 
     </div>
   );

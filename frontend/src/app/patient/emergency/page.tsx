@@ -22,6 +22,8 @@ import {
   type EmergencyAccessHistoryItem,
   type EmergencyContactItem,
 } from "@/lib/emergency-api";
+import { GovernmentAPI } from "@/lib/government-api";
+import { AbhaProfileData } from "@/types/government";
 
 // ─────────────────────────────────────────────────────────────────
 // Types & Helpers
@@ -234,6 +236,12 @@ export default function PatientEmergencyCenter() {
   const [newContact, setNewContact] = useState<Omit<EmergencyContactItem, "priority">>({
     name: "", relationship: "", phone: "", enabled: true,
   });
+
+  const [abhaProfile, setAbhaProfile] = useState<AbhaProfileData | null>(null);
+
+  useEffect(() => {
+    GovernmentAPI.getProfile().then(setAbhaProfile).catch(() => {});
+  }, []);
 
   // ─── Load Real Patient DB Data ───
   const loadPatientDbData = useCallback(async () => {
@@ -705,6 +713,9 @@ export default function PatientEmergencyCenter() {
                     credential={credential}
                     qrUrl={activeQrUrl}
                     onPrint={handlePrint}
+                    abhaNumber={abhaProfile?.abhaNumber}
+                    abhaAddress={abhaProfile?.abhaAddress}
+                    isGovVerified={abhaProfile?.isGovVerified}
                   />
 
                   {/* Actions & Controls */}

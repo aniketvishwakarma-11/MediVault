@@ -34,6 +34,7 @@ import { supabase } from "@/lib/supabase";
 import { DEMO_REPORTS } from "@/lib/demoData";
 import DocumentViewerModal from "@/app/components/DocumentViewerModal";
 import { CameraScannerModal } from "@/app/components/scanner/CameraScannerModal";
+import { DigiLockerModal } from "@/app/components/government/DigiLockerModal";
 import { getAuthHeaders } from "@/lib/auth-token";
 
 interface DocumentRecord {
@@ -95,6 +96,7 @@ export default function MedicalReportsPage() {
   // Camera Scanner Modal State
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [scannedPreviewUrls, setScannedPreviewUrls] = useState<string[]>([]);
+  const [showDigiLockerModal, setShowDigiLockerModal] = useState<boolean>(false);
 
   const handleScannerComplete = (file: File, previewUrls: string[]) => {
     setUploadFile(file);
@@ -387,16 +389,28 @@ export default function MedicalReportsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setVisitDate(new Date().toISOString().split("T")[0]);
-            setIsUploadModalOpen(true);
-          }}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Upload Medical Record</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowDigiLockerModal(true)}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition-colors cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span>Import from DigiLocker</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setVisitDate(new Date().toISOString().split("T")[0]);
+              setIsUploadModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Upload Medical Record</span>
+          </button>
+        </div>
       </div>
 
       {/* Notifications */}
@@ -1071,6 +1085,16 @@ export default function MedicalReportsPage() {
         onComplete={handleScannerComplete}
         initialFormat={isHandwritten ? "RX" : "A4"}
         defaultDocTitle={isHandwritten ? "Prescription_Scan" : "Medical_Report_Scan"}
+      />
+
+      {/* ─── DigiLocker Import Modal ─── */}
+      <DigiLockerModal
+        isOpen={showDigiLockerModal}
+        onClose={() => setShowDigiLockerModal(false)}
+        onSuccess={() => {
+          fetchDocuments();
+          setShowDigiLockerModal(false);
+        }}
       />
 
     </div>

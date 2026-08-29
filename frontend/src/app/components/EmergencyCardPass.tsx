@@ -29,6 +29,9 @@ interface EmergencyCardPassProps {
   credential?: EmergencyCredential | null;
   qrUrl?: string | null;
   onPrint?: () => void;
+  abhaNumber?: string | null;
+  abhaAddress?: string | null;
+  isGovVerified?: boolean;
 }
 
 export default function EmergencyCardPass({
@@ -40,6 +43,9 @@ export default function EmergencyCardPass({
   credential,
   qrUrl,
   onPrint,
+  abhaNumber,
+  abhaAddress,
+  isGovVerified,
 }: EmergencyCardPassProps) {
   const version = credential?.version || 1;
   const expiresAt = credential?.expiresAt
@@ -120,6 +126,19 @@ export default function EmergencyCardPass({
                 {displayBloodGroup}
               </div>
             </div>
+
+            {/* Government Verified ABDM Banner */}
+            {isGovVerified && abhaNumber && (
+              <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[10px] text-emerald-800 font-bold">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>GOVERNMENT VERIFIED CITIZEN (ABDM)</span>
+                </div>
+                <div className="font-mono text-[9px] text-emerald-700 font-extrabold">
+                  {abhaNumber}
+                </div>
+              </div>
+            )}
 
             {/* Card Main Details */}
             <div className="grid grid-cols-3 gap-3 my-auto items-center">
