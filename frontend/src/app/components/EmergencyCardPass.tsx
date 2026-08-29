@@ -100,7 +100,7 @@ export default function EmergencyCardPass({
             <span className="w-2 h-2 rounded-full bg-rose-500" />
             Card Front (Personal Identity & Emergency QR)
           </div>
-          <div className="relative w-full aspect-[1.586/1] max-w-[420px] rounded-2xl bg-gradient-to-br from-white via-slate-50 to-rose-50/20 text-[#0F172A] p-5 border-2 border-slate-200/90 shadow-md overflow-hidden flex flex-col justify-between select-none">
+          <div className="relative w-full aspect-[1.586/1] max-w-[450px] rounded-2xl bg-gradient-to-br from-white via-slate-50 to-rose-50/20 text-[#0F172A] p-4 sm:p-5 border-2 border-slate-200/90 shadow-md overflow-hidden flex flex-col justify-between select-none">
             {/* Background Medical Emblem Overlay */}
             <div className="absolute -right-8 -bottom-8 opacity-[0.04] text-rose-900 pointer-events-none">
               <ShieldAlert className="w-56 h-56" />
@@ -141,8 +141,8 @@ export default function EmergencyCardPass({
             )}
 
             {/* Card Main Details */}
-            <div className="grid grid-cols-3 gap-3 my-auto items-center">
-              <div className="col-span-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-3 my-auto">
+              <div className="flex-1 min-w-0 space-y-1.5">
                 <div>
                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Patient Name</div>
                   <div className="text-sm font-extrabold text-[#0F172A] tracking-tight truncate">{patientName}</div>
@@ -173,11 +173,11 @@ export default function EmergencyCardPass({
               </div>
 
               {/* QR Code Container */}
-              <div className="flex flex-col items-center justify-center p-1.5 bg-white rounded-xl shadow-xs border border-slate-200">
+              <div className="shrink-0 flex flex-col items-center justify-center p-1.5 bg-white rounded-xl shadow-xs border border-slate-200">
                 {effectiveQrUrl ? (
-                  <QRCodeSVG value={effectiveQrUrl} size={88} bgColor="#ffffff" fgColor="#0f172a" level="H" />
+                  <QRCodeSVG value={effectiveQrUrl} size={82} bgColor="#ffffff" fgColor="#0f172a" level="H" />
                 ) : (
-                  <div className="w-[88px] h-[88px] bg-slate-50 rounded-lg flex flex-col items-center justify-center text-slate-400 text-[9px] text-center p-1">
+                  <div className="w-[82px] h-[82px] bg-slate-50 rounded-lg flex flex-col items-center justify-center text-slate-400 text-[9px] text-center p-1">
                     <QrCode className="w-6 h-6 mb-1 text-slate-400" />
                     <span>Loading QR...</span>
                   </div>
@@ -211,7 +211,7 @@ export default function EmergencyCardPass({
             <span className="w-2 h-2 rounded-full bg-cyan-500" />
             Card Back (Instructions & Security Verification)
           </div>
-          <div className="relative w-full aspect-[1.586/1] max-w-[420px] rounded-2xl bg-gradient-to-br from-white via-slate-50 to-cyan-50/20 text-[#0F172A] p-5 border-2 border-slate-200/90 shadow-md overflow-hidden flex flex-col justify-between select-none">
+          <div className="relative w-full aspect-[1.586/1] max-w-[450px] rounded-2xl bg-gradient-to-br from-white via-slate-50 to-cyan-50/20 text-[#0F172A] p-4 sm:p-5 border-2 border-slate-200/90 shadow-md overflow-hidden flex flex-col justify-between select-none">
             {/* Stripe Header */}
             <div className="-mx-5 -mt-5 bg-slate-100 h-8 border-b border-slate-200 flex items-center justify-between px-5">
               <span className="text-[8px] font-mono text-slate-600 tracking-widest font-semibold">
