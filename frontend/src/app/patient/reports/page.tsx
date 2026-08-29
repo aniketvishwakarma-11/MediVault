@@ -35,7 +35,8 @@ import { DEMO_REPORTS } from "@/lib/demoData";
 import DocumentViewerModal from "@/app/components/DocumentViewerModal";
 import { CameraScannerModal } from "@/app/components/scanner/CameraScannerModal";
 import { DigiLockerModal } from "@/app/components/government/DigiLockerModal";
-import { getAuthHeaders } from "@/lib/auth-token";
+import { getAuthHeaders, getFormDataAuthHeaders } from "@/lib/auth-token";
+import { useToast } from "@/context/ToastContext";
 
 interface DocumentRecord {
   id: string;
@@ -61,10 +62,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function MedicalReportsPage() {
   const { user, isDemo } = useAuth();
+  const { success: showSuccess, error: showError } = useToast();
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploadModalError, setUploadModalError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
@@ -232,12 +235,16 @@ export default function MedicalReportsPage() {
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadFile) {
-      setError("Please select a file to upload.");
+      const msg = "Please select or scan a file to upload.";
+      setError(msg);
+      setUploadModalError(msg);
+      showError("File Required", msg);
       return;
     }
 
     setUploading(true);
     setError(null);
+    setUploadModalError(null);
     setSuccessMsg(null);
 
     try {
@@ -255,7 +262,8 @@ export default function MedicalReportsPage() {
       if (doctorName.trim()) formData.append("doctor_name", doctorName.trim());
       if (visitDate.trim()) formData.append("visit_date", visitDate.trim());
 
-      const headers = await getAuthHeaders();
+      // Use getFormDataAuthHeaders() so browser automatically computes the multipart/form-data boundary!
+      const headers = await getFormDataAuthHeaders();
 
       const res = await fetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
@@ -266,23 +274,29 @@ export default function MedicalReportsPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Document upload failed");
+        throw new Error(data.message || data.error || "Document upload failed");
       }
 
       setSuccessMsg("Document encrypted and uploaded successfully!");
+      showSuccess("Upload Successful", "Document encrypted and safely stored in your vault.");
       setIsUploadModalOpen(false);
       // Reset form
       setUploadFile(null);
+      setScannedPreviewUrls([]);
       setDocumentName("");
       setHospitalName("");
       setDoctorName("");
       setVisitDate("");
       setIsHandwritten(false);
+      setUploadModalError(null);
       
       // Refresh documents
       fetchDocuments();
     } catch (err: any) {
-      setError(err.message || "An error occurred during upload.");
+      const msg = err.message || "An error occurred during upload.";
+      setError(msg);
+      setUploadModalError(msg);
+      showError("Upload Failed", msg);
     } finally {
       setUploading(false);
     }
@@ -796,6 +810,14 @@ export default function MedicalReportsPage() {
             </div>
 
             <form onSubmit={handleUploadSubmit} className="space-y-4 text-xs">
+              {/* Error Alert Displayed Directly Inside Modal */}
+              {uploadModalError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 animate-in fade-in duration-150">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span className="font-medium">{uploadModalError}</span>
+                </div>
+              )}
+
               {/* Document Format & Script Type Selector */}
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700">Document Format & Script Type</label>

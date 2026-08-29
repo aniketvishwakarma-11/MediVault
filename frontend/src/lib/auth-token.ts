@@ -30,14 +30,22 @@ export async function getAuthToken(): Promise<string | null> {
 }
 
 /**
- * Returns HTTP headers containing the active Bearer token and user role
+ * Returns HTTP headers containing the active Bearer token and user role.
+ * By default includes "Content-Type": "application/json".
+ * Pass isFormData = true to omit Content-Type so browsers automatically calculate multipart boundaries.
  */
-export async function getAuthHeaders(additionalHeaders?: Record<string, string>): Promise<Record<string, string>> {
+export async function getAuthHeaders(
+  additionalHeaders?: Record<string, string>,
+  isFormData = false
+): Promise<Record<string, string>> {
   const token = await getAuthToken();
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(additionalHeaders || {}),
   };
+
+  if (!isFormData && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -51,4 +59,14 @@ export async function getAuthHeaders(additionalHeaders?: Record<string, string>)
   }
 
   return headers;
+}
+
+/**
+ * Returns HTTP headers suitable for multipart FormData uploads
+ * (omits Content-Type so browser sets boundary automatically).
+ */
+export async function getFormDataAuthHeaders(
+  additionalHeaders?: Record<string, string>
+): Promise<Record<string, string>> {
+  return getAuthHeaders(additionalHeaders, true);
 }

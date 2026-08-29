@@ -104,10 +104,27 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
     });
   }, []);
 
-  // Convert DataURL to Blob helper
-  const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
-    const res = await fetch(dataUrl);
-    return await res.blob();
+  // Convert DataURL to Blob helper (synchronous & immune to fetch errors)
+  const dataUrlToBlob = (dataUrl: string): Blob => {
+    const parts = dataUrl.split(",");
+    const mime = parts[0].match(/:(.*?);/)?.[1] || "image/jpeg";
+    const byteString = atob(parts[1]);
+    const u8arr = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) {
+      u8arr[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  // Convert DataURL to Uint8Array helper
+  const dataUrlToUint8Array = (dataUrl: string): Uint8Array => {
+    const parts = dataUrl.split(",");
+    const byteString = atob(parts[1]);
+    const u8arr = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) {
+      u8arr[i] = byteString.charCodeAt(i);
+    }
+    return u8arr;
   };
 
   // Compile final document (single image or multi-page PDF)
@@ -123,7 +140,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
       if (capturedPages.length === 1) {
         // Single Page -> Export as high-res JPEG
-        const blob = await dataUrlToBlob(capturedPages[0]);
+        const blob = dataUrlToBlob(capturedPages[0]);
         const fileName = `${sanitizedTitle}_${timestamp}.jpg`;
         const file = new File([blob], fileName, { type: "image/jpeg" });
         onComplete(file, capturedPages);
@@ -134,7 +151,7 @@ export const CameraScannerModal: React.FC<CameraScannerModalProps> = ({
 
         for (let i = 0; i < capturedPages.length; i++) {
           const pageDataUrl = capturedPages[i];
-          const imageBytes = await (await fetch(pageDataUrl)).arrayBuffer();
+          const imageBytes = dataUrlToUint8Array(pageDataUrl);
           const embeddedImage = await pdfDoc.embedJpg(imageBytes);
 
           // Standard A4 dimensions in points (595.28 x 841.89)
