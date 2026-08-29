@@ -69,13 +69,13 @@ function AbhaDemoCard() {
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText("91258386716789");
+    navigator.clipboard.writeText("91492018490192");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="space-y-4 select-none">
+    <div className="space-y-3.5 select-none">
       {/* 3D Card Container */}
       <div 
         onClick={() => setFlipped(!flipped)}
@@ -121,15 +121,15 @@ function AbhaDemoCard() {
                   </span>
                 </div>
                 <div className="min-w-0 flex-1 space-y-0.5 text-slate-300">
-                  <div className="text-sm font-bold text-white truncate">Aniket Vishwakarma</div>
-                  <div className="text-[10px] text-slate-400">DOB: <span className="text-white font-medium">14/05/1998</span></div>
+                  <div className="text-sm font-bold text-white truncate">Aarav Sharma</div>
+                  <div className="text-[10px] text-slate-400">DOB: <span className="text-white font-medium">12/08/1996</span></div>
                   <div className="text-[10px] text-slate-400">Gender: <span className="text-white font-medium">MALE</span> · State: <span className="text-white font-medium">MH</span></div>
                 </div>
               </div>
 
               {/* Verified ABDM QR */}
               <div className="p-1.5 rounded-xl bg-white text-slate-950 shrink-0 shadow-xs">
-                <QRCodeSVG value="https://abdm.gov.in/profile/91258386716789" size={62} level="M" />
+                <QRCodeSVG value="https://abdm.gov.in/profile/91492018490192" size={62} level="M" />
               </div>
             </div>
 
@@ -138,13 +138,13 @@ function AbhaDemoCard() {
               <div>
                 <div className="text-[8px] uppercase font-bold tracking-widest text-slate-400">ABHA Health Number</div>
                 <div className="text-xs sm:text-sm font-mono font-bold text-amber-300 tracking-wider">
-                  91-2583-8671-6789
+                  91-4920-1849-0192
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                 title="Copy ABHA Number"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -154,7 +154,7 @@ function AbhaDemoCard() {
             {/* Footer Handle */}
             <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-white/5">
               <div className="truncate">
-                Address: <span className="font-bold text-emerald-400 font-mono">aniketvis675.7167@abdm</span>
+                Address: <span className="font-bold text-emerald-400 font-mono">aarav.sharma96@abdm</span>
               </div>
               <div className="text-[9px] text-slate-500 italic shrink-0">Tap to flip ↻</div>
             </div>
@@ -206,6 +206,11 @@ function AbhaDemoCard() {
           PM-JAY ₹5L Card &amp; CoWIN Linked
         </span>
       </div>
+
+      {/* Disclaimer Note */}
+      <div className="text-[10px] text-slate-400 font-mono text-center">
+        * Dummy citizen data for preview and demonstration only
+      </div>
     </div>
   );
 }
@@ -243,7 +248,7 @@ function EmergencyPassDemo() {
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>GOVERNMENT VERIFIED CITIZEN</span>
           </div>
-          <span className="font-mono text-[9px] text-emerald-800 font-extrabold">91-2583-8671-6789</span>
+          <span className="font-mono text-[9px] text-emerald-800 font-extrabold">91-4920-1849-0192</span>
         </div>
 
         {/* Details & QR Code */}
@@ -251,7 +256,7 @@ function EmergencyPassDemo() {
           <div className="flex-1 min-w-0 space-y-2 text-xs">
             <div>
               <div className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Patient Name</div>
-              <div className="text-sm font-extrabold text-slate-900 truncate">Aniket Vishwakarma</div>
+              <div className="text-sm font-extrabold text-slate-900 truncate">Aarav Sharma</div>
             </div>
 
             {/* Critical Allergy Alert */}
@@ -279,12 +284,17 @@ function EmergencyPassDemo() {
         <div className="border-t border-slate-100 pt-2 flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 text-slate-600 text-[11px]">
             <PhoneCall className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>ICE Contact: <strong className="text-slate-900">Jordan M.</strong> (+91 98765 43210)</span>
+            <span>ICE Contact: <strong className="text-slate-900">Rohan S.</strong> (+91 98765 00000)</span>
           </div>
           <span className="text-[9px] font-mono text-cyan-700 font-bold bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">
             FIDO2 Verified
           </span>
         </div>
+      </div>
+
+      {/* Disclaimer Note */}
+      <div className="text-[10px] text-slate-400 font-mono text-center">
+        * Dummy emergency pass data for preview and demonstration only
       </div>
     </div>
   );
@@ -343,6 +353,11 @@ function ClinicalAiDemo() {
           &quot;Fasting blood sugar elevated by 18% over prior quarter. Detected handwritten Metformin 500mg (1-0-1). No contraindications with your asthma inhaler.&quot;
         </p>
       </div>
+
+      {/* Disclaimer Note */}
+      <div className="text-[10px] text-slate-400 font-mono text-center">
+        * Dummy clinical analysis for preview and demonstration only
+      </div>
     </div>
   );
 }
@@ -356,11 +371,11 @@ function DoctorWorkstationDemo() {
       <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-sky-100 text-sky-700 font-bold flex items-center justify-center text-xs">
-            AV
+            AS
           </div>
           <div>
-            <div className="font-bold text-xs text-slate-900">Aniket Vishwakarma</div>
-            <div className="text-[10px] text-slate-500 font-mono">Vault ID: #mv-7167 · ABHA Linked</div>
+            <div className="font-bold text-xs text-slate-900">Aarav Sharma</div>
+            <div className="text-[10px] text-slate-500 font-mono">Vault ID: #mv-demo-912 · ABHA Linked</div>
           </div>
         </div>
         <span className="text-[10px] font-mono font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
@@ -385,6 +400,11 @@ function DoctorWorkstationDemo() {
           <span className="font-bold text-emerald-950 text-[11px]">Rx Drug Interaction Safe</span>
         </div>
         <span className="text-[10px] font-mono text-emerald-800 font-bold">0 Contraindications</span>
+      </div>
+
+      {/* Disclaimer Note */}
+      <div className="text-[10px] text-slate-400 font-mono text-center">
+        * Dummy clinical workstation for preview and demonstration only
       </div>
     </div>
   );
