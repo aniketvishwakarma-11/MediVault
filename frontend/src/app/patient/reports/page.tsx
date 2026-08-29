@@ -27,7 +27,8 @@ import {
   AlertTriangle, 
   Camera,
   UploadCloud,
-  FileCheck
+  FileCheck,
+  Clock
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -388,6 +389,33 @@ export default function MedicalReportsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
+  const formatUploadDateTime = (createdDateStr?: string | null, visitDateStr?: string | null) => {
+    const target = createdDateStr || visitDateStr;
+    if (!target) return "—";
+    try {
+      const d = new Date(target);
+      if (isNaN(d.getTime())) return target;
+
+      const datePart = d.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+
+      if (createdDateStr) {
+        const timePart = d.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+        return `${datePart}, ${timePart}`;
+      }
+      return datePart;
+    } catch {
+      return target;
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
@@ -547,7 +575,7 @@ export default function MedicalReportsPage() {
               return (
                 <div
                   key={doc.id}
-                  className="h-[340px] bg-white rounded-xl border border-slate-200 shadow-xs hover:border-sky-300 hover:shadow-sm transition-all flex flex-col justify-between overflow-hidden"
+                  className="min-h-[355px] h-full bg-white rounded-xl border border-slate-200 shadow-xs hover:border-sky-300 hover:shadow-sm transition-all flex flex-col justify-between overflow-hidden"
                 >
                   {/* Top Header Section */}
                   <div className="p-4 pb-2 space-y-2">
@@ -583,6 +611,22 @@ export default function MedicalReportsPage() {
                         <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
                         <span className="truncate">{cardHospitalName}</span>
                       </div>
+                    </div>
+
+                    {/* Upload Date & Time Meta */}
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Clock className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                        <span className="truncate">
+                          Uploaded: <strong className="text-slate-700 font-mono text-[10px]">{formatUploadDateTime(doc.created_at, doc.visit_date)}</strong>
+                        </span>
+                      </div>
+                      {doc.visit_date && (
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono shrink-0">
+                          <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span>Visit: {doc.visit_date}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -753,8 +797,11 @@ export default function MedicalReportsPage() {
                     <td className="py-3 px-3 text-slate-600 max-w-[180px] truncate" title={rowDoctorHospital}>
                       {rowDoctorHospital}
                     </td>
-                    <td className="py-3 px-3 text-slate-500 font-mono tabular-nums">
-                      {rowDate}
+                    <td className="py-3 px-3 text-slate-600 font-mono tabular-nums text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                        <span>{formatUploadDateTime(doc.created_at, doc.visit_date)}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-3 font-mono text-slate-400 tabular-nums">
                       {formatBytes(doc.file_size)}

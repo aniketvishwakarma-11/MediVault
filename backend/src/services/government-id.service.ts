@@ -306,7 +306,7 @@ export class GovernmentIdService {
         type: 'PMJAY_CARD',
         name: 'Ayushman Bharat PM-JAY Health Card (₹5 Lakh Cover)',
         issuer: 'National Health Authority (NHA), Govt of India',
-        category: 'INSURANCE_POLICY',
+        category: 'Insurance',
         uri: 'in.gov.nha.pmjay/AB-PMJAY-99214',
         data: {
           policyNumber: 'PMJAY-MH-2024-88392',
@@ -320,7 +320,7 @@ export class GovernmentIdService {
         type: 'COVID_VACCINE',
         name: 'COVID-19 Universal Vaccination Certificate (Final Dose)',
         issuer: 'Ministry of Health & Family Welfare (MoHFW), Govt of India',
-        category: 'IMMUNIZATION',
+        category: 'Vaccination',
         uri: 'in.gov.cowin/COWIN-VACC-44910',
         data: {
           vaccineName: 'Covishield (ChAdOx1-S)',
@@ -331,6 +331,16 @@ export class GovernmentIdService {
         },
       },
     ];
+
+    // Resolve valid patient ID
+    let targetPatientId = userId;
+    const pCheck = await query(
+      `SELECT id FROM public.patients WHERE user_id = $1 OR id = $1 LIMIT 1`,
+      [userId]
+    );
+    if (pCheck.rows.length > 0) {
+      targetPatientId = pCheck.rows[0].id;
+    }
 
     const imported: any[] = [];
 
@@ -344,22 +354,23 @@ export class GovernmentIdService {
           [userId, doc.type, doc.name, doc.issuer, doc.uri, JSON.stringify(doc.data)]
         );
 
-        // 2. Also record in public.documents so it appears in Medical Reports list
+        // 2. Also record in public.documents using the real database schema
         const checksum = crypto.createHash('sha256').update(`${doc.uri}_${Date.now()}`).digest('hex');
         await query(
           `INSERT INTO public.documents 
-            (patient_id, document_name, original_filename, mime_type, file_size, storage_path, 
-             checksum_sha256, document_category, hospital_name, doctor_name, visit_date, metadata_json)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_DATE, $11)`,
+            (patient_id, uploader_id, document_name, document_category, file_extension, mime_type, 
+             file_size_bytes, storage_path, checksum_sha256, hospital_name, doctor_name, visit_date, metadata_json)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_DATE, $12)`,
           [
+            targetPatientId,
             userId,
             doc.name,
-            `${doc.type.toLowerCase()}_digilocker.pdf`,
+            doc.category,
+            'pdf',
             'application/pdf',
             245192,
             `digilocker/${doc.type.toLowerCase()}.pdf`,
             checksum,
-            doc.category,
             doc.issuer,
             'Government of India (DigiLocker Verified)',
             JSON.stringify({
