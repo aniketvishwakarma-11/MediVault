@@ -2,12 +2,27 @@ import { Request, Response } from 'express';
 import { CopilotService } from '../services/ai/copilot.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { logger } from '../utils/logger';
+import { ValidationError, ResourceNotFoundError } from '../errors/AppError';
 
 /**
  * MediVault V2 — AI Copilot Controller
  * REST API handlers for the patient AI Health Copilot.
  */
 export class CopilotController {
+
+  private static resolvePatientId(req: Request, explicitId?: string): string {
+    const pid = explicitId || req.user?.patient_id || req.user?.id;
+    if (!pid) {
+      throw new ValidationError(
+        'PATIENT_ID_REQUIRED',
+        'Patient identifier is required to access health records',
+        'Patient Session Required',
+        'To protect confidential medical history, a valid patient session or patient identifier must be provided.',
+        'Please ensure you are logged in to your patient account.'
+      );
+    }
+    return pid;
+  }
 
   /**
    * POST /copilot/chat
@@ -16,14 +31,14 @@ export class CopilotController {
   public static async chat(req: Request, res: Response) {
     try {
       const { prompt, patient_id, session_id, document_id } = req.body;
-      const patientId = patient_id || req.user?.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+      const patientId = CopilotController.resolvePatientId(req, patient_id);
 
       if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-        return sendError(res, 400, 'A valid prompt string is required.');
+        throw new ValidationError('PROMPT_REQUIRED', 'A valid prompt string is required.');
       }
 
       if (prompt.length > 2000) {
-        return sendError(res, 400, 'Prompt exceeds maximum length of 2000 characters.');
+        throw new ValidationError('PROMPT_TOO_LONG', 'Prompt exceeds maximum length of 2000 characters.');
       }
 
       const result = await CopilotService.chat({
@@ -47,7 +62,7 @@ export class CopilotController {
 
     } catch (err: any) {
       logger.error('[CopilotController] chat error:', err);
-      return sendError(res, 500, err.message || 'AI Copilot chat failed.');
+      return sendError(res, err);
     }
   }
 
@@ -59,21 +74,21 @@ export class CopilotController {
     try {
       const { docId } = req.params;
       const { prompt, patient_id, session_id } = req.body;
-      const patientId = patient_id || req.user?.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+      const patientId = CopilotController.resolvePatientId(req, patient_id);
 
       if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-        return sendError(res, 400, 'A valid prompt string is required.');
+        throw new ValidationError('PROMPT_REQUIRED', 'A valid prompt string is required.');
       }
 
       if (!docId) {
-        return sendError(res, 400, 'Document ID parameter is required.');
+        throw new ValidationError('DOCUMENT_ID_REQUIRED', 'Document ID parameter is required.');
       }
 
-      const result = await CopilotService.chat({
+      const result = await CopilotService.chatWithDocument({
         patientId,
+        documentId: docId,
         prompt: prompt.trim(),
-        sessionId: session_id as string | undefined,
-        documentId: String(docId || ''),
+        sessionId: session_id,
       });
 
       return sendSuccess(res, 200, {
@@ -86,11 +101,11 @@ export class CopilotController {
           fallbackTriggered: result.metrics.fallbackTriggered,
         },
         suggestedFollowUps: result.suggestedFollowUps,
-      }, `AI Copilot document-focused response generated for document ${docId}.`);
+      }, 'Document-focused response generated successfully.');
 
     } catch (err: any) {
       logger.error('[CopilotController] chatWithDocument error:', err);
-      return sendError(res, 500, err.message || 'AI Copilot document chat failed.');
+      return sendError(res, err);
     }
   }
 
@@ -101,7 +116,7 @@ export class CopilotController {
   public static async createSession(req: Request, res: Response) {
     try {
       const { patient_id, mode, document_id } = req.body;
-      const patientId = patient_id || req.user?.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+      const patientId = CopilotController.resolvePatientId(req, patient_id);
 
       const session = await CopilotService.createSession(
         patientId,
@@ -112,7 +127,7 @@ export class CopilotController {
       return sendSuccess(res, 201, session, 'Chat session created successfully.');
     } catch (err: any) {
       logger.error('[CopilotController] createSession error:', err);
-      return sendError(res, 500, err.message || 'Failed to create chat session.');
+      return sendError(res, err);
     }
   }
 
@@ -122,12 +137,12 @@ export class CopilotController {
    */
   public static async listSessions(req: Request, res: Response) {
     try {
-      const patientId = (req.query.patient_id as string) || req.user?.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+      const patientId = CopilotController.resolvePatientId(req, req.query.patient_id as string);
       const sessions = await CopilotService.listSessions(patientId);
       return sendSuccess(res, 200, sessions, `Retrieved ${sessions.length} chat sessions.`);
     } catch (err: any) {
       logger.error('[CopilotController] listSessions error:', err);
-      return sendError(res, 500, err.message || 'Failed to list chat sessions.');
+      return sendError(res, err);
     }
   }
 
@@ -139,15 +154,15 @@ export class CopilotController {
     try {
       const { id } = req.params;
       const idStr = String(id || '');
-      if (!idStr) return sendError(res, 400, 'Session ID is required.');
+      if (!idStr) throw new ValidationError('SESSION_ID_REQUIRED', 'Session ID is required.');
 
       const result = await CopilotService.getSessionWithMessages(idStr);
-      if (!result) return sendError(res, 404, 'Chat session not found.');
+      if (!result) throw new ResourceNotFoundError('Chat Session', idStr);
 
       return sendSuccess(res, 200, result, 'Chat session retrieved with messages.');
     } catch (err: any) {
       logger.error('[CopilotController] getSession error:', err);
-      return sendError(res, 500, err.message || 'Failed to retrieve chat session.');
+      return sendError(res, err);
     }
   }
 
@@ -159,15 +174,15 @@ export class CopilotController {
     try {
       const { id } = req.params;
       const idStr = String(id || '');
-      if (!idStr) return sendError(res, 400, 'Session ID is required.');
+      if (!idStr) throw new ValidationError('SESSION_ID_REQUIRED', 'Session ID is required.');
 
       const success = await CopilotService.archiveSession(idStr);
-      if (!success) return sendError(res, 404, 'Chat session not found or already archived.');
+      if (!success) throw new ResourceNotFoundError('Chat Session', idStr);
 
       return sendSuccess(res, 200, { archived: true }, 'Chat session archived successfully.');
     } catch (err: any) {
       logger.error('[CopilotController] deleteSession error:', err);
-      return sendError(res, 500, err.message || 'Failed to archive chat session.');
+      return sendError(res, err);
     }
   }
 
@@ -177,12 +192,12 @@ export class CopilotController {
    */
   public static async getInsights(req: Request, res: Response) {
     try {
-      const patientId = (req.query.patient_id as string) || req.user?.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+      const patientId = CopilotController.resolvePatientId(req, req.query.patient_id as string);
       const insights = await CopilotService.getHealthInsights(patientId);
       return sendSuccess(res, 200, insights, 'Health insights retrieved successfully.');
     } catch (err: any) {
       logger.error('[CopilotController] getInsights error:', err);
-      return sendError(res, 500, err.message || 'Failed to retrieve health insights.');
+      return sendError(res, err);
     }
   }
 
@@ -192,12 +207,12 @@ export class CopilotController {
    */
   public static async getSuggestions(req: Request, res: Response) {
     try {
-      const patientId = (req.query.patient_id as string) || req.user?.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+      const patientId = CopilotController.resolvePatientId(req, req.query.patient_id as string);
       const suggestions = await CopilotService.getSmartSuggestions(patientId);
       return sendSuccess(res, 200, suggestions, 'Smart suggestions generated successfully.');
     } catch (err: any) {
       logger.error('[CopilotController] getSuggestions error:', err);
-      return sendError(res, 500, err.message || 'Failed to generate suggestions.');
+      return sendError(res, err);
     }
   }
 }

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/context/ToastContext";
+import { ErrorModalProvider } from "@/context/ErrorModalContext";
+import { ClinicalErrorBoundary } from "@/app/components/ClinicalErrorBoundary";
 import { MaintenanceGuard } from "@/app/components/MaintenanceGuard";
 import { PWAProvider } from "@/app/components/PWAProvider";
 import PWAInstallBanner from "@/app/components/PWAInstallBanner";
@@ -214,15 +216,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
         <AuthProvider>
           <ToastProvider>
-            <PWAProvider>
-              <MaintenanceGuard>
-                <MotionConfig reducedMotion="user">
-                  {children}
-                  <MobileBottomNav />
-                  <PWAInstallBanner />
-                </MotionConfig>
-              </MaintenanceGuard>
-            </PWAProvider>
+            <ErrorModalProvider>
+              <ClinicalErrorBoundary>
+                <PWAProvider>
+                  <MaintenanceGuard>
+                    <MotionConfig reducedMotion="user">
+                      {children}
+                      <MobileBottomNav />
+                      <PWAInstallBanner />
+                    </MotionConfig>
+                  </MaintenanceGuard>
+                </PWAProvider>
+              </ClinicalErrorBoundary>
+            </ErrorModalProvider>
           </ToastProvider>
         </AuthProvider>
       </body>

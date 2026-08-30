@@ -1003,31 +1003,9 @@ export class EmergencyService {
           };
         });
 
-      const DUMMY_LAB_NAMES = [
-        'hemoglobin',
-        'total leucocyte count (wbc)',
-        'total wbc',
-        'platelet count',
-        'fasting blood glucose',
-        'serum creatinine',
-        'blood pressure',
-      ];
-      const DUMMY_VALS = [
-        '10.2', '10.2 g/dL', '6,800', '6,800 /cu mm', '7,200', '7,200 /cu mm',
-        '240,000', '240,000 /cu mm', '108', '108 mg/dL', '0.9', '0.9 mg/dL',
-        '120/78', '120/78 mmHg', '13.8', '13.8 g/dL'
-      ];
-
-      const isDummy = (name: string, val: string) => {
-        const cleanName = (name || '').toLowerCase().trim();
-        const cleanVal = (val || '').trim();
-        return DUMMY_LAB_NAMES.includes(cleanName) && DUMMY_VALS.some(dv => cleanVal === dv || cleanVal.startsWith(dv));
-      };
-
-      // Combine both, avoiding exact duplicates by name and value and discarding dummy seed labs
-      const combined = [...dbLabs].filter((item) => !isDummy(item.name, item.val));
+      // Combine both, avoiding exact duplicates by name and value
+      const combined = [...dbLabs];
       for (const item of ocrLabs) {
-        if (isDummy(item.name, item.val)) continue;
         const exists = combined.some(
           (c) => c.name.toLowerCase() === item.name.toLowerCase() && c.val === item.val
         );

@@ -3,6 +3,7 @@ import { query, isConnectionError } from '../config/db';
 import { logger } from '../utils/logger';
 import { ClinicalEventService } from './clinical-event.service';
 import { PrescriptionExplainerService } from './ai/prescription-explainer.service';
+import { ClinicalSafetyError, DatabaseUnavailableError } from '../errors/AppError';
 
 export interface PrescriptionLineItemInput {
   drug_catalog_id?: string;
@@ -115,8 +116,13 @@ export class PrescriptionService {
         }
       }
       if (!doctorUuid) {
-        const anyDoc = await query(`SELECT id FROM public.doctors LIMIT 1`);
-        doctorUuid = anyDoc.rows[0]?.id || null;
+        throw new ClinicalSafetyError(
+          'PRESCRIBING_DOCTOR_NOT_FOUND',
+          `Prescribing physician could not be resolved with ID: ${payload.doctorId}`,
+          'Prescribing Doctor Not Authorized',
+          'We could not locate an active, verified medical practitioner profile for this prescribing physician.',
+          'Please ensure you are signed in with an authorized medical professional account.'
+        );
       }
 
       // Resolve Patient UUID
@@ -242,24 +248,15 @@ export class PrescriptionService {
         verification_url: `/verify/rx/${rxRow.id}`,
       };
     } catch (err: any) {
+      if (err instanceof ClinicalSafetyError) {
+        throw err;
+      }
       if (isConnectionError(err)) {
-        logger.warn('[PrescriptionService] DB fallback createPrescription returned mock');
-        return {
-          id: rxId,
-          doctorId: payload.doctorId,
-          patientId: payload.patientId,
-          diagnosisText: payload.diagnosisText,
-          status: 'ACTIVE',
-          qr_code_hash: qrHash,
-          digital_signature: digitalSignature,
-          blockchain_tx_hash: blockchainTxHash,
-          medicines: payload.medicines.map((m, idx) => ({ ...m, id: `item-${idx + 1}` })),
-          recommended_tests: payload.recommendedTests || [],
-          ai_explanation: aiExplanation,
-          created_at: new Date().toISOString(),
-          expires_at: expiresAt,
-          verification_url: `/verify/rx/${rxId}`,
-        };
+        logger.error('[PrescriptionService] Database commit failed on createPrescription:', err);
+        throw new DatabaseUnavailableError(
+          `Failed to record prescription ${rxId} due to database connection failure`,
+          'Please verify the patient and medication details and click "Retry Submission". The pharmacy cannot see this order yet.'
+        );
       }
       throw err;
     }

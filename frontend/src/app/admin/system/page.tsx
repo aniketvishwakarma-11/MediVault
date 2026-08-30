@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { ErrorSimulatorModal } from "@/app/components/admin/ErrorSimulatorModal";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -571,6 +572,9 @@ export default function AdminSystemHealthPage() {
           </button>
         </div>
       </div>
+
+      {/* ─── Clinical Error Handling & Safety Diagnostic Simulator ─── */}
+      <ErrorSimulatorModal />
 
       {/* ─── Real-Time Diagnostic Ping Stream ─── */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">

@@ -95,7 +95,7 @@ export default function MedicalReportsPage() {
   const [hospitalName, setHospitalName] = useState<string>("");
   const [doctorName, setDoctorName] = useState<string>("");
   const [visitDate, setVisitDate] = useState<string>("");
-  const [patientIdInput, setPatientIdInput] = useState<string>("a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d");
+  const [patientIdInput, setPatientIdInput] = useState<string>("");
 
   // Camera Scanner Modal State
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
@@ -250,7 +250,13 @@ export default function MedicalReportsPage() {
 
     try {
       const finalDocName = documentName.trim() || uploadFile.name;
-      const validPatientId = (user?.id && user.id.length === 36) ? user.id : patientIdInput || "a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d";
+      const validPatientId = (user?.id && user.id.length === 36) ? user.id : (patientIdInput.trim().length === 36 ? patientIdInput.trim() : null);
+
+      if (!validPatientId) {
+        setUploadModalError("A valid patient profile session or UUID is required to upload medical reports.");
+        setUploading(false);
+        return;
+      }
 
       const formData = new FormData();
       formData.append("file", uploadFile);

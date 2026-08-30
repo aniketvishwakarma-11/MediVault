@@ -3,6 +3,7 @@ import { AIProviderRegistry } from '../services/ai/providers/provider.registry';
 import { ChatAIService } from '../services/ai/chat_ai.service';
 import { sendSuccess, sendError } from '../utils/response';
 import { apiRateLimiter } from '../middleware/security';
+import { ValidationError } from '../errors/AppError';
 
 const router = Router();
 
@@ -56,17 +57,27 @@ router.get('/status', apiRateLimiter, async (req: Request, res: Response) => {
 router.post('/chat', apiRateLimiter, async (req: Request, res: Response) => {
   try {
     const { prompt, patient_id } = req.body;
-    const patientId = patient_id || req.user?.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+    const patientId = patient_id || req.user?.patient_id || req.user?.id;
 
-    if (!prompt || typeof prompt !== 'string') {
-      return sendError(res, 400, 'Prompt string parameter is required.');
+    if (!patientId) {
+      throw new ValidationError(
+        'PATIENT_ID_REQUIRED',
+        'Patient ID is required to query medical chat records',
+        'Patient Session Required',
+        'To protect confidential medical history, a valid patient session or patient identifier must be provided.',
+        'Please ensure you are logged in to your patient account.'
+      );
     }
 
-    const result = await ChatAIService.chat(patientId, prompt);
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+      throw new ValidationError('PROMPT_REQUIRED', 'Prompt string parameter is required.');
+    }
+
+    const result = await ChatAIService.chat(patientId, prompt.trim());
 
     return sendSuccess(res, 200, result, 'AI response generated successfully via dedicated NVIDIA NIM engine.');
   } catch (err: any) {
-    return sendError(res, 500, err.message || 'AI chat generation failed.');
+    return sendError(res, err);
   }
 });
 

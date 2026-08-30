@@ -16,9 +16,12 @@ import notificationRoutes from './routes/notification.routes';
 import webauthnRoutes from './routes/webauthn.routes';
 import governmentRoutes from './routes/government.routes';
 import userRoutes from './routes/user.routes';
+import errorSimulationRoutes from './routes/error-simulation.routes';
 import { initializeMinioBucket } from './config/minio';
 import { sendError } from './utils/response';
 import { logger } from './utils/logger';
+import { ResourceNotFoundError } from './errors/AppError';
+import { toAppError } from './errors/errorNormalizer';
 
 // Load environment variables
 dotenv.config();
@@ -135,15 +138,25 @@ app.use('/api/government', governmentRoutes);
 app.use('/users', userRoutes);
 app.use('/api/users', userRoutes);
 
+// Admin Diagnostic & Error Simulation Sandbox
+app.use('/admin/system', errorSimulationRoutes);
+app.use('/api/admin/system', errorSimulationRoutes);
+
 // 404 Route Handler
 app.use((req: Request, res: Response) => {
-  sendError(res, 404, `Route ${req.method} ${req.originalUrl} not found.`);
+  sendError(res, new ResourceNotFoundError('API Endpoint', `${req.method} ${req.originalUrl}`));
 });
 
 // Global Express Error Handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  logger.error('[Global Application Error]:', err);
-  sendError(res, err.status || 500, err.message || 'Internal Server Error');
+  const appError = toAppError(err);
+  logger.error(`[Global Application Error] [${appError.traceId}] [${appError.code}]:`, {
+    message: appError.message,
+    statusCode: appError.statusCode,
+    url: req.originalUrl,
+    method: req.method,
+  });
+  sendError(res, appError);
 });
 
 // Server Initialization

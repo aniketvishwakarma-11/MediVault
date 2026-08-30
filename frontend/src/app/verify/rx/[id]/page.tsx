@@ -26,6 +26,12 @@ export default function PublicPrescriptionVerifyPage() {
 
   const [prescription, setPrescription] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [verificationError, setVerificationError] = useState<{
+    title: string;
+    message: string;
+    action: string;
+    code: string;
+  } | null>(null);
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
   const [pharmacyName, setPharmacyName] = useState("Apollo Pharmacy / MedPlus Center");
   const [pharmacistName, setPharmacistName] = useState("Rajesh Kumar, Reg. Pharmacist");
@@ -39,6 +45,7 @@ export default function PublicPrescriptionVerifyPage() {
 
   const fetchVerification = async () => {
     setIsLoading(true);
+    setVerificationError(null);
     try {
       const res = await fetch(`/api/prescriptions/verify/${id}`);
       if (res.ok) {
@@ -49,54 +56,73 @@ export default function PublicPrescriptionVerifyPage() {
           return;
         }
       }
-    } catch (err) {
-      console.warn("Using fallback public verification data:", err);
-    }
 
-    // Fallback verification record
-    setPrescription({
-      verified: true,
-      id,
-      status: "ACTIVE",
-      doctor: {
-        name: "Dr. Sarah Jenkins, MD",
-        license: "MD-994820-US",
-        hospital: "Jenkins Medical Associates / St. Jude Memorial Plaza",
-        council: "State Medical Council",
-      },
-      patient: {
-        name: "Alex Morgan",
-        uhid: "UHID-882190",
-      },
-      diagnosis: "Type 2 Diabetes Mellitus & Essential Hypertension",
-      blockchain_tx_hash: "0xa7f83b2d194c5e6f7a8b9c0d1e2f3a4b5c6d7e8f",
-      digital_signature: "SIG-DR-JENKINS-882410",
-      issued_at: "2026-08-12",
-      expires_at: "2026-09-12",
-      medicines: [
-        {
-          drug_name: "Metformin Hydrochloride 500mg",
-          dosage_form: "Tablet",
-          strength: "500 mg",
-          schedule_code: "1-0-1",
-          food_instructions: "Take with or immediately after meals",
-          quantity_to_dispense: 60,
-          quantity_dispensed: 0,
-          refills_allowed: 2,
-        },
-        {
-          drug_name: "Telmisartan 40mg",
-          dosage_form: "Tablet",
-          strength: "40 mg",
-          schedule_code: "1-0-0",
-          food_instructions: "Take in the morning with water",
-          quantity_to_dispense: 30,
-          quantity_dispensed: 0,
-          refills_allowed: 1,
-        },
-      ],
-    });
-    setIsLoading(false);
+      let errorTitle = "Prescription Not Found";
+      let errorMsg = `No registered medical prescription matching identifier "${id}" was found in the MediVault Registry.`;
+      try {
+        const errJson = await res.json();
+        if (errJson?.error) {
+          errorTitle = errJson.error.userTitle || errorTitle;
+          errorMsg = errJson.error.userMessage || errorMsg;
+        }
+      } catch {}
+
+      // Allow static demo code for interactive demo purposes ONLY if explicitly requested
+      if (id === "RX-DEMO-VALID") {
+        setPrescription({
+          verified: true,
+          id: "RX-DEMO-VALID",
+          status: "ACTIVE",
+          doctor: {
+            name: "Dr. Sarah Jenkins, MD",
+            license: "MD-994820-US",
+            hospital: "Jenkins Medical Associates / St. Jude Memorial Plaza",
+            council: "State Medical Council",
+          },
+          patient: {
+            name: "Alex Morgan",
+            uhid: "UHID-882190",
+          },
+          diagnosis: "Type 2 Diabetes Mellitus & Essential Hypertension",
+          blockchain_tx_hash: "0xa7f83b2d194c5e6f7a8b9c0d1e2f3a4b5c6d7e8f",
+          digital_signature: "SIG-DR-JENKINS-882410",
+          issued_at: "2026-08-12",
+          expires_at: "2026-09-12",
+          medicines: [
+            {
+              drug_name: "Metformin Hydrochloride 500mg",
+              dosage_form: "Tablet",
+              strength: "500 mg",
+              schedule_code: "1-0-1",
+              food_instructions: "Take with or immediately after meals",
+              quantity_to_dispense: 60,
+              quantity_dispensed: 0,
+              refills_allowed: 2,
+            },
+          ],
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Strict Clinical Safety Fail-Closed: DO NOT synthesize mock data for invalid IDs!
+      setVerificationError({
+        title: errorTitle,
+        message: errorMsg,
+        action: "DO NOT DISPENSE MEDICATION based on this code. Ask the patient for their updated MediVault pass or verify directly with the clinic.",
+        code: `ERR-RX-INVALID-${String(id).slice(-6).toUpperCase()}`,
+      });
+      setIsLoading(false);
+      return;
+    } catch (err: any) {
+      setVerificationError({
+        title: "Registry Temporarily Unreachable",
+        message: "Unable to verify this digital prescription because the national medical ledger is currently unreachable.",
+        action: "Please verify internet connection and re-scan the QR code. Do not dispense without direct verification.",
+        code: `ERR-NET-RX-${String(id).slice(-6).toUpperCase()}`,
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleConfirmDispense = async (e: React.FormEvent) => {
@@ -131,6 +157,80 @@ export default function PublicPrescriptionVerifyPage() {
           <div className="w-10 h-10 border-4 border-[#0891B2] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs text-slate-600 font-bold">Verifying cryptographic notarization...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (verificationError || !prescription) {
+    const err = verificationError || {
+      title: "Prescription Not Found",
+      message: `The digital prescription "${id}" could not be verified in the national registry.`,
+      action: "DO NOT DISPENSE MEDICATION based on this code. Ask the patient for their updated pass.",
+      code: `ERR-RX-NOT-FOUND-${String(id).slice(-6).toUpperCase()}`,
+    };
+
+    return (
+      <div className="min-h-screen bg-[#0F172A] text-white font-body p-4 sm:p-8 flex flex-col justify-between items-center">
+        <header className="max-w-2xl w-full flex items-center justify-between border-b border-slate-800 pb-4 mb-8">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-heading font-black">
+              M
+            </div>
+            <span className="font-heading font-bold text-sm text-slate-200">MediVault National Verification Ledger</span>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-rose-950 text-rose-300 border border-rose-800 text-xs font-bold font-mono">
+            VERIFICATION_FAILED
+          </span>
+        </header>
+
+        <main className="max-w-2xl w-full space-y-6 my-auto">
+          <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border-2 border-rose-600/80 shadow-2xl space-y-6 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-rose-600/20 text-rose-500 border border-rose-500/40 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-bold uppercase tracking-wider font-mono">
+                {err.code}
+              </span>
+              <h1 className="font-heading font-black text-2xl sm:text-3xl text-white tracking-tight">
+                {err.title}
+              </h1>
+              <p className="text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
+                {err.message}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-left space-y-2">
+              <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider font-heading">
+                <ShieldCheck className="w-4 h-4 text-rose-400" />
+                Clinical Safety & Pharmacy Directives
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                {err.action}
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all border border-slate-700"
+              >
+                Return to MediVault Portal
+              </Link>
+              <button
+                onClick={() => fetchVerification()}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-lg shadow-rose-600/20"
+              >
+                Re-scan Verification
+              </button>
+            </div>
+          </div>
+        </main>
+
+        <footer className="max-w-2xl w-full text-center text-[11px] text-slate-500 font-mono mt-8">
+          MediVault Cryptographic Verification Ledger • Reference: {err.code}
+        </footer>
       </div>
     );
   }

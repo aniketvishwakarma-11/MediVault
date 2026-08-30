@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { DocumentRepository } from '../repositories/document.repository';
 import { logger } from '../utils/logger';
 import { MedicalAIAnalysis } from '../types/medical_ai';
+import { AIProcessingError } from '../errors/AppError';
 
 export class AIService {
   /**
@@ -17,8 +18,13 @@ export class AIService {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      logger.warn('[AI Service]: GEMINI_API_KEY is missing in backend/.env. Returning clinical template analysis.');
-      return this.generateFallbackAnalysis(originalFilename, suggestedCategory, ocrText);
+      logger.error('[AI Service]: GEMINI_API_KEY is missing in backend/.env.');
+      throw new AIProcessingError(
+        'AI_API_KEY_MISSING',
+        'GEMINI_API_KEY is not configured on the server',
+        'Automated AI analysis is temporarily unavailable because the AI service configuration is undergoing maintenance. Your original document is safely preserved in your vault.',
+        'You can view or download your original uploaded document anytime.'
+      );
     }
 
     try {
@@ -154,7 +160,12 @@ Target JSON Schema:
       return this.sanitizeAnalysis(parsed, originalFilename, suggestedCategory);
     } catch (error: any) {
       logger.error('[AI Service Error] Gemini JSON extraction failed:', error);
-      return this.generateFallbackAnalysis(originalFilename, suggestedCategory, ocrText);
+      throw new AIProcessingError(
+        'AI_EXTRACTION_FAILED',
+        `Gemini AI clinical analysis failed: ${error?.message || error}`,
+        'Automated AI analysis is temporarily unavailable for this document. Your original document is safely preserved in your vault.',
+        'You can view or download the original file, or retry analysis from the document viewer.'
+      );
     }
   }
 
@@ -303,118 +314,6 @@ Instructions:
           ],
       analysis_timestamp: raw.analysis_timestamp || new Date().toISOString(),
       ai_model: raw.ai_model || 'Google Gemini 1.5 Flash',
-    };
-  }
-
-  /**
-   * Generates intelligent fallback analysis when API key is missing or offline.
-   */
-  private static generateFallbackAnalysis(
-    filename: string,
-    category?: string,
-    ocrText?: string
-  ): MedicalAIAnalysis {
-    const today = new Date().toISOString().split('T')[0];
-    const cat = category || 'Blood Report';
-
-    const isBlood = cat.toLowerCase().includes('blood') || cat.toLowerCase().includes('cbc') || cat.toLowerCase().includes('lab');
-    const isPrescription = cat.toLowerCase().includes('prescription');
-
-    const sampleLabResults: any[] = [];
-
-    const sampleMedications = isPrescription
-      ? [
-          {
-            name: 'Amoxicillin 500mg',
-            dosage: '1 capsule',
-            frequency: 'Every 8 hours (TID)',
-            duration: '7 days',
-            purpose: 'Bacterial infection treatment',
-            instructions: 'Take after food with plenty of water. Complete full course.',
-          },
-          {
-            name: 'Paracetamol 650mg',
-            dosage: '1 tablet',
-            frequency: 'As needed (PRN) max 3x daily',
-            duration: '3 days',
-            purpose: 'Fever and mild pain management',
-            instructions: 'Take after meals if temperature exceeds 100°F.',
-          },
-        ]
-      : [];
-
-    return {
-      document: {
-        document_type: isBlood ? 'Complete Blood Count (CBC)' : isPrescription ? 'Clinical Prescription' : cat,
-        speciality: isBlood ? 'Hematology & Pathology' : 'General Internal Medicine',
-        category: cat,
-        summary: `Medical document "${filename}" analyzed. ${isBlood ? 'CBC indicates mild iron deficiency anemia. Hemoglobin below reference range. White blood cells and platelets normal.' : 'Clinical consultation details indexed.'}`,
-        language: 'English',
-        confidence: 0.94,
-      },
-      hospital: {
-        name: 'Metro Care Diagnostic Center',
-        address: 'Medical Plaza Suite 402',
-        department: isBlood ? 'Pathology Laboratory' : 'Outpatient Department',
-        contact: '+1 (555) 234-5678',
-      },
-      doctor: {
-        name: 'Dr. Robert Vance',
-        qualification: 'MD, FACP',
-        specialization: 'Internal Medicine & Clinical Pathology',
-        registration_number: 'MED-884920',
-      },
-      patient: {
-        name: 'MediVault Patient',
-        age: 34,
-        gender: 'Male',
-        patient_id: 'PAT-994021',
-        dob: '1992-05-14',
-      },
-      visit: {
-        visit_date: today,
-        report_date: today,
-        admission_date: null,
-        discharge_date: null,
-      },
-      diagnosis: isBlood ? ['Mild Iron Deficiency Anemia', 'Borderline Fasting Glucose'] : ['Upper Respiratory Infection'],
-      symptoms: ['Mild Fatigue', 'Occasional Lethargy'],
-      medical_history: ['No prior chronic surgical interventions'],
-      allergies: ['Penicillin (Mild rash)'],
-      medications: sampleMedications,
-      lab_results: sampleLabResults,
-      vitals: {
-        blood_pressure: '120/78 mmHg',
-        pulse: '74 bpm',
-        temperature: '98.4 F',
-        spo2: '99%',
-      },
-      procedures: isBlood ? ['Venipuncture'] : ['Clinical Physical Examination'],
-      surgeries: [],
-      vaccinations: ['Tetanus Toxoid Booster (2025)'],
-      recommended_followup: ['Consult primary care physician in 2 weeks', 'Repeat CBC and Fasting Glucose panel in 30 days'],
-      recommended_tests: ['Ferritin & Total Iron Binding Capacity (TIBC)', 'HbA1c Glycated Hemoglobin Test'],
-      lifestyle_recommendations: ['Increase dietary iron intake (spinach, lentils, lean protein)', 'Limit refined sugar intake'],
-      red_flags: ['Persistent dizziness or fainting', 'Unexplained severe fatigue'],
-      risk_factors: ['Mild Anemia Risk', 'Prediabetes Risk'],
-      overall_health_status: 'ATTENTION_REQUIRED',
-      plain_language_explanation: `Your document "${filename}" shows that your hemoglobin level is slightly low (10.2 g/dL), which suggests mild anemia. Your white blood cells and platelets are healthy. Your fasting blood sugar is slightly above normal (108 mg/dL). Your doctor will likely recommend iron-rich foods or supplements and follow up in a few weeks.`,
-      timeline_events: [
-        {
-          title: `${cat} Analyzed`,
-          date: today,
-          description: `Extracted ${sampleLabResults.length} lab parameter status records and ${sampleMedications.length} active prescriptions.`,
-          importance: 'HIGH',
-        },
-        {
-          title: 'Mild Anemia Parameter Flagged',
-          date: today,
-          description: 'Hemoglobin registered at 10.2 g/dL (Below reference range of 13.5 - 17.5 g/dL).',
-          importance: 'MEDIUM',
-        },
-      ],
-      analysis_timestamp: new Date().toISOString(),
-      ai_model: 'Google Gemini 1.5 Flash',
     };
   }
 }

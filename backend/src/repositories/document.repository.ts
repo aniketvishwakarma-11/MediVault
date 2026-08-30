@@ -3,6 +3,7 @@ import { DocumentRecord, DocumentSearchFilters } from '../types/document';
 import { logger } from '../utils/logger';
 import { MinioStorageService } from '../storage/minioStorage';
 import { v4 as uuidv4 } from 'uuid';
+import { ValidationError } from '../errors/AppError';
 
 // In-Memory Fallback Documents Store for local dev resilience
 const inMemoryDocuments: DocumentRecord[] = [];
@@ -13,8 +14,17 @@ export class DocumentRepository {
    */
   public static async createDocument(doc: Partial<DocumentRecord>): Promise<DocumentRecord> {
     const now = new Date().toISOString();
-    const rawPatientId = doc.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
-    const rawUploaderId = doc.uploaded_by || doc.uploader_id || doc.patient_id || 'a3b8c9d0-1e2f-4a5b-8c9d-0e1f2a3b4c5d';
+    if (!doc.patient_id) {
+      throw new ValidationError(
+        'PATIENT_ID_REQUIRED',
+        'Patient ID is required to register a medical document',
+        'Patient Identifier Required',
+        'A patient record must be selected or established before uploading medical documents.',
+        'Please ensure you are viewing a valid patient profile.'
+      );
+    }
+    const rawPatientId = doc.patient_id;
+    const rawUploaderId = doc.uploaded_by || doc.uploader_id || doc.patient_id;
 
     let targetPatientId = rawPatientId;
     let targetUploaderId = rawUploaderId;
