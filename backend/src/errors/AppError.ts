@@ -176,6 +176,29 @@ export class ResourceNotFoundError extends AppError {
 }
 
 /**
+ * Triggered when no valid authentication token or session is provided (HTTP 401).
+ */
+export class AuthenticationRequiredError extends AppError {
+  constructor(
+    message = 'Authentication required to access this clinical endpoint',
+    userMessage = 'You must be signed in with a verified session to access these medical records.',
+    actionHint = 'Please sign in to your MediVault account.',
+    details?: any
+  ) {
+    super({
+      code: 'AUTHENTICATION_REQUIRED',
+      category: 'AUTHORIZATION',
+      statusCode: 401,
+      message,
+      userTitle: 'Session Authentication Required',
+      userMessage,
+      actionHint,
+      details,
+    });
+  }
+}
+
+/**
  * Triggered when authorization fails or an unverified actor attempts a restricted clinical action.
  */
 export class UnauthorizedAccessError extends AppError {

@@ -37,6 +37,7 @@ import DocumentViewerModal from "@/app/components/DocumentViewerModal";
 import { CameraScannerModal } from "@/app/components/scanner/CameraScannerModal";
 import { DigiLockerModal } from "@/app/components/government/DigiLockerModal";
 import { getAuthHeaders, getFormDataAuthHeaders } from "@/lib/auth-token";
+import { getApiBaseUrl } from "@/lib/api-config";
 import { useToast } from "@/context/ToastContext";
 
 interface DocumentRecord {
@@ -59,7 +60,7 @@ interface DocumentRecord {
   metadata_json?: any;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL = getApiBaseUrl();
 
 export default function MedicalReportsPage() {
   const { user, isDemo } = useAuth();

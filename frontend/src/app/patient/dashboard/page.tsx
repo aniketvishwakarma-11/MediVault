@@ -27,6 +27,7 @@ import PushNotificationBanner from "@/app/components/PushNotificationBanner";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { DEMO_REPORTS, DEMO_PATIENT_PROFILE } from "@/lib/demoData";
+import { getApiBaseUrl } from "@/lib/api-config";
 
 interface DocumentRecord {
   id: string;
@@ -53,7 +54,7 @@ interface PatientVitalsData {
   chronic_conditions: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL = getApiBaseUrl();
 
 function calculateRealBmi(heightStr: string | null | undefined, weightStr: string | null | undefined) {
   if (!heightStr || !weightStr) return { bmi: null, status: null };

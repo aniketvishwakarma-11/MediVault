@@ -3,6 +3,8 @@ import {
   AppError,
   DatabaseUnavailableError,
   UnauthorizedAccessError,
+  AuthenticationRequiredError,
+  ResourceNotFoundError,
   ValidationError,
 } from './AppError';
 import { logger } from '../utils/logger';
@@ -94,7 +96,38 @@ export function toAppError(err: any): AppError {
     );
   }
 
-  // 5. Generic / Unhandled Internal Error (Sanitize completely so NO SQL or stack leaks!)
+  // 5. Check if explicit HTTP statusCode was passed (e.g. 401, 403, 404, 400)
+  if (err && typeof err.statusCode === 'number') {
+    const status = err.statusCode;
+    const msg = err.message || 'An error occurred';
+
+    if (status === 401) {
+      return new AuthenticationRequiredError(msg, err.userMessage, err.actionHint, err.details);
+    }
+    if (status === 403) {
+      return new UnauthorizedAccessError(msg, err.userTitle, err.userMessage, err.actionHint, err.details);
+    }
+    if (status === 404) {
+      return new ResourceNotFoundError('Resource', undefined, msg);
+    }
+    if (status === 400) {
+      return new ValidationError(err.code || 'VALIDATION_ERROR', msg, err.userTitle, err.userMessage, err.actionHint, err.details);
+    }
+
+    return new AppError({
+      code: err.code || `HTTP_${status}`,
+      category: err.category || (status >= 400 && status < 500 ? 'VALIDATION' : 'INTERNAL'),
+      statusCode: status,
+      message: msg,
+      userTitle: err.userTitle || 'Request Interrupted',
+      userMessage: err.userMessage || msg,
+      actionHint: err.actionHint || 'Please check your request and try again.',
+      details: err.details,
+      isOperational: true,
+    });
+  }
+
+  // 6. Generic / Unhandled Internal Error (Sanitize completely so NO SQL or stack leaks!)
   const rawMessage = err?.message || String(err);
   logger.error('[Unhandled Exception Caught by Normalizer]:', err);
 
