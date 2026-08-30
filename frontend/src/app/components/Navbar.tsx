@@ -14,7 +14,8 @@ import {
   Stethoscope,
   Shield,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  Activity
 } from "lucide-react";
 
 export default function Navbar() {
@@ -76,6 +77,14 @@ export default function Navbar() {
 
           {/* Desktop Auth Action Buttons */}
           <div className="hidden md:flex items-center gap-2.5">
+            <Link
+              href="/verify"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-[#0891B2] hover:bg-cyan-50/60 border border-transparent hover:border-cyan-200 transition-colors"
+            >
+              <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Verify Rx</span>
+            </Link>
+
             {userProfile ? (
               <div className="flex items-center gap-2.5">
                 <Link
@@ -159,24 +168,66 @@ export default function Navbar() {
                   <span>Go to {portalLabel}</span>
                 </Link>
 
-                {/* Quick Navigation Links */}
+                {/* Quick Navigation Links (Strictly Role-Aware) */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <Link
-                    href="/patient/emergency"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
-                  >
-                    <AlertCircle className="w-4 h-4 text-rose-500" />
-                    <span>Emergency QR</span>
-                  </Link>
-                  <Link
-                    href="/verify"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
-                  >
-                    <FileCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Verify Rx</span>
-                  </Link>
+                  {userProfile.role === "doctor" ? (
+                    <>
+                      <Link
+                        href="/doctor/emergency"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
+                      >
+                        <AlertCircle className="w-4 h-4 text-rose-500" />
+                        <span>ER Trauma Station</span>
+                      </Link>
+                      <Link
+                        href="/doctor/prescriptions"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
+                      >
+                        <Stethoscope className="w-4 h-4 text-teal-600" />
+                        <span>Write Rx</span>
+                      </Link>
+                    </>
+                  ) : userProfile.role === "admin" ? (
+                    <>
+                      <Link
+                        href="/admin/audit-logs"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
+                      >
+                        <Shield className="w-4 h-4 text-indigo-600" />
+                        <span>Audit Trail</span>
+                      </Link>
+                      <Link
+                        href="/admin/system"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
+                      >
+                        <Activity className="w-4 h-4 text-emerald-600" />
+                        <span>System Status</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/patient/emergency"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
+                      >
+                        <AlertCircle className="w-4 h-4 text-rose-500" />
+                        <span>Emergency QR</span>
+                      </Link>
+                      <Link
+                        href="/verify"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50"
+                      >
+                        <FileCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Verify Rx</span>
+                      </Link>
+                    </>
+                  )}
                 </div>
 
                 {/* Logout Button */}
@@ -193,6 +244,14 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="space-y-2.5">
+                <Link
+                  href="/verify"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold text-xs min-h-[40px] flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
+                >
+                  <FileCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Verify Prescription (Public)</span>
+                </Link>
                 <Link
                   href="/auth"
                   onClick={() => setMobileMenuOpen(false)}
