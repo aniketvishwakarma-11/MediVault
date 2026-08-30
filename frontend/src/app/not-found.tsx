@@ -13,19 +13,15 @@ import {
   FileText,
   Stethoscope,
   AlertTriangle,
-  RefreshCw,
-  Search,
   Lock,
   Terminal,
   ChevronRight,
-  ExternalLink,
   Zap,
 } from "lucide-react";
 
 export default function NotFound() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isTracing, setIsTracing] = useState(false);
   const [traceLogs, setTraceLogs] = useState<string[]>([]);
   const [currentPath, setCurrentPath] = useState("");
@@ -56,129 +52,116 @@ export default function NotFound() {
         if (idx === steps.length - 1) {
           setIsTracing(false);
         }
-      }, (idx + 1) * 350);
+      }, (idx + 1) * 320);
     });
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return;
-
-    if (query.includes("doc") || query.includes("prescription")) {
-      router.push("/patient/reports");
-    } else if (query.includes("emergency") || query.includes("er") || query.includes("pass")) {
-      router.push("/patient/emergency");
-    } else if (query.includes("abha") || query.includes("card") || query.includes("id")) {
-      router.push("/patient/profile");
-    } else if (query.includes("doctor") || query.includes("clinic") || query.includes("emr")) {
-      router.push("/doctor/dashboard");
-    } else if (query.includes("timeline") || query.includes("history")) {
-      router.push("/patient/timeline");
-    } else {
-      router.push(`/patient/dashboard?search=${encodeURIComponent(query)}`);
-    }
-  };
-
   return (
-    <main className="min-h-screen bg-slate-950 text-white selection:bg-cyan-500/30 selection:text-cyan-200 relative overflow-hidden flex flex-col justify-between font-sans">
-      {/* ── Background Geometric Cyber Grid & Ambient Glows ── */}
+    <main className="min-h-screen bg-[#F8FAFC] text-slate-900 selection:bg-cyan-100 selection:text-cyan-900 relative overflow-hidden flex flex-col justify-between font-sans">
+      {/* 2px brand accent topbar */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-[#0891B2]" />
+
+      {/* ── Background Grid & Soft Ambient Light Glows ── */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        {/* Subtle 32px radial grid */}
+        {/* Crisp subtle dot grid */}
         <div 
-          className="absolute inset-0 opacity-[0.07]"
+          className="absolute inset-0 opacity-40"
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.4) 1px, transparent 0)`,
-            backgroundSize: "32px 32px",
+            backgroundImage: `radial-gradient(circle at 1px 1px, #CBD5E1 1px, transparent 0)`,
+            backgroundSize: "28px 28px",
           }}
         />
 
-        {/* Ambient Top Cyan & Emerald Glow Spheres */}
+        {/* Top soft cyan glow */}
+        <motion.div
+          animate={{
+            scale: [1, 1.12, 1],
+            opacity: [0.35, 0.5, 0.35],
+          }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-32 left-1/2 -translate-x-1/2 w-[650px] h-[400px] bg-gradient-to-b from-cyan-100 via-teal-50 to-transparent blur-[100px] rounded-full pointer-events-none"
+        />
+
+        {/* Bottom-right soft emerald glow */}
         <motion.div
           animate={{
             scale: [1, 1.15, 1],
-            opacity: [0.15, 0.25, 0.15],
+            opacity: [0.2, 0.35, 0.2],
           }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-b from-cyan-500/20 via-teal-500/10 to-transparent blur-[120px] rounded-full pointer-events-none"
-        />
-
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.18, 0.1],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute -bottom-40 right-1/4 w-[500px] h-[500px] bg-gradient-to-t from-emerald-500/15 via-cyan-600/10 to-transparent blur-[140px] rounded-full pointer-events-none"
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute -bottom-32 right-1/4 w-[500px] h-[400px] bg-gradient-to-t from-emerald-100 via-cyan-50 to-transparent blur-[110px] rounded-full pointer-events-none"
         />
       </div>
 
-      {/* ── Header Navigation Bar ── */}
-      <header className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between border-b border-white/5">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-500 p-0.5 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-cyan-400" />
+      {/* ── Header Navigation Bar (Matches site header) ── */}
+      <header className="relative z-10 w-full bg-white/90 backdrop-blur-md border-b border-slate-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-9 h-9 rounded-lg bg-[#0891B2] text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-extrabold text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5">
-              MediVault <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-400 font-mono font-bold uppercase">Chain AI</span>
-            </span>
-          </div>
-        </Link>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-[1.1rem] tracking-tight text-slate-900">
+                Medi<span className="text-[#0891B2]">Vault</span>
+              </span>
+              <span className="hidden sm:inline text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-cyan-50 text-[#0891B2] border border-cyan-200">
+                AI · ZKP
+              </span>
+            </div>
+          </Link>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-            <span className="font-mono text-slate-300 font-medium">HTTP 404: Uncharted Route</span>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[11px] text-rose-700 font-medium">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              <span className="font-mono font-semibold">HTTP 404: Uncharted Route</span>
+            </div>
+            <button
+              onClick={() => router.back()}
+              className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-slate-900 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Go Back</span>
+            </button>
           </div>
-          <button
-            onClick={() => router.back()}
-            className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Go Back</span>
-          </button>
         </div>
       </header>
 
-      {/* ── Main Hero Section ── */}
+      {/* ── Main Hero Content ── */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center text-center my-auto">
         
-        {/* Holographic 3D Animated Medical Vault Core */}
+        {/* Holographic 3D Animated Medical Vault Core (Light Edition) */}
         <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
           
           {/* Outer Orbital Rotating Ring 1 */}
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="w-56 h-56 sm:w-72 sm:h-72 rounded-full border border-dashed border-cyan-500/20 absolute -inset-6 sm:-inset-8 pointer-events-none"
+            className="w-56 h-56 sm:w-72 sm:h-72 rounded-full border border-dashed border-cyan-300 absolute -inset-6 sm:-inset-8 pointer-events-none opacity-60"
           />
 
           {/* Inner Orbital Counter-Rotating Ring 2 */}
           <motion.div
             animate={{ rotate: -360 }}
             transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-            className="w-48 h-48 sm:w-60 sm:h-60 rounded-full border border-white/10 border-t-cyan-400/50 border-r-emerald-400/40 absolute -inset-2 pointer-events-none"
+            className="w-48 h-48 sm:w-60 sm:h-60 rounded-full border border-slate-200 border-t-[#0891B2] border-r-teal-500 absolute -inset-2 pointer-events-none"
           />
 
-          {/* Pulsing Luminous Center Shield */}
+          {/* Pulsing Center Card */}
           <motion.div
             animate={{
-              scale: [1, 1.05, 1],
+              scale: [1, 1.03, 1],
               boxShadow: [
-                "0 0 40px rgba(6,182,212,0.2)",
-                "0 0 70px rgba(16,185,129,0.3)",
-                "0 0 40px rgba(6,182,212,0.2)",
+                "0 10px 30px -10px rgba(8,145,178,0.15)",
+                "0 20px 40px -10px rgba(13,148,136,0.2)",
+                "0 10px 30px -10px rgba(8,145,178,0.15)",
               ],
             }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="w-36 h-36 sm:w-44 sm:h-44 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-white/15 backdrop-blur-xl flex flex-col items-center justify-center relative p-4 shadow-2xl"
+            className="w-36 h-36 sm:w-44 sm:h-44 rounded-3xl bg-white border-2 border-slate-100 shadow-xl flex flex-col items-center justify-center relative p-4"
           >
             {/* Animated ECG Sine Wave Line across center */}
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 overflow-hidden pointer-events-none opacity-40">
-              <svg viewBox="0 0 200 40" className="w-full h-full text-cyan-400 stroke-current fill-none stroke-[2]">
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 overflow-hidden pointer-events-none opacity-30">
+              <svg viewBox="0 0 200 40" className="w-full h-full text-[#0891B2] stroke-current fill-none stroke-[2]">
                 <motion.path
                   d="M0 20 L40 20 L50 10 L60 30 L70 5 L80 35 L90 20 L200 20"
                   animate={{
@@ -193,13 +176,13 @@ export default function NotFound() {
             <motion.div
               animate={{ y: [-3, 3, -3] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-emerald-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300 relative z-10 shadow-inner"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-[#0891B2] relative z-10 shadow-xs"
             >
-              <ShieldAlert className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 drop-shadow-[0_0_12px_rgba(6,182,212,0.8)]" />
+              <ShieldAlert className="w-7 h-7 sm:w-8 sm:h-8 text-[#0891B2]" />
             </motion.div>
 
             {/* Core Status Tag */}
-            <div className="mt-2.5 px-2.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-[10px] font-mono font-bold text-rose-300 uppercase tracking-wider relative z-10">
+            <div className="mt-2.5 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[10px] font-mono font-bold text-rose-700 uppercase tracking-wider relative z-10">
               Sector 404 Locked
             </div>
           </motion.div>
@@ -207,25 +190,25 @@ export default function NotFound() {
           {/* Floating Orbiting Satellite Nodes */}
           <motion.div
             animate={{
-              y: [-10, 10, -10],
-              x: [-4, 4, -4],
+              y: [-8, 8, -8],
+              x: [-3, 3, -3],
             }}
             transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-2 -left-6 sm:-left-10 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-cyan-500/30 backdrop-blur-md text-[10px] font-mono text-cyan-300 shadow-lg flex items-center gap-1.5"
+            className="absolute -top-2 -left-6 sm:-left-10 px-2.5 py-1 rounded-xl bg-white border border-slate-200 shadow-md text-[10px] font-mono text-slate-700 flex items-center gap-1.5"
           >
-            <Lock className="w-3 h-3 text-cyan-400" />
+            <Lock className="w-3 h-3 text-[#0891B2]" />
             <span>SHA-256 Valid</span>
           </motion.div>
 
           <motion.div
             animate={{
-              y: [8, -8, 8],
-              x: [4, -4, 4],
+              y: [6, -6, 6],
+              x: [3, -3, 3],
             }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            className="absolute -bottom-2 -right-6 sm:-right-10 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-emerald-500/30 backdrop-blur-md text-[10px] font-mono text-emerald-300 shadow-lg flex items-center gap-1.5"
+            className="absolute -bottom-2 -right-6 sm:-right-10 px-2.5 py-1 rounded-xl bg-white border border-slate-200 shadow-md text-[10px] font-mono text-slate-700 flex items-center gap-1.5"
           >
-            <Activity className="w-3 h-3 text-emerald-400" />
+            <Activity className="w-3 h-3 text-emerald-600" />
             <span>AWS ap-south-1</span>
           </motion.div>
         </div>
@@ -237,39 +220,39 @@ export default function NotFound() {
           transition={{ duration: 0.5 }}
           className="space-y-3 max-w-2xl"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold">
-            <Zap className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-[#0891B2] text-xs font-semibold">
+            <Zap className="w-3.5 h-3.5 text-[#0891B2] animate-pulse" />
             <span>Encrypted Ledger Diagnostic: Route Null Pointer</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-            Clinical Record <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">Not Located</span>
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900">
+            Clinical Record <span className="text-[#0891B2]">Not Located</span>
           </h1>
 
-          <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-            The requested medical endpoint or decentralized ledger block does not exist. It may have moved, expired, or been permanently shredded in compliance with statutory DPDPA Section 12 protocols.
+          <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
+            The requested medical endpoint or decentralized ledger block does not exist. It may have moved, expired, or been securely shredded in compliance with statutory DPDPA Section 12 protocols.
           </p>
         </motion.div>
 
-        {/* Quick Portal Navigation Cards */}
+        {/* Quick Portal Navigation Cards (Light Theme with Clean Elevation) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 w-full max-w-3xl mt-8">
           
           {/* Card 1: Patient Vault */}
           <Link
             href="/patient/dashboard"
-            className="group p-4 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-white/10 hover:border-cyan-500/40 text-left transition-all duration-300 shadow-lg flex flex-col justify-between"
+            className="group p-4.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-cyan-400 text-left transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-[#0891B2] group-hover:scale-110 transition-transform">
                 <FileText className="w-5 h-5" />
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#0891B2] group-hover:translate-x-1 transition-all" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0891B2] transition-colors">
                 Patient Vault
               </h3>
-              <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+              <p className="text-[11px] text-slate-500 mt-1 leading-snug">
                 Access your encrypted health locker, lab tests, and 14-digit ABHA card.
               </p>
             </div>
@@ -278,19 +261,19 @@ export default function NotFound() {
           {/* Card 2: Doctor Workstation */}
           <Link
             href="/doctor/dashboard"
-            className="group p-4 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-white/10 hover:border-emerald-500/40 text-left transition-all duration-300 shadow-lg flex flex-col justify-between"
+            className="group p-4.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-teal-400 text-left transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600 group-hover:scale-110 transition-transform">
                 <Stethoscope className="w-5 h-5" />
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition-colors">
                 Doctor Station
               </h3>
-              <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+              <p className="text-[11px] text-slate-500 mt-1 leading-snug">
                 Consented patient clinical directory, e-prescriptions, and AI Copilot.
               </p>
             </div>
@@ -299,30 +282,30 @@ export default function NotFound() {
           {/* Card 3: Emergency Trauma Pass */}
           <Link
             href="/patient/emergency"
-            className="group p-4 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-white/10 hover:border-rose-500/40 text-left transition-all duration-300 shadow-lg flex flex-col justify-between"
+            className="group p-4.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-rose-300 text-left transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform">
                 <AlertTriangle className="w-5 h-5" />
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-rose-400 group-hover:translate-x-1 transition-all" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600 group-hover:translate-x-1 transition-all" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white group-hover:text-rose-300 transition-colors">
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-rose-700 transition-colors">
                 Emergency Pass
               </h3>
-              <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+              <p className="text-[11px] text-slate-500 mt-1 leading-snug">
                 Paramedic break-glass resuscitation QR card for instant trauma triage.
               </p>
             </div>
           </Link>
         </div>
 
-        {/* Primary Action Buttons */}
+        {/* Primary Action Buttons (Matching Site Button Design) */}
         <div className="flex flex-wrap items-center justify-center gap-3.5 mt-8">
           <Link
             href="/"
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-cyan-500/25 hover:brightness-110 transition-all flex items-center gap-2 cursor-pointer"
+            className="px-6 py-3 rounded-xl bg-[#0891B2] hover:bg-[#0e7490] text-white font-bold text-xs sm:text-sm shadow-md shadow-cyan-600/20 transition-all flex items-center gap-2 cursor-pointer"
           >
             <Home className="w-4 h-4" />
             <span>Return to Homepage</span>
@@ -332,9 +315,9 @@ export default function NotFound() {
             type="button"
             onClick={handleRunTracer}
             disabled={isTracing}
-            className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-5 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs sm:text-sm shadow-2xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            <Terminal className={`w-4 h-4 text-cyan-400 ${isTracing ? "animate-spin" : ""}`} />
+            <Terminal className={`w-4 h-4 text-[#0891B2] ${isTracing ? "animate-spin" : ""}`} />
             <span>{isTracing ? "Auditing Grid..." : "Run Vault Tracer"}</span>
           </button>
         </div>
@@ -346,9 +329,9 @@ export default function NotFound() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="w-full max-w-2xl mt-6 rounded-2xl bg-slate-950 border border-cyan-500/30 p-4 text-left font-mono text-[11px] shadow-2xl relative overflow-hidden"
+              className="w-full max-w-2xl mt-6 rounded-2xl bg-slate-950 border border-slate-800 p-4 text-left font-mono text-[11px] shadow-2xl relative overflow-hidden text-white"
             >
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10 text-slate-400">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-400">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
@@ -380,23 +363,25 @@ export default function NotFound() {
 
       </section>
 
-      {/* ── Footer Telemetry & Legal ── */}
-      <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500 font-mono">
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span>Core Grid Healthy: AWS Mumbai (ap-south-1)</span>
-        </div>
+      {/* ── Footer (Matches rest of site) ── */}
+      <footer className="relative z-10 w-full bg-white border-t border-slate-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-2 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <span>Core Grid Healthy: AWS Mumbai (ap-south-1)</span>
+          </div>
 
-        <div className="flex items-center gap-4 text-slate-400">
-          <Link href="/privacy" className="hover:text-white transition-colors">
-            Privacy Policy
-          </Link>
-          <span>•</span>
-          <Link href="/terms" className="hover:text-white transition-colors">
-            Terms of Service
-          </Link>
-          <span>•</span>
-          <span>DPDPA &amp; ABDM V3 Compliant</span>
+          <div className="flex items-center gap-4 text-slate-600 font-medium">
+            <Link href="/privacy" className="hover:text-[#0891B2] transition-colors">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-[#0891B2] transition-colors">
+              Terms of Service
+            </Link>
+            <span>•</span>
+            <span className="text-slate-400">DPDPA &amp; ABDM V3 Compliant</span>
+          </div>
         </div>
       </footer>
     </main>
