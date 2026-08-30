@@ -72,7 +72,7 @@ export class CopilotController {
    */
   public static async chatWithDocument(req: Request, res: Response) {
     try {
-      const { docId } = req.params;
+      const docId = String(req.params.docId || '');
       const { prompt, patient_id, session_id } = req.body;
       const patientId = CopilotController.resolvePatientId(req, patient_id);
 
@@ -84,11 +84,11 @@ export class CopilotController {
         throw new ValidationError('DOCUMENT_ID_REQUIRED', 'Document ID parameter is required.');
       }
 
-      const result = await CopilotService.chatWithDocument({
+      const result = await CopilotService.chat({
         patientId,
         documentId: docId,
         prompt: prompt.trim(),
-        sessionId: session_id,
+        sessionId: session_id ? String(session_id) : undefined,
       });
 
       return sendSuccess(res, 200, {
