@@ -9,9 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://medi-vault-seven-lyart.vercel.app"><img src="https://img.shields.io/badge/Live%20Demo-Vercel%20Production-0891B2?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" /></a>
-  <a href="https://medivault-653s.onrender.com/health"><img src="https://img.shields.io/badge/Backend%20API-Render%20Live-10B981?style=for-the-badge&logo=render&logoColor=white" alt="Backend API" /></a>
-  <a href="https://huggingface.co/spaces/chinmays18/medical-prescription-ocr"><img src="https://img.shields.io/badge/AI%20OCR%20Model-HuggingFace%20Spaces-FFA500?style=for-the-badge&logo=huggingface&logoColor=black" alt="HuggingFace Space" /></a>
+  <a href="https://medi-vault-seven-lyart.vercel.app"><img src="https://img.shields.io/badge/Live%20Platform-MediVault%20Production-0891B2?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Platform" /></a>
 </p>
 
 <p align="center">
@@ -27,18 +25,6 @@
   <img src="https://img.shields.io/badge/DPDPA%202023-Compliant-0284C7" alt="DPDPA" />
   <img src="https://img.shields.io/badge/ABDM%20%2F%20ABHA-Sandbox%20Ready-059669" alt="ABDM" />
 </p>
-
----
-
-## 🌐 Live Production Deployments
-
-| Component | Provider / Platform | Live Endpoint URL |
-| :--- | :--- | :--- |
-| **Frontend Web App (PWA)** | **Vercel** | [https://medi-vault-seven-lyart.vercel.app](https://medi-vault-seven-lyart.vercel.app) |
-| **Backend REST API** | **Render** | [https://medivault-653s.onrender.com](https://medivault-653s.onrender.com) |
-| **Health Check Telemetry** | **Render** | [https://medivault-653s.onrender.com/health](https://medivault-653s.onrender.com/health) |
-| **Prescription Vision AI OCR** | **Hugging Face Spaces** | [https://huggingface.co/spaces/chinmays18/medical-prescription-ocr](https://huggingface.co/spaces/chinmays18/medical-prescription-ocr) |
-| **Public Prescription Verification** | **Vercel / Polygon** | [https://medi-vault-seven-lyart.vercel.app/verify](https://medi-vault-seven-lyart.vercel.app/verify) |
 
 ---
 
