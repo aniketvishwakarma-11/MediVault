@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.github
+.vscode
+.idea
+*.log
+*.tmp
+.env
+.env*.local
+coverage
+src/tests
+src/scripts
+src/scratch

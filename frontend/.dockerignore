@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.github
+.vscode
+.idea
+*.log
+*.tmp
+.env
+.env*.local
+coverage
+.turbo
