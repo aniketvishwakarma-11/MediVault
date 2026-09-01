@@ -9,15 +9,30 @@
 !/backend/
 !/frontend/
 !/services/
-!/contracts/
 !/ocr-service/
-!/docker-compose.yml
 !/.gitignore
 !/README.md
 !/DEPLOYMENT_GUIDE.md
 
 # Documentation folder (kept local, ignored on GitHub)
 docs/
+
+# Local maintenance scripts, database dumps & tests (kept local, excluded from GitHub)
+backend/src/scripts/
+backend/src/tests/
+
+# Python test & benchmark scripts
+services/prescription-ai/test_*.py
+services/prescription-ai/quick_bench.py
+
+# Smart contracts, local docker configs & AI instruction markdown
+contracts/
+docker-compose.yml
+frontend/Dockerfile
+frontend/AGENTS.md
+frontend/CLAUDE.md
+frontend/README.md
+ocr-service/README.md
 
 # -------------------------------------------------------------
 # Operating System & IDE Files
