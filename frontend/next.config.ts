@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const isVercel = Boolean(process.env.VERCEL);
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  ...(isVercel ? {} : { output: 'standalone' }),
   async rewrites() {
     return [
       {
