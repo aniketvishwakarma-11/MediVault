@@ -4,18 +4,24 @@ import { logger } from '../utils/logger';
 
 const VAPID_PUBLIC_KEY =
   process.env.VAPID_PUBLIC_KEY ||
-  'BO_Ba9LTDjXh19w5e5cetxH3S37IDNEn0d6Zxu4clHNkMt20G6vXHqMpKRpG4rWAk0kmQpkss_ty3PeUykOWqiU';
+  'BAUdKHC89_8AHtt8Z5K-fjxdkWfChbd9gmFQWXZWnZfqIj-TSwQPLoqCs_DCY_dw4-f0aSxV3VwJw6k1sdQvdhY';
 
-const VAPID_PRIVATE_KEY =
-  process.env.VAPID_PRIVATE_KEY || 'OAtK6H3V1eimEzJdlaaYhx_qkeCXVepR9zcdoyWXRtM';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@medivault.health';
 
-try {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-  logger.info('[PushNotificationService] VAPID details configured successfully.');
-} catch (err) {
-  logger.error('[PushNotificationService] Failed to initialize VAPID details:', err);
+let isVapidConfigured = false;
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    isVapidConfigured = true;
+    logger.info('[PushNotificationService] VAPID details configured successfully.');
+  } catch (err) {
+    logger.error('[PushNotificationService] Failed to initialize VAPID details:', err);
+  }
+} else {
+  logger.warn('[PushNotificationService] VAPID_PRIVATE_KEY not set in environment. Push notification delivery is disabled.');
 }
 
 export interface PushPayload {
@@ -97,6 +103,11 @@ export class PushNotificationService {
 
       if (res.rows.length === 0) {
         logger.info(`[PushNotificationService] User ${userId} has no registered push subscriptions.`);
+        return { sent: 0, failed: 0 };
+      }
+
+      if (!isVapidConfigured) {
+        logger.warn('[PushNotificationService] VAPID details not configured. Recorded in-app notification only.');
         return { sent: 0, failed: 0 };
       }
 

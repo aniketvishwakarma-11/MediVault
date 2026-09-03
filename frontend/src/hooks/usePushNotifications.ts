@@ -18,7 +18,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 const DEFAULT_VAPID_PUBLIC_KEY =
-  "BO_Ba9LTDjXh19w5e5cetxH3S37IDNEn0d6Zxu4clHNkMt20G6vXHqMpKRpG4rWAk0kmQpkss_ty3PeUykOWqiU";
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+  "BAUdKHC89_8AHtt8Z5K-fjxdkWfChbd9gmFQWXZWnZfqIj-TSwQPLoqCs_DCY_dw4-f0aSxV3VwJw6k1sdQvdhY";
 
 export interface SubscribeResult {
   ok: boolean;
