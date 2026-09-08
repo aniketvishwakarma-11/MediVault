@@ -236,6 +236,18 @@ function PatientProfileContent() {
         }
       } else {
         setProfileData(initialData);
+        // Auto-enable edit mode if profile is incomplete or required
+        const isIncomplete =
+          !initialData.full_name || initialData.full_name === "Not provided" ||
+          !initialData.phone || initialData.phone === "Not provided" ||
+          !initialData.date_of_birth || initialData.date_of_birth === "Not provided" ||
+          !initialData.blood_group || initialData.blood_group === "Not provided" ||
+          !initialData.height || initialData.height === "Not provided" ||
+          !initialData.weight || initialData.weight === "Not provided";
+
+        if (isIncomplete || isRequired) {
+          setIsEditing(true);
+        }
       }
       setLoading(false);
     }
@@ -246,7 +258,7 @@ function PatientProfileContent() {
     return () => {
       isMounted = false;
     };
-  }, [user, userProfile, isDemo]);
+  }, [user, userProfile, isDemo, isRequired]);
 
   // Persist draft to sessionStorage whenever profileData changes in edit mode
   useEffect(() => {
@@ -262,6 +274,16 @@ function PatientProfileContent() {
     setErrorMsg(null);
 
     try {
+      if (isDemo) {
+        setDbData(profileData);
+        sessionStorage.removeItem(draftKey);
+        setHasDraft(false);
+        setSuccessMsg("Demo patient profile updated successfully!");
+        setIsEditing(false);
+        setSaving(false);
+        return;
+      }
+
       if (!user) {
         throw new Error("User session not found. Please log in again.");
       }
@@ -418,14 +440,24 @@ function PatientProfileContent() {
       {/* Profile Completion Alert Banner */}
       {isRequired && (
         <div className="p-4 sm:p-5 rounded-3xl bg-amber-50 border border-amber-200 text-amber-900 text-xs shadow-xs space-y-3">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h4 className="font-extrabold text-amber-950 text-sm">Action Required: Complete Patient Medical Identity</h4>
-              <p className="text-amber-800 text-xs">
-                To protect patient privacy and enable emergency medical response, please fill in your Full Name, Phone Number, Date of Birth, Blood Group, Height, and Weight below. (Emergency Contact, Allergies & Chronic Conditions are optional).
-              </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h4 className="font-extrabold text-amber-950 text-sm">Action Required: Complete Patient Medical Identity</h4>
+                <p className="text-amber-800 text-xs">
+                  To protect patient privacy and enable emergency medical response, please fill in your Full Name, Phone Number, Date of Birth, Blood Group, Height, and Weight below. (Emergency Contact, Allergies & Chronic Conditions are optional).
+                </p>
+              </div>
             </div>
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Enter Details Now
+              </button>
+            )}
           </div>
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-[11px] font-bold">
@@ -476,7 +508,11 @@ function PatientProfileContent() {
               else setIsEditing(true);
             }}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md shadow-sky-600/20 transition-all"
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs shadow-md transition-all ${
+              isEditing
+                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                : "bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/20 animate-pulse"
+            }`}
           >
             {isEditing ? (
               <>
@@ -525,21 +561,33 @@ function PatientProfileContent() {
               {isEditing ? (
                 <input
                   type="text"
-                  placeholder="e.g. Aniket Vishwakarma"
+                  placeholder="e.g. Bharat Gogurla"
                   value={profileData.full_name}
                   onChange={(e) => setProfileData({ ...profileData, full_name: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               ) : (
-                <div className="p-2.5 bg-slate-50 rounded-xl font-bold text-slate-900">{profileData.full_name}</div>
+                <div
+                  onClick={() => setIsEditing(true)}
+                  className="p-2.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/70 hover:border-sky-300 rounded-xl font-bold text-slate-900 cursor-pointer transition-all flex items-center justify-between group"
+                  title="Click to edit Full Name"
+                >
+                  <span>{profileData.full_name || "Not provided"}</span>
+                  <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
+                </div>
               )}
             </div>
 
             <div className="space-y-1">
               <label className="font-semibold text-slate-500">Email Address</label>
-              <div className="p-2.5 bg-slate-50 rounded-xl font-bold text-slate-700 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-slate-400" />
-                <span>{profileData.email}</span>
+              <div className="p-2.5 bg-slate-50 border border-slate-200/50 rounded-xl font-bold text-slate-700 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-slate-400" />
+                  <span>{profileData.email}</span>
+                </div>
+                <span title="Email is tied to your account">
+                  <Lock className="w-3.5 h-3.5 text-slate-300" />
+                </span>
               </div>
             </div>
 
@@ -559,9 +607,16 @@ function PatientProfileContent() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               ) : (
-                <div className="p-2.5 bg-slate-50 rounded-xl font-bold text-slate-900 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-slate-400" />
-                  <span>{profileData.phone}</span>
+                <div
+                  onClick={() => setIsEditing(true)}
+                  className="p-2.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/70 hover:border-sky-300 rounded-xl font-bold text-slate-900 flex items-center justify-between cursor-pointer transition-all group"
+                  title="Click to edit Phone Number"
+                >
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <span>{profileData.phone || "Not provided"}</span>
+                  </div>
+                  <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
                 </div>
               )}
             </div>
@@ -593,7 +648,14 @@ function PatientProfileContent() {
                     ))}
                   </select>
                 ) : (
-                  <div className="p-2.5 bg-teal-50 text-teal-900 rounded-xl font-extrabold border border-teal-200">{profileData.blood_group}</div>
+                  <div
+                    onClick={() => setIsEditing(true)}
+                    className="p-2.5 bg-teal-50 text-teal-900 hover:bg-teal-100/80 border border-teal-200 rounded-xl font-extrabold cursor-pointer transition-all flex items-center justify-between group"
+                    title="Click to edit Blood Group"
+                  >
+                    <span>{profileData.blood_group || "Not provided"}</span>
+                    <Edit3 className="w-3.5 h-3.5 text-teal-600 group-hover:text-teal-800 transition-colors" />
+                  </div>
                 )}
               </div>
 
@@ -611,7 +673,14 @@ function PatientProfileContent() {
                     ))}
                   </select>
                 ) : (
-                  <div className="p-2.5 bg-slate-50 rounded-xl font-bold text-slate-900">{profileData.gender}</div>
+                  <div
+                    onClick={() => setIsEditing(true)}
+                    className="p-2.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/70 hover:border-sky-300 rounded-xl font-bold text-slate-900 cursor-pointer transition-all flex items-center justify-between group"
+                    title="Click to edit Gender"
+                  >
+                    <span>{profileData.gender}</span>
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
+                  </div>
                 )}
               </div>
             </div>
@@ -626,9 +695,16 @@ function PatientProfileContent() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               ) : (
-                <div className="p-2.5 bg-slate-50 rounded-xl font-bold text-slate-900 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-400" />
-                  <span>{profileData.date_of_birth}</span>
+                <div
+                  onClick={() => setIsEditing(true)}
+                  className="p-2.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/70 hover:border-sky-300 rounded-xl font-bold text-slate-900 flex items-center justify-between cursor-pointer transition-all group"
+                  title="Click to edit Date of Birth"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <span>{profileData.date_of_birth}</span>
+                  </div>
+                  <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
                 </div>
               )}
             </div>
@@ -652,9 +728,16 @@ function PatientProfileContent() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               ) : (
-                <div className="p-2.5 bg-rose-50 text-rose-900 rounded-xl font-bold border border-rose-200 flex items-center gap-2">
-                  <PhoneCall className="w-4 h-4 text-rose-600" />
-                  <span>{profileData.emergency_contact || "Not provided (Optional)"}</span>
+                <div
+                  onClick={() => setIsEditing(true)}
+                  className="p-2.5 bg-rose-50 text-rose-900 hover:bg-rose-100/80 rounded-xl font-bold border border-rose-200 flex items-center justify-between cursor-pointer transition-all group"
+                  title="Click to edit Emergency Contact"
+                >
+                  <div className="flex items-center gap-2">
+                    <PhoneCall className="w-4 h-4 text-rose-600" />
+                    <span>{profileData.emergency_contact || "Not provided (Optional)"}</span>
+                  </div>
+                  <Edit3 className="w-3.5 h-3.5 text-rose-600 group-hover:text-rose-800 transition-colors" />
                 </div>
               )}
             </div>
@@ -704,8 +787,13 @@ function PatientProfileContent() {
                     </select>
                   </div>
                 ) : (
-                  <div className="p-2.5 bg-slate-50 rounded-xl font-bold text-slate-900">
-                    {profileData.height ? `${profileData.height} ${profileData.height_unit || "cm"}` : "Not provided"}
+                  <div
+                    onClick={() => setIsEditing(true)}
+                    className="p-2.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/70 hover:border-sky-300 rounded-xl font-bold text-slate-900 cursor-pointer transition-all flex items-center justify-between group"
+                    title="Click to edit Height"
+                  >
+                    <span>{profileData.height ? `${profileData.height} ${profileData.height_unit || "cm"}` : "Not provided"}</span>
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
                   </div>
                 )}
               </div>
@@ -735,8 +823,13 @@ function PatientProfileContent() {
                     </select>
                   </div>
                 ) : (
-                  <div className="p-2.5 bg-slate-50 rounded-xl font-bold text-slate-900">
-                    {profileData.weight ? `${profileData.weight} ${profileData.weight_unit || "kg"}` : "Not provided"}
+                  <div
+                    onClick={() => setIsEditing(true)}
+                    className="p-2.5 bg-slate-50 hover:bg-sky-50/60 border border-slate-200/70 hover:border-sky-300 rounded-xl font-bold text-slate-900 cursor-pointer transition-all flex items-center justify-between group"
+                    title="Click to edit Weight"
+                  >
+                    <span>{profileData.weight ? `${profileData.weight} ${profileData.weight_unit || "kg"}` : "Not provided"}</span>
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors" />
                   </div>
                 )}
               </div>
@@ -756,8 +849,13 @@ function PatientProfileContent() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               ) : (
-                <div className="p-2.5 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl font-bold">
-                  {profileData.allergies || "No known allergies listed"}
+                <div
+                  onClick={() => setIsEditing(true)}
+                  className="p-2.5 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 rounded-xl font-bold text-amber-900 cursor-pointer transition-all flex items-center justify-between group"
+                  title="Click to edit Known Allergies"
+                >
+                  <span>{profileData.allergies || "No known allergies listed"}</span>
+                  <Edit3 className="w-3.5 h-3.5 text-amber-600 group-hover:text-amber-800 transition-colors" />
                 </div>
               )}
             </div>
@@ -779,8 +877,13 @@ function PatientProfileContent() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"
                 />
               ) : (
-                <div className="p-3 bg-purple-50 text-purple-950 border border-purple-200 rounded-xl font-bold min-h-[96px]">
-                  {profileData.chronic_conditions || "No chronic conditions reported"}
+                <div
+                  onClick={() => setIsEditing(true)}
+                  className="p-3 bg-purple-50 hover:bg-purple-100/80 border border-purple-200 rounded-xl font-bold text-purple-950 min-h-[96px] cursor-pointer transition-all flex items-start justify-between group"
+                  title="Click to edit Chronic Conditions"
+                >
+                  <span>{profileData.chronic_conditions || "No chronic conditions reported"}</span>
+                  <Edit3 className="w-3.5 h-3.5 text-purple-600 group-hover:text-purple-800 transition-colors shrink-0 mt-0.5" />
                 </div>
               )}
             </div>
