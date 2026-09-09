@@ -138,10 +138,20 @@ export class PrescriptionController {
     try {
       const id = String(req.params.id);
       const { pharmacy_name, pharmacist_name, pharmacist_license, is_full } = req.body;
+
+      if (!pharmacist_license || String(pharmacist_license).trim().length < 3) {
+        sendError(res, 400, 'Valid pharmacist license registration is required for medication dispensation.');
+        return;
+      }
+      if (!pharmacy_name || String(pharmacy_name).trim().length < 2) {
+        sendError(res, 400, 'Pharmacy facility name is required for legal dispensation record.');
+        return;
+      }
+
       const result = await PrescriptionService.dispensePrescription(id, {
-        pharmacy_name: pharmacy_name || 'Community Pharmacy Partner',
-        pharmacist_name,
-        pharmacist_license,
+        pharmacy_name: String(pharmacy_name).trim(),
+        pharmacist_name: pharmacist_name ? String(pharmacist_name).trim() : 'Licensed Pharmacist',
+        pharmacist_license: String(pharmacist_license).trim(),
         is_full: is_full !== false,
       });
       sendSuccess(res, 200, result, 'Prescription marked as dispensed.');

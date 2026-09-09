@@ -85,24 +85,7 @@ export const authenticateJWT = async (
       }
     }
 
-    // 4. Resilient Fallback: Decode token & check valid expiration and claims
-    if (!verified) {
-      try {
-        const unverified = jwt.decode(token);
-        if (unverified && typeof unverified === 'object') {
-          const isNotExpired = unverified.exp ? unverified.exp * 1000 > Date.now() : false;
-          const hasIdentity = Boolean(unverified.sub || unverified.id);
-          const isSupabaseToken = unverified.iss && String(unverified.iss).includes('supabase');
-
-          if (isNotExpired && hasIdentity && (isSupabaseToken || process.env.NODE_ENV !== 'production')) {
-            decoded = unverified;
-            verified = true;
-            logger.info(`[Auth Middleware] Authenticated session token for user: ${unverified.sub || unverified.id}`);
-          }
-        }
-      } catch (decErr) {}
-    }
-
+    // Strict verification required: do NOT decode unverified tokens
     if (!verified || !decoded || typeof decoded !== 'object') {
       return sendError(res, 401, 'Invalid, untrusted, or forged authentication token signature.');
     }
@@ -159,27 +142,9 @@ export const authenticateJWT = async (
       }
     }
 
-    // 4. Fallback to client request headers (only if not found in profile)
+    // 4. Default to 'patient' role if identity has no assigned profile role or token role
     if (!roleFoundInProfile) {
-      const headerRole = (req.headers['x-user-role'] || req.headers['x-role'] || req.headers['role']) as string;
-      if (headerRole) {
-        const hRole = headerRole.toLowerCase().trim();
-        if (hRole === 'doctor' || hRole === 'admin' || hRole === 'patient') {
-          role = hRole;
-        }
-      }
-    }
-
-    // 5. If role is verified doctor, ensure doctors table record exists
-    if (role === 'doctor') {
-      try {
-        await query(
-          `INSERT INTO public.doctors (user_id, license_number, specialization, hospital_name, hospital_affiliation, verification_status)
-           VALUES ($1, $2, 'General Physician', 'MediVault EMR', 'MediVault EMR', 'VERIFIED')
-           ON CONFLICT (user_id) DO NOTHING`,
-          [userId, `DOC-${userId.substring(0, 8).toUpperCase()}`]
-        ).catch(() => {});
-      } catch {}
+      role = 'patient';
     }
 
     let patientId = decoded.patient_id;
@@ -280,9 +245,8 @@ export const validatePatientAccess = async (
         return next();
       }
     } catch (err: any) {
-      if (isConnectionError(err)) {
-        return next();
-      }
+      logger.error('[validatePatientAccess] Database error verifying patient ownership:', err);
+      return sendError(res, 503, 'Authorization service temporarily unavailable. Access denied.');
     }
     return sendError(res, 403, 'Forbidden. You do not have permission to access medical documents for another patient.');
   }
@@ -329,9 +293,8 @@ export const validatePatientAccess = async (
         return next();
       }
     } catch (err: any) {
-      if (isConnectionError(err)) {
-        return next();
-      }
+      logger.error('[validatePatientAccess] Database error verifying consent/emergency session:', err);
+      return sendError(res, 503, 'Authorization service temporarily unavailable. Access denied.');
     }
 
     return sendError(

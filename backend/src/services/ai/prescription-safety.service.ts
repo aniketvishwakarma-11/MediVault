@@ -33,6 +33,23 @@ export class PrescriptionSafetyService {
     // 1. Fetch patient's active allergies, past medications, and latest labs
     const patientContext = await this.getPatientClinicalContext(patientId);
 
+    if (patientContext.history_unavailable) {
+      return {
+        is_safe: false,
+        overall_risk: 'MODERATE',
+        alerts: [
+          {
+            severity: 'MAJOR',
+            category: 'ALLERGY_CONFLICT',
+            title: 'Patient Clinical History Unavailable',
+            description: 'Unable to query patient clinical history, allergies, and existing medications from the database.',
+            management_advice: 'Manually verify patient allergies and active medications prior to issuing this prescription.',
+          },
+        ],
+        checked_medications: candidateMedicines.map((m) => m.name),
+      };
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey && !apiKey.includes('placeholder')) {
       const modelCandidates = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
@@ -103,6 +120,7 @@ Return STRICT JSON matching this schema:
     allergies: string[];
     active_medications: string[];
     recent_labs: Array<{ test: string; value: string; unit: string; status: string }>;
+    history_unavailable?: boolean;
   }> {
     try {
       // Fetch allergies & recent lab results from ai_analyses / clinical_events
@@ -137,22 +155,34 @@ Return STRICT JSON matching this schema:
         }
       }
 
+      // Query real active medications from prescriptions table if available
+      const activeMeds: string[] = [];
+      try {
+        const medRes = await query(
+          `SELECT i.drug_name, i.strength 
+           FROM public.prescription_items i
+           JOIN public.prescriptions p ON i.prescription_id = p.id
+           WHERE (p.patient_id::text = $1 OR p.patient_id IN (SELECT id FROM public.patients WHERE user_id::text = $1 OR id::text = $1))
+             AND p.status = 'ACTIVE' LIMIT 10`,
+          [patientId]
+        );
+        for (const m of medRes.rows) {
+          activeMeds.push(`${m.drug_name} ${m.strength || ''}`.trim());
+        }
+      } catch {}
+
       return {
         allergies: Array.from(allergies),
-        active_medications: ['Metformin 500mg', 'Atorvastatin 10mg'],
+        active_medications: activeMeds,
         recent_labs: recent_labs.slice(0, 8),
       };
     } catch (err: any) {
-      if (!isConnectionError(err)) {
-        logger.warn('[PrescriptionSafetyService.getPatientClinicalContext] DB warning:', err.message || err);
-      }
+      logger.error('[PrescriptionSafetyService.getPatientClinicalContext] DB error loading patient history:', err.message || err);
       return {
-        allergies: ['Penicillin'],
-        active_medications: ['Metformin 500mg'],
-        recent_labs: [
-          { test: 'eGFR', value: '78', unit: 'mL/min/1.73m²', status: 'NORMAL' },
-          { test: 'HbA1c', value: '8.2', unit: '%', status: 'HIGH' },
-        ],
+        allergies: [],
+        active_medications: [],
+        recent_labs: [],
+        history_unavailable: true,
       };
     }
   }

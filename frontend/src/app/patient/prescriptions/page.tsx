@@ -131,7 +131,12 @@ export default function PatientPrescriptionsPage() {
   const pollJobStatus = useCallback(async () => {
     if (!uploadJob?.jobId) return;
     try {
-      const res = await fetch(`/api/prescriptions/upload-job/${uploadJob.jobId}`);
+      const authHeaders: Record<string, string> = authToken
+        ? { Authorization: `Bearer ${authToken}` }
+        : {};
+      const res = await fetch(`/api/prescriptions/upload-job/${uploadJob.jobId}`, {
+        headers: authHeaders,
+      });
       if (!res.ok) return;
       const data = await res.json();
       const job = data.data;
@@ -140,7 +145,9 @@ export default function PatientPrescriptionsPage() {
 
       if (job.status === "NEEDS_REVIEW" || job.status === "VERIFIED") {
         // Fetch full analysis
-        const analysisRes = await fetch(`/api/prescriptions/ocr/${uploadJob.jobId}/analysis`);
+        const analysisRes = await fetch(`/api/prescriptions/ocr/${uploadJob.jobId}/analysis`, {
+          headers: authHeaders,
+        });
         if (analysisRes.ok) {
           const analysisData = await analysisRes.json();
           setFullAnalysis(analysisData.data);
@@ -150,7 +157,7 @@ export default function PatientPrescriptionsPage() {
         // Stay in polling stage to show error
       }
     } catch {}
-  }, [uploadJob]);
+  }, [uploadJob, authToken]);
 
   useEffect(() => {
     if (offlineStage !== "polling" || !uploadJob?.jobId) return;
@@ -331,9 +338,14 @@ export default function PatientPrescriptionsPage() {
     setDoseSlots(updated);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
       const res = await fetch("/api/prescriptions/adherence/log", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           item_id: dose.item_id,
           slot: updated[slotIdx].slot,
@@ -407,9 +419,14 @@ export default function PatientPrescriptionsPage() {
     e.preventDefault();
     if (!refillModalRx) return;
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || (typeof window !== "undefined" ? (localStorage.getItem("medivault_auth_token") || localStorage.getItem("medivault_demo_jwt")) : undefined);
       const res = await fetch("/api/prescriptions/refill/request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           prescription_id: refillModalRx.id,
           notes: refillNotes,

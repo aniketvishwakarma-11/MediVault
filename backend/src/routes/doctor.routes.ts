@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { DoctorController } from '../controllers/doctor.controller';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT, authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
-// Apply auth middleware to doctor routes
+// Apply auth and doctor/admin role enforcement to all doctor routes
 router.use(authenticateJWT);
+router.use(authorizeRoles('doctor', 'admin'));
 
 // Doctor Profile
 router.get('/profile', DoctorController.getProfile);
