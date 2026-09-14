@@ -75,8 +75,8 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Auth Action Buttons */}
-          <div className="hidden md:flex items-center gap-2.5">
+          {/* Desktop Navigation */}
+          <nav aria-label="Main Navigation" className="hidden md:flex items-center gap-2.5">
             <Link
               href="/verify"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-[#0891B2] hover:bg-cyan-50/60 border border-transparent hover:border-cyan-200 transition-colors"
@@ -120,7 +120,7 @@ export default function Navbar() {
                 </Link>
               </>
             )}
-          </div>
+          </nav>
 
           {/* Mobile Hamburger Toggle Button */}
           <div className="flex md:hidden items-center gap-2">
@@ -137,7 +137,7 @@ export default function Navbar() {
 
         {/* Mobile Slide-Down Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 flex flex-col gap-3 animate-in slide-in-from-top duration-200 shadow-xl">
+          <nav aria-label="Mobile Navigation" className="md:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 flex flex-col gap-3 animate-in slide-in-from-top duration-200 shadow-xl">
             {userProfile ? (
               <div className="space-y-3">
                 {/* User Profile Card */}
@@ -269,7 +269,7 @@ export default function Navbar() {
                 </Link>
               </div>
             )}
-          </div>
+          </nav>
         )}
       </header>
     </>

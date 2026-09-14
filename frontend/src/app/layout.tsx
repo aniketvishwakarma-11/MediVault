@@ -24,11 +24,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "MediVault Chain AI — Digital Health Identity & Medical Records Vault",
+    default: "MediVault — Patient-Owned Digital Health Records & AI Vault",
     template: "%s | MediVault Chain AI",
   },
   description:
-    "Secure, patient-owned digital health vault. Store medical records, scan prescriptions with AI OCR, generate emergency medical QR passes, and ensure data integrity with blockchain verification.",
+    "Secure digital health vault with AI prescription OCR, emergency trauma QR passes, and tamper-proof medical records notarized on Polygon blockchain.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -74,19 +74,27 @@ export const metadata: Metadata = {
     canonical: APP_URL,
   },
   openGraph: {
-    title: "MediVault Chain AI — Digital Health Identity & Medical Records Vault",
+    title: "MediVault — Patient-Owned Digital Health Records & AI Vault",
     description:
-      "Patient-owned electronic medical records, AI prescription scanner, and emergency medical QR pass secured with cryptographic blockchain proofs.",
+      "Secure digital health vault with AI prescription OCR, emergency trauma QR passes, and tamper-proof medical records notarized on Polygon blockchain.",
     url: APP_URL,
     siteName: "MediVault Chain AI",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: `${APP_URL}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: "MediVault Chain AI — Sovereign Digital Health Identity",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MediVault Chain AI — Digital Health Identity Platform",
+    title: "MediVault — Patient-Owned Digital Health Records & AI Vault",
     description:
-      "Patient-owned medical records with AI prescription scanning and emergency break-glass QR access.",
+      "Secure digital health vault with AI prescription OCR, emergency trauma QR passes, and tamper-proof medical records notarized on Polygon blockchain.",
     creator: "@medivault",
     images: [`${APP_URL}/opengraph-image`],
   },
@@ -119,6 +127,9 @@ const jsonLd = {
       "description":
         "AI-powered, blockchain-enabled Digital Health Identity Platform for secure medical records management and emergency medical passes.",
       "url": APP_URL,
+      "screenshot": `${APP_URL}/opengraph-image`,
+      "featureList":
+        "AI Handwritten Prescription Scanner, Emergency Trauma QR Pass, 14-Digit ABHA ID Sync, Polygon Blockchain Notarization, Client-Side AES-256 Encryption, Longitudinal Clinical Timeline",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -151,11 +162,31 @@ const jsonLd = {
       ],
     },
     {
+      "@type": "BreadcrumbList",
+      "@id": `${APP_URL}/#breadcrumb`,
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": APP_URL
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Public Verification Hub",
+          "item": `${APP_URL}/verify`
+        }
+      ]
+    },
+    {
       "@type": "WebPage",
       "@id": `${APP_URL}/#webpage`,
       "url": APP_URL,
-      "name": "MediVault Chain AI — Digital Health Identity Platform",
+      "name": "MediVault — Patient-Owned Digital Health Records & AI Vault",
       "description": "Patient-owned electronic medical records, AI prescription scanner, and emergency medical QR pass secured with cryptographic blockchain proofs.",
+      "datePublished": "2026-08-01T00:00:00Z",
+      "dateModified": "2026-09-15T00:00:00Z",
       "speakable": {
         "@type": "SpeakableSpecification",
         "cssSelector": [".seo-answer-snippet", ".seo-faq-question", ".seo-faq-answer"]
@@ -166,6 +197,13 @@ const jsonLd = {
       "@id": `${APP_URL}/#howto-prescription`,
       "name": "How to Scan & Digitize Handwritten Doctor Prescriptions with AI",
       "description": "Digitize paper prescriptions, extract clinical dosages, and compare generic medicine costs using MediVault's multimodal AI OCR.",
+      "image": `${APP_URL}/opengraph-image`,
+      "totalTime": "PT2M",
+      "estimatedCost": {
+        "@type": "MonetaryAmount",
+        "currency": "INR",
+        "value": "0"
+      },
       "step": [
         {
           "@type": "HowToStep",
@@ -189,6 +227,13 @@ const jsonLd = {
       "@id": `${APP_URL}/#howto-emergency`,
       "name": "How to Set Up an Emergency Medical QR Pass",
       "description": "Create an offline-compatible emergency medical QR pass for first responders during trauma and unconsciousness.",
+      "image": `${APP_URL}/opengraph-image`,
+      "totalTime": "PT3M",
+      "estimatedCost": {
+        "@type": "MonetaryAmount",
+        "currency": "INR",
+        "value": "0"
+      },
       "step": [
         {
           "@type": "HowToStep",
@@ -210,9 +255,11 @@ const jsonLd = {
     {
       "@type": "FAQPage",
       "@id": `${APP_URL}/#faq`,
+      "description": "Frequently asked questions regarding MediVault digital health vault, encryption, ABHA ID integration, and emergency passes.",
       "mainEntity": FAQS.map((faq) => ({
         "@type": "Question",
         "name": faq.question,
+        "dateCreated": "2026-08-01T00:00:00Z",
         "acceptedAnswer": {
           "@type": "Answer",
           "text": faq.answer,
@@ -233,6 +280,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
+        {/* Accessible Skip to Content Link */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-cyan-700 focus:text-white focus:rounded-xl focus:shadow-xl focus:font-bold focus:text-xs focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all"
+        >
+          Skip to main content
+        </a>
         <AuthProvider>
           <ToastProvider>
             <ErrorModalProvider>

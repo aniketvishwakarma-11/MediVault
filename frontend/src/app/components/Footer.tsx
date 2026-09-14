@@ -38,9 +38,9 @@ export default function Footer() {
 
           {/* Navigation Column 1: Portals */}
           <div className="md:col-span-2 space-y-3">
-            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
               Portals
-            </h4>
+            </h3>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/auth" className="hover:text-white transition-colors py-1 inline-flex items-center gap-1">
@@ -67,9 +67,9 @@ export default function Footer() {
 
           {/* Navigation Column 2: Clinical Features */}
           <div className="md:col-span-3 space-y-3">
-            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
               Clinical Features
-            </h4>
+            </h3>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/#abha" className="hover:text-white transition-colors py-1 inline-block">
@@ -106,9 +106,9 @@ export default function Footer() {
 
           {/* Navigation Column 3: Trust & Compliance */}
           <div className="md:col-span-2 space-y-3">
-            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
               Trust &amp; Legal
-            </h4>
+            </h3>
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/privacy" className="hover:text-white transition-colors py-1 inline-block">

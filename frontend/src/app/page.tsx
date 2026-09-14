@@ -129,7 +129,10 @@ function AbhaDemoCard() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80"
-                    alt="Citizen Photo"
+                    alt="Citizen Photo for ABHA ID Card Verification"
+                    width={56}
+                    height={64}
+                    loading="lazy"
                     className="w-14 h-16 rounded-xl object-cover border-2 border-slate-200 bg-slate-100 shadow-2xs"
                   />
                   <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-xs">
@@ -628,7 +631,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-900">
       <Navbar />
-      <main className="flex-1 pt-16">
+      <main id="main-content" className="flex-1 pt-16">
 
         {/* ══════════════════════════════════════════════════════
             HERO SECTION — High Impact Clinical OS Preview
@@ -659,12 +662,12 @@ export default function Home() {
                   <span>Web3 Sovereign Health Vault · Polygon Blockchain Notarized · ABDM Integrated</span>
                 </motion.div>
 
-                {/* Main Headline */}
+                {/* Main Headline (Aligned with Title Tag for SEO) */}
                 <motion.h1
                   variants={fadeUp}
                   className="text-3xl sm:text-5xl lg:text-[3.25rem] font-black text-slate-900 leading-[1.12] tracking-tight"
                 >
-                  Your Complete Health History.{" "}
+                  Your Sovereign Digital Health Vault.{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-700 via-sky-600 to-emerald-600">
                     Blockchain Verified.
                   </span>{" "}
@@ -678,6 +681,20 @@ export default function Home() {
                 >
                   MediVault unifies 14-digit ABHA IDs, DigiLocker records, AI handwritten prescription scanning, and Polygon blockchain notarization into a zero-knowledge, tamper-proof medical vault.
                 </motion.p>
+
+                {/* Top Summary / Key Takeaway for AEO & GEO Extractability */}
+                <motion.div
+                  variants={fadeUp}
+                  className="seo-answer-snippet p-4 rounded-2xl bg-cyan-50/80 border border-cyan-200/80 text-xs sm:text-sm text-slate-800 space-y-1.5 shadow-2xs text-left"
+                >
+                  <div className="flex items-center gap-1.5 font-bold text-cyan-900 text-[11px] uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
+                    <span>Key Takeaways: What Is MediVault?</span>
+                  </div>
+                  <p className="leading-relaxed text-slate-700 text-xs sm:text-[13px]">
+                    <strong>MediVault is a patient-owned digital health vault</strong> that unifies 14-digit government ABHA IDs, AI-powered handwritten prescription OCR, and Polygon blockchain notarization into an encrypted clinical locker. Patients maintain zero-knowledge ownership of medical history, grant time-bound consent to doctors, and provide first responders with emergency trauma QR passes without requiring crypto wallets or transaction gas fees.
+                  </p>
+                </motion.div>
 
                 {/* High-Intent CTAs */}
                 <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2">
@@ -940,6 +957,110 @@ export default function Home() {
                 </div>
               </div>
 
+            </div>
+
+            {/* Semantic Architectural Comparison Table for Structured Data & Featured Snippets */}
+            <div className="mt-12 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
+              <table className="w-full text-left border-collapse text-xs">
+                <caption className="sr-only">
+                  Comparison between Legacy Hospital Portals, Generic Web3 Projects, and MediVault
+                </caption>
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                    <th scope="col" className="p-3.5 sm:p-4">Architectural Feature</th>
+                    <th scope="col" className="p-3.5 sm:p-4 text-slate-500">Legacy Hospital Portals</th>
+                    <th scope="col" className="p-3.5 sm:p-4 text-amber-800">Generic Web3 Projects</th>
+                    <th scope="col" className="p-3.5 sm:p-4 bg-emerald-50/80 text-emerald-950 font-black">MediVault Healthcare 4.0</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  <tr className="hover:bg-slate-50/50 transition-colors">
+                    <th scope="row" className="p-3.5 sm:p-4 font-semibold text-slate-900">Patient Data Sovereignty</th>
+                    <td className="p-3.5 sm:p-4 text-slate-600">Siloed in closed hospital database servers</td>
+                    <td className="p-3.5 sm:p-4 text-slate-600">Public IPFS hashes with privacy leakage</td>
+                    <td className="p-3.5 sm:p-4 bg-emerald-50/30 text-emerald-900 font-bold">Zero-knowledge client-side AES-256 custody</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
+                    <th scope="row" className="p-3.5 sm:p-4 font-semibold text-slate-900">Tamper-Proof Audit Trail</th>
+                    <td className="p-3.5 sm:p-4 text-slate-600">Malleable SQL logs alterable by system admins</td>
+                    <td className="p-3.5 sm:p-4 text-slate-600">Blockchain anchored but cost-prohibitive</td>
+                    <td className="p-3.5 sm:p-4 bg-emerald-50/30 text-emerald-900 font-bold">
+                      Anchored on{" "}
+                      <a
+                        href="https://amoy.polygonscan.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-emerald-700"
+                      >
+                        Polygon Amoy POS
+                      </a>{" "}
+                      with zero user gas fees
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
+                    <th scope="row" className="p-3.5 sm:p-4 font-semibold text-slate-900">Emergency Trauma Access</th>
+                    <td className="p-3.5 sm:p-4 text-slate-600">Requires password login or EHR interoperability</td>
+                    <td className="p-3.5 sm:p-4 text-slate-600">Fails when patient is unconscious</td>
+                    <td className="p-3.5 sm:p-4 bg-emerald-50/30 text-emerald-900 font-bold">Offline-compatible break-glass emergency QR pass</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
+                    <th scope="row" className="p-3.5 sm:p-4 font-semibold text-slate-900">National Health ID Sync</th>
+                    <td className="p-3.5 sm:p-4 text-slate-600">Hospital specific or unlinked</td>
+                    <td className="p-3.5 sm:p-4 text-slate-600">No compliance with national health standards</td>
+                    <td className="p-3.5 sm:p-4 bg-emerald-50/30 text-emerald-900 font-bold">
+                      Official{" "}
+                      <a
+                        href="https://abdm.gov.in/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-emerald-700"
+                      >
+                        NHA ABDM
+                      </a>{" "}
+                      14-digit ABHA &amp; DigiLocker bridge
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50 transition-colors">
+                    <th scope="row" className="p-3.5 sm:p-4 font-semibold text-slate-900">Multimodal AI Intelligence</th>
+                    <td className="p-3.5 sm:p-4 text-slate-600">None or basic rule-based templates</td>
+                    <td className="p-3.5 sm:p-4 text-slate-600">None (raw file storage only)</td>
+                    <td className="p-3.5 sm:p-4 bg-emerald-50/30 text-emerald-900 font-bold">TrOCR neural network + Google Gemini 1.5 Clinical</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Semantic Definition Lists for AEO (Direct Answers) */}
+            <div className="mt-12 pt-8 border-t border-slate-200">
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 mb-4 font-mono">
+                Key Healthcare Concepts Defined (Plain Language Glossary)
+              </h3>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                  <dt className="font-bold text-slate-900 text-sm">A Digital Health Vault is...</dt>
+                  <dd className="text-slate-600 leading-relaxed">
+                    A patient-controlled cloud repository that stores lifelong medical records, diagnostic lab tests, and digital prescriptions with client-side encryption, ensuring only authorized caregivers access clinical data.
+                  </dd>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                  <dt className="font-bold text-slate-900 text-sm">Emergency Break-Glass Access refers to...</dt>
+                  <dd className="text-slate-600 leading-relaxed">
+                    A statutory protocol allowing verified paramedics and trauma doctors to bypass login and view critical blood group, allergy, and emergency contacts during unconscious trauma triage with full audit logging.
+                  </dd>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                  <dt className="font-bold text-slate-900 text-sm">Blockchain Notarization in Healthcare is...</dt>
+                  <dd className="text-slate-600 leading-relaxed">
+                    The cryptographic recording of a medical document&apos;s SHA-256 fingerprint onto a decentralized ledger like Polygon to prove record authenticity and prevent backdating without storing unencrypted personal data on-chain.
+                  </dd>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                  <dt className="font-bold text-slate-900 text-sm">An ABHA Health ID is...</dt>
+                  <dd className="text-slate-600 leading-relaxed">
+                    A unique 14-digit national identifier created under the Ayushman Bharat Digital Mission (ABDM) by the National Health Authority of India to enable seamless electronic health record exchange across healthcare providers.
+                  </dd>
+                </div>
+              </dl>
             </div>
           </div>
         </section>
