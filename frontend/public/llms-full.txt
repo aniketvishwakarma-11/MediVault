@@ -1,0 +1,69 @@
+# MediVault Chain AI — Comprehensive Technical Specification
+
+> Sovereign Digital Health Identity, AI Clinical Decision Support, and Blockchain Notarization Platform.
+
+## 1. Overview & Vision
+MediVault is an open-standard, patient-sovereign Electronic Medical Record (EMR) and Personal Health Record (PHR) operating system. It addresses three structural vulnerabilities in modern healthcare:
+1. **Data Fragmentation**: Medical records scattered across disconnected clinics, paper slips, and hospital silos.
+2. **Medical Error & Adverse Drug Interactions**: Unscreened prescriptions leading to dangerous drug-drug conflicts or incorrect dosages.
+3. **Trauma Information Gap**: Unconscious patients arriving at emergency rooms with no accessible records of blood type, critical allergies, or medical implants.
+
+## 2. Regulatory & Legal Compliance Framework
+
+### Digital Personal Data Protection Act (DPDPA 2023, India)
+- **Section 12 (Right to Erasure)**: MediVault executes statutory erasure by de-identifying personal identifiers (`full_name` to 'De-identified Patient', emails to anonymized format, and clearing KYC/ABHA data) while preserving clinical integrity for statutory retention.
+- **Section 17(2)(b) (Statutory Retention)**: Preserves clinical medication orders and audit trails in compliance with Medical Council of India (MCI) Ethics Regulations 2002 (3-year record retention) and NDPS Act rules.
+
+### HIPAA (Health Insurance Portability and Accountability Act, USA)
+- **45 CFR § 164.530(j)**: Medical record retention standards and document modification audit trails.
+- **45 CFR § 164.312**: Technical safeguards, AES-GCM-256 encryption at rest and in transit, automatic emergency session timeouts, and role-based access control.
+
+### CERT-In Cybersecurity Directions (2022)
+- **180-Day Tamper-Evident Audit Logging**: All user logins, document uploads, consent grants, revocations, and emergency break-glass sessions are logged with UTC timestamps, client IP hashes, actor IDs, and cryptographic hashes.
+
+### Ayushman Bharat Digital Mission (ABDM, National Health Authority)
+- Seamless 14-digit ABHA ID integration.
+- Supports Health Information Provider (HIP) and Health Information User (HIU) consent flow schemas.
+
+## 3. Cryptography & Blockchain Notarization
+
+### Smart Contract: `MedicalRecordVerifier.sol`
+- **Network**: Polygon Amoy Testnet (Chain ID 80002).
+- **Core Functions**:
+  - `notarizeRecord(bytes32 documentHash, string memory metadataURI)`: Anchors a SHA-256 document checksum onto the blockchain with timestamp and patient wallet address.
+  - `verifyRecord(bytes32 documentHash)`: Returns Boolean proof of notarization and block confirmation timestamp.
+  - `grantConsent(address entity, uint256 durationSeconds)`: On-chain programmatic data access permission with automatic block timestamp expiry.
+  - `revokeConsent(address entity)`: Instant cryptographic invalidation of provider access rights.
+- **Gasless Architecture**: Meta-transactions and backend relayer sponsorship ensure zero cryptocurrency or wallet requirements for end users.
+
+## 4. Multimodal AI & Clinical Decision Support (CDS)
+
+### Optical Character Recognition (OCR) Pipeline
+- **Handwritten Prescriptions**: PyTorch TrOCR (`chinmays18/medical-prescription-ocr`) running on GPU microservice, extracting doctor shorthand, dosage forms, and Latin abbreviations (OD, BD, TDS, PRN).
+- **Printed Documents**: Tesseract.js fallback for standard laboratory printouts and discharge summaries.
+- **Entity Resolution**: Google Gemini 1.5 Flash maps raw names to standardized RxNorm concepts, ATC codes, and Indian National List of Essential Medicines (NLEM).
+
+### Real-Time Clinical Safety Screening
+- **Drug-Drug Interactions (DDI)**: Analyzes candidate medications against active prescriptions in patient's profile.
+- **Allergy Conflicts**: Cross-checks beta-lactam, sulfa, and NSAID hypersensitivities against extracted medications.
+- **Contraindications**: Evaluates lab values (e.g. serum creatinine, eGFR, liver enzymes) against drug clearance pathways.
+
+## 5. Security Architecture
+- **WebAuthn Passkeys**: Passwordless FIDO2 authentication via `@simplewebauthn` (Apple TouchID, FaceID, Windows Hello).
+- **JWT Authentication**: Cryptographic signature validation with strict fail-closed role verification (`patient`, `doctor`, `hospital`, `admin`). Unverified token decoding is strictly rejected.
+- **Object Storage**: Private MinIO (S3-compatible) buckets with deterministic SHA-256 checksum validation and patient-specific isolated storage prefixes.
+
+## 6. Endpoints Reference
+
+### Public Endpoints
+- `GET /`: Platform landing, interactive architecture diagrams, feature demonstrations.
+- `GET /verify`: Public prescription and document cryptographic verification portal.
+- `GET /verify/:id`: Instant QR verification of a notarized medical prescription.
+- `GET /e/:token`: Paramedic trauma emergency break-glass viewer.
+- `GET /health`: System telemetry and operational health status.
+- `GET /llms.txt`: Machine-readable LLM platform overview.
+
+### Authenticated Portals
+- `/patient/*`: Health vitals, document vault, prescription cabinet, longitudinal timeline, consent manager, emergency setup.
+- `/doctor/*`: Consented patient directory, Prescription Studio with CDS, clinical copilot, emergency break-glass override.
+- `/admin/*`: Enterprise platform administration, user management, doctor credential verification, AI model telemetry, CERT-In audit logs.

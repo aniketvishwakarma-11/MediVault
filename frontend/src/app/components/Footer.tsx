@@ -53,13 +53,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/admin/dashboard" className="hover:text-white transition-colors py-1 inline-flex items-center gap-1">
-                  <span>Hospital Admin &amp; Telemetry</span>
+                <Link href="/verify" className="hover:text-white transition-colors py-1 inline-flex items-center gap-1 text-cyan-400 font-semibold">
+                  <span>Public Verification Hub</span>
                 </Link>
               </li>
               <li>
-                <Link href="/patient/emergency" className="hover:text-white transition-colors py-1 inline-flex items-center gap-1">
-                  <span>Paramedic Emergency Pass</span>
+                <Link href="/#faq" className="hover:text-white transition-colors py-1 inline-flex items-center gap-1">
+                  <span>Frequently Asked Questions</span>
                 </Link>
               </li>
             </ul>
@@ -72,32 +72,32 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/patient/profile" className="hover:text-white transition-colors py-1 inline-block">
+                <Link href="/#abha" className="hover:text-white transition-colors py-1 inline-block">
                   14-Digit ABHA ID &amp; 3D Card
                 </Link>
               </li>
               <li>
-                <Link href="/patient/reports" className="hover:text-white transition-colors py-1 inline-block">
+                <Link href="/#features" className="hover:text-white transition-colors py-1 inline-block">
                   Encrypted Document Locker
                 </Link>
               </li>
               <li>
-                <Link href="/patient/ai-copilot" className="hover:text-white transition-colors py-1 inline-block">
+                <Link href="/#ai-copilot" className="hover:text-white transition-colors py-1 inline-block">
                   Multimodal Gemini AI Copilot
                 </Link>
               </li>
               <li>
-                <Link href="/patient/prescriptions" className="hover:text-white transition-colors py-1 inline-block">
+                <Link href="/#prescriptions" className="hover:text-white transition-colors py-1 inline-block">
                   Rx Explainer &amp; Drug Safety
                 </Link>
               </li>
               <li>
-                <Link href="/patient/timeline" className="hover:text-white transition-colors py-1 inline-block">
+                <Link href="/#timeline" className="hover:text-white transition-colors py-1 inline-block">
                   Longitudinal Health Timeline
                 </Link>
               </li>
               <li>
-                <Link href="/patient/consent" className="hover:text-white transition-colors py-1 inline-block">
+                <Link href="/#consent" className="hover:text-white transition-colors py-1 inline-block">
                   Time-Bound Consent Manager
                 </Link>
               </li>
@@ -121,8 +121,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#security" className="hover:text-white transition-colors py-1 inline-block">
-                  Security Architecture
+                <Link href="/verify" className="hover:text-white transition-colors py-1 inline-block">
+                  Prescription Verifier Hub
+                </Link>
+              </li>
+              <li>
+                <Link href="/llms.txt" className="hover:text-white transition-colors py-1 inline-block font-mono text-[11px] text-cyan-400">
+                  llms.txt (AI Knowledge Spec)
                 </Link>
               </li>
               <li>

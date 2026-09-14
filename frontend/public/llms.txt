@@ -1,0 +1,46 @@
+# MediVault Chain AI
+
+> Sovereign Digital Health Identity & Electronic Medical Record (EMR) Vault.
+
+MediVault is an AI-powered, blockchain-notarized digital health platform that unifies 14-digit government Ayushman Bharat Health Account (ABHA) IDs, multimodal clinical AI (Google Gemini 1.5 + NVIDIA NIM + TrOCR), and zero-knowledge client encryption into a patient-controlled health vault.
+
+- Website: https://medi-vault-seven-lyart.vercel.app
+- Source: https://github.com/aniketvishwakarma-11/MediVault
+- Verification Hub: https://medi-vault-seven-lyart.vercel.app/verify
+- Standards: DPDPA 2023, HIPAA 45 CFR § 164.530(j), CERT-In (180-day logs), HL7 FHIR R4, ABDM (NHA)
+
+## Core Capabilities
+
+### 1. Multimodal AI Clinical Prescription Scanner
+- **Neural OCR**: Uses TrOCR (`chinmays18/medical-prescription-ocr`) and Google Gemini 1.5 Flash to transcribe messy handwritten doctor prescriptions.
+- **Entity Resolution**: Extracts medication names, strengths, route, frequency, and daily dosing schedules.
+- **Drug Safety (CDS)**: Screens for Drug-Drug Interactions (DDI), drug-allergy conflicts, duplicate therapy, and lab contraindications against RxNorm and WHO EML.
+- **Affordable Generic Alternatives**: Automatically cross-references branded medications with Indian Pharmacopoeia and Pradhan Mantri Bhartiya Janaushadhi Pariyojana (PMBJP) generic pricing, surfacing cost reductions up to 80%.
+
+### 2. Emergency Trauma Break-Glass Pass (ICE QR)
+- **Zero-Friction Access**: Paramedics and emergency room staff scan a physical or lockscreen QR pass (`/e/[token]`) without needing a password or login.
+- **Golden-Hour Criticals**: Displays blood group, severe allergies, active implants/pacemakers, and emergency contacts. Conceals non-critical private clinical history.
+- **Audit Logging**: All emergency break-glass sessions trigger automatic SMS/push notifications to emergency contacts and write to immutable audit logs.
+
+### 3. Patient-Controlled Consent Management
+- **Time-Bound Grants**: Patients issue revocable access grants (15 minutes to 1 year) to specific physicians or hospitals.
+- **Purpose-Specific**: Restricts data access strictly to consultation, second opinion, or diagnostic evaluation.
+- **Statutory Erasure**: Implements Section 12 of India's Digital Personal Data Protection Act (DPDPA 2023) and GDPR Article 17, providing soft-deletion with complete cryptographic de-identification while maintaining legally mandated medical retention trails.
+
+### 4. Blockchain Integrity & Document Notarization
+- **Tamper-Proof Proofs**: Every clinical report and prescription SHA-256 hash is anchored on the Polygon Amoy blockchain via smart contract `MedicalRecordVerifier.sol`.
+- **Public Verification**: Pharmacies and third-party insurers verify document provenance and doctor digital signatures at `/verify` without exposing medical data.
+
+## System Architecture
+
+- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS v4, SimpleWebAuthn, Motion, Recharts.
+- **Backend**: Express 5.2 TypeScript, PostgreSQL (Supabase Connection Pool), MinIO Object Storage (S3-compatible).
+- **AI Microservices**: Python PyTorch TrOCR container, Google Gemini 1.5 Pro/Flash, NVIDIA NIM (`meta/llama-3-70b-instruct`).
+- **Blockchain**: Polygon Amoy Testnet (ChainID 80002), Ethers.js v6.
+
+## Frequently Asked Questions
+
+- **Is MediVault free?** Yes, free for all individual citizens and patients.
+- **Do users need crypto or MetaMask?** No, MediVault uses a gasless architecture where all Polygon notarizations are sponsored in the background.
+- **Are medical files encrypted?** Yes, files use client-side AES-GCM-256 encryption before leaving the browser.
+- **Does MediVault work with government health IDs?** Yes, supports 14-digit ABHA enrollment, Aadhaar KYC verification, and DigiLocker synchronization.

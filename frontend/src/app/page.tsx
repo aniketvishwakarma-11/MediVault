@@ -7,6 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import CounterStats from "./components/CounterStats";
+import { FAQS } from "@/data/faqs";
 import {
   ShieldCheck,
   Brain,
@@ -572,9 +573,17 @@ function DoctorWorkstationDemo() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FAQ Item Component
+// FAQ Item Component (Optimized for AEO & Featured Snippets)
 // ─────────────────────────────────────────────────────────────────
-function FAQItem({ question, answer }: { question: string; answer: string }) {
+function FAQItem({
+  question,
+  answer,
+  snippetAnswer,
+}: {
+  question: string;
+  answer: string;
+  snippetAnswer?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border-b border-slate-200 py-4.5">
@@ -583,7 +592,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between text-left gap-4 cursor-pointer group focus:outline-none"
       >
-        <span className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-cyan-700 transition-colors">
+        <span className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-cyan-700 transition-colors seo-faq-question">
           {question}
         </span>
         <span className="p-1.5 rounded-lg bg-slate-100 group-hover:bg-cyan-50 text-slate-500 group-hover:text-cyan-700 transition-colors shrink-0">
@@ -591,9 +600,19 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         </span>
       </button>
       {open && (
-        <p className="text-xs sm:text-sm text-slate-600 mt-2.5 leading-relaxed animate-in fade-in duration-200 max-w-3xl">
-          {answer}
-        </p>
+        <div className="mt-2.5 space-y-2.5 animate-in fade-in duration-200 max-w-3xl">
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed seo-faq-answer">
+            {answer}
+          </p>
+          {snippetAnswer && (
+            <div className="p-3 rounded-xl bg-cyan-50/70 border border-cyan-100 text-[11px] sm:text-xs text-cyan-900 leading-relaxed seo-answer-snippet">
+              <span className="font-bold uppercase tracking-wider text-[10px] text-cyan-800 block mb-0.5">
+                Quick Summary:
+              </span>
+              {snippetAnswer}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -826,6 +845,14 @@ export default function Home() {
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                 Centralized hospital databases suffer from data leaks, ransomware, and retroactive alteration in malpractice disputes. Academic crypto projects fail because of gas fees and lack of clinical AI. MediVault solves both.
               </p>
+
+              {/* AEO Direct Answer Snippet Block */}
+              <div className="seo-answer-snippet p-4 rounded-2xl bg-purple-50/80 border border-purple-200/80 text-xs sm:text-sm text-purple-950 max-w-2xl mx-auto text-left leading-relaxed shadow-2xs">
+                <span className="font-bold text-purple-900 block mb-1 text-xs uppercase tracking-wider">
+                  Direct Answer: Why Does Healthcare Need Blockchain?
+                </span>
+                Traditional hospital databases are vulnerable to retroactive tampering, data deletion, and ransomware during insurance claims or legal disputes. MediVault anchors SHA-256 cryptographic hashes of clinical records to Polygon smart contracts, establishing mathematically tamper-proof provenance and patient ownership without gas fees or crypto wallets.
+              </div>
             </div>
 
             {/* 3-Way Architectural Comparison Matrix */}
@@ -1430,7 +1457,7 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             FREQUENTLY ASKED QUESTIONS (FAQ)
         ══════════════════════════════════════════════════════ */}
-        <section className="py-20 bg-white border-b border-slate-200">
+        <section id="faq" className="py-20 bg-white border-b border-slate-200">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             <div className="text-center space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-800 bg-cyan-50 px-2.5 py-1 rounded border border-cyan-200">
@@ -1439,41 +1466,20 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
                 Frequently Asked Questions
               </h2>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
+                Direct answers to common questions about patient data sovereignty, zero-knowledge encryption, and emergency trauma passes.
+              </p>
             </div>
 
             <div className="divide-y divide-slate-200">
-              <FAQItem
-                question="Do I need cryptocurrency, gas fees, or a MetaMask wallet to use MediVault?"
-                answer="No. MediVault is built with a Gasless Web3 Architecture. All on-chain notarizations and state anchors on the Polygon blockchain are sponsored and computed automatically in the background. You get all the cryptographic security of Web3 without needing crypto tokens, gas fees, or browser extensions."
-              />
-              <FAQItem
-                question="Why does healthcare data need blockchain technology?"
-                answer="Traditional hospital databases have a major vulnerability: administrators or rogue employees can edit, delete, or retroactively alter medical records in malpractice lawsuits or insurance disputes. With MediVault, every document's cryptographic SHA-256 hash is anchored onto the Polygon blockchain. Once notarized, the record is mathematically tamper-proof—neither hospital staff nor MediVault can ever alter it."
-              />
-              <FAQItem
-                question="Is linking an Aadhaar or ABHA ID compulsory to use MediVault?"
-                answer="No, government ID integration is 100% voluntary. You can use MediVault as a standalone private health locker without providing Aadhaar or ABHA. However, linking an ABHA ID allows you to fetch official lab reports from AIIMS, Apollo, Max, and sync your Ayushman PM-JAY card in one click."
-              />
-              <FAQItem
-                question="How do paramedics access my emergency pass if my phone is locked?"
-                answer="MediVault generates an offline-compatible physical and digital pass with an ABDM-standard emergency QR code. You can print the wallet card or save it as a lock-screen wallpaper widget. When first responders scan it, they see only golden-hour critical data (blood group, critical allergies, and emergency contacts)."
-              />
-              <FAQItem
-                question="Can insurance companies or employers see my health records?"
-                answer="Never. MediVault uses zero-knowledge encryption. No third party—including insurance firms, employers, or even MediVault system administrators—can view your medical documents without your explicit, time-bound consent."
-              />
-              <FAQItem
-                question="How accurately does the AI read messy handwritten prescriptions?"
-                answer="Our multimodal vision model (Gemini 2.5 Flash) is tuned for clinical handwriting, abbreviations (OD, BD, TDS), and medical nomenclature. It extracts dosages and cross-checks them against a clinical drug database with over 99% accuracy."
-              />
-              <FAQItem
-                question="How does the Doctor Portal access my records?"
-                answer="Doctors cannot browse your records at will. When you visit a clinic, you grant a time-bound access scope (e.g. 15 minutes or 1 hour). When the timer expires, the cryptographic access token invalidates instantly with an immutable audit log."
-              />
-              <FAQItem
-                question="Is MediVault free for individual patients?"
-                answer="Yes. Individual patient accounts with unlimited cloud storage, ABHA health card issuance, DigiLocker sync, and the emergency trauma pass are completely free."
-              />
+              {FAQS.map((faq) => (
+                <FAQItem
+                  key={faq.id}
+                  question={faq.question}
+                  answer={faq.answer}
+                  snippetAnswer={faq.snippetAnswer}
+                />
+              ))}
             </div>
           </div>
         </section>

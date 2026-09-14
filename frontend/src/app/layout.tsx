@@ -8,6 +8,7 @@ import { PWAProvider } from "@/app/components/PWAProvider";
 import PWAInstallBanner from "@/app/components/PWAInstallBanner";
 import MobileBottomNav from "@/app/components/MobileBottomNav";
 import { MotionConfig } from "motion/react";
+import { FAQS } from "@/data/faqs";
 import "./globals.css";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://medi-vault-seven-lyart.vercel.app";
@@ -87,6 +88,7 @@ export const metadata: Metadata = {
     description:
       "Patient-owned medical records with AI prescription scanning and emergency break-glass QR access.",
     creator: "@medivault",
+    images: [`${APP_URL}/opengraph-image`],
   },
   robots: {
     index: true,
@@ -131,7 +133,7 @@ const jsonLd = {
     {
       "@type": "MedicalOrganization",
       "@id": `${APP_URL}/#organization`,
-      "name": "MediVault",
+      "name": "MediVault Chain AI",
       "url": APP_URL,
       "logo": `${APP_URL}/icons/icon-512.png`,
       "description":
@@ -139,66 +141,83 @@ const jsonLd = {
       "sameAs": [
         "https://github.com/aniketvishwakarma-11/MediVault",
       ],
+      "knowsAbout": [
+        "https://en.wikipedia.org/wiki/Ayushman_Bharat_Digital_Mission",
+        "https://en.wikipedia.org/wiki/Electronic_health_record",
+        "https://en.wikipedia.org/wiki/Optical_character_recognition",
+        "https://en.wikipedia.org/wiki/Polygon_(blockchain)",
+        "https://en.wikipedia.org/wiki/Health_Insurance_Portability_and_Accountability_Act",
+        "https://en.wikipedia.org/wiki/Fast_Healthcare_Interoperability_Resources"
+      ],
+    },
+    {
+      "@type": "WebPage",
+      "@id": `${APP_URL}/#webpage`,
+      "url": APP_URL,
+      "name": "MediVault Chain AI — Digital Health Identity Platform",
+      "description": "Patient-owned electronic medical records, AI prescription scanner, and emergency medical QR pass secured with cryptographic blockchain proofs.",
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": [".seo-answer-snippet", ".seo-faq-question", ".seo-faq-answer"]
+      }
+    },
+    {
+      "@type": "HowTo",
+      "@id": `${APP_URL}/#howto-prescription`,
+      "name": "How to Scan & Digitize Handwritten Doctor Prescriptions with AI",
+      "description": "Digitize paper prescriptions, extract clinical dosages, and compare generic medicine costs using MediVault's multimodal AI OCR.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Capture or Upload Prescription",
+          "text": "Photograph your handwritten paper prescription or upload an existing PDF/image into your secure MediVault locker."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "AI Neural Transcription",
+          "text": "MediVault's TrOCR neural network and Google Gemini 1.5 extract medicine names, strengths, frequency, and daily dosing schedules."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Verify & Save to Pill Cabinet",
+          "text": "Review extracted items against the RxNorm database, compare affordable PM Jan Aushadhi generic alternatives, and sync to your daily adherence calendar."
+        }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "@id": `${APP_URL}/#howto-emergency`,
+      "name": "How to Set Up an Emergency Medical QR Pass",
+      "description": "Create an offline-compatible emergency medical QR pass for first responders during trauma and unconsciousness.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Configure Critical Health Vitals",
+          "text": "Input your blood group, severe drug allergies, active chronic conditions, and emergency ICE contact phone numbers."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Generate Cryptographic QR Pass",
+          "text": "MediVault generates a tamper-evident Emergency Pass encoded with an ABDM-standard emergency token."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Print or Set as Lockscreen",
+          "text": "Save the pass as your phone lockscreen wallpaper or print an emergency wallet card for instant first-responder scan access."
+        }
+      ]
     },
     {
       "@type": "FAQPage",
       "@id": `${APP_URL}/#faq`,
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How does MediVault protect my sensitive medical data?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text":
-              "MediVault uses end-to-end client-side encryption (AES-GCM-256). Your medical files are encrypted before leaving your browser and stored across private S3 vaults. Only you and explicitly authorized doctors hold access — MediVault never exposes unauthenticated data.",
-          },
+      "mainEntity": FAQS.map((faq) => ({
+        "@type": "Question",
+        "name": faq.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": faq.answer,
         },
-        {
-          "@type": "Question",
-          "name": "How does the Emergency Medical Pass work during trauma situations?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text":
-              "Patients can generate an Emergency Pass QR code. In an emergency, verified paramedics scan the pass to perform a statutory 'Break-Glass' override, revealing critical allergies, blood type, and emergency contacts in a time-limited, fully audited session.",
-          },
-        },
-        {
-          "@type": "Question",
-          "name": "How does the AI Clinical Copilot extract and verify data?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text":
-              "When you upload medical reports or prescriptions, Google Gemini and specialized OCR models perform clinical entity resolution. Every extracted metric is verified and linked directly to the original source document.",
-          },
-        },
-        {
-          "@type": "Question",
-          "name": "Can doctors access my records without my explicit permission?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text":
-              "No. Doctors must submit an access request with clinical justification and duration. You receive an instant notification to approve or deny.",
-          },
-        },
-        {
-          "@type": "Question",
-          "name": "Is MediVault free to use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text":
-              "Yes — creating a patient vault, uploading records, and generating an emergency QR pass are completely free.",
-          },
-        },
-        {
-          "@type": "Question",
-          "name": "What happens if I lose access to my account?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text":
-              "Your records are tied to your verified credentials and recovery protocols, ensuring you can regain access securely at any time.",
-          },
-        },
-      ],
+      })),
     },
   ],
 };
