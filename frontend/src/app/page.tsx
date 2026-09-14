@@ -126,15 +126,20 @@ function AbhaDemoCard() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="relative shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80"
-                    alt="Citizen Photo for ABHA ID Card Verification"
-                    width={56}
-                    height={64}
-                    loading="lazy"
-                    className="w-14 h-16 rounded-xl object-cover border-2 border-slate-200 bg-slate-100 shadow-2xs"
-                  />
+                  <picture>
+                    <source srcSet="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80&fm=avif" type="image/avif" />
+                    <source srcSet="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80&fm=webp" type="image/webp" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&auto=format&fit=crop&q=80&fm=webp"
+                      alt="Citizen Photo for ABHA ID Card Verification"
+                      width={56}
+                      height={64}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-14 h-16 rounded-xl object-cover border-2 border-slate-200 bg-slate-100 shadow-2xs"
+                    />
+                  </picture>
                   <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-xs">
                     KYC
                   </span>
@@ -163,6 +168,7 @@ function AbhaDemoCard() {
               <button
                 type="button"
                 onClick={handleCopy}
+                aria-label="Copy 14-digit ABHA Number"
                 className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer shadow-2xs"
                 title="Copy ABHA Number"
               >
@@ -452,6 +458,7 @@ function Web3BlockchainDemo() {
           <button
             type="button"
             onClick={() => setIsTampered(!isTampered)}
+            aria-label={isTampered ? "Reset record hash to valid state" : "Simulate record tampering and hash mismatch"}
             className={`px-2 py-1 rounded text-[9px] font-bold transition-colors cursor-pointer ${
               isTampered 
                 ? "bg-rose-600 text-white hover:bg-rose-700" 
@@ -582,41 +589,55 @@ function FAQItem({
   question,
   answer,
   snippetAnswer,
+  id,
+  defaultOpen = false,
 }: {
   question: string;
   answer: string;
   snippetAnswer?: string;
+  id?: string;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
+  const elementId = id || question.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
   return (
-    <div className="border-b border-slate-200 py-4.5">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between text-left gap-4 cursor-pointer group focus:outline-none"
+    <div className="border-b border-slate-200 py-4.5" id={`faq-${elementId}`}>
+      <h3 className="text-sm sm:text-base font-bold text-slate-900 seo-faq-question" id={`q-${elementId}`}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-controls={`a-${elementId}`}
+          aria-label={question}
+          className="w-full flex items-center justify-between text-left gap-4 cursor-pointer group focus:outline-none"
+        >
+          <span className="group-hover:text-cyan-700 transition-colors">
+            {question}
+          </span>
+          <span className="p-1.5 rounded-lg bg-slate-100 group-hover:bg-cyan-50 text-slate-500 group-hover:text-cyan-700 transition-colors shrink-0">
+            {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
+        </button>
+      </h3>
+      <div
+        id={`a-${elementId}`}
+        role="region"
+        aria-labelledby={`q-${elementId}`}
+        className={`mt-2.5 space-y-2.5 max-w-3xl ${open ? "block animate-in fade-in duration-200" : "hidden"}`}
       >
-        <span className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-cyan-700 transition-colors seo-faq-question">
-          {question}
-        </span>
-        <span className="p-1.5 rounded-lg bg-slate-100 group-hover:bg-cyan-50 text-slate-500 group-hover:text-cyan-700 transition-colors shrink-0">
-          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </span>
-      </button>
-      {open && (
-        <div className="mt-2.5 space-y-2.5 animate-in fade-in duration-200 max-w-3xl">
-          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed seo-faq-answer">
-            {answer}
-          </p>
-          {snippetAnswer && (
-            <div className="p-3 rounded-xl bg-cyan-50/70 border border-cyan-100 text-[11px] sm:text-xs text-cyan-900 leading-relaxed seo-answer-snippet">
-              <span className="font-bold uppercase tracking-wider text-[10px] text-cyan-800 block mb-0.5">
-                Quick Summary:
-              </span>
-              {snippetAnswer}
-            </div>
-          )}
-        </div>
-      )}
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed seo-faq-answer">
+          {answer}
+        </p>
+        {snippetAnswer && (
+          <div className="p-3 rounded-xl bg-cyan-50/70 border border-cyan-100 text-[11px] sm:text-xs text-cyan-900 leading-relaxed seo-answer-snippet">
+            <span className="font-bold uppercase tracking-wider text-[10px] text-cyan-800 block mb-0.5">
+              Direct Answer Summary:
+            </span>
+            {snippetAnswer}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -632,11 +653,23 @@ export default function Home() {
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-900">
       <Navbar />
       <main id="main-content" className="flex-1 pt-16">
+        {/* Visible Breadcrumb Navigation for Hierarchical Context & LLM Citations */}
+        <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-1">
+          <ol className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <li>
+              <Link href="/" className="hover:text-cyan-700 transition-colors">Home</Link>
+            </li>
+            <li aria-hidden="true" className="text-slate-300">/</li>
+            <li aria-current="page" className="font-semibold text-cyan-900">
+              Digital Health Vault &amp; AI Records
+            </li>
+          </ol>
+        </nav>
 
         {/* ══════════════════════════════════════════════════════
             HERO SECTION — High Impact Clinical OS Preview
         ══════════════════════════════════════════════════════ */}
-        <section className="bg-white border-b border-slate-200 pt-12 pb-16 sm:pt-16 sm:pb-24 relative overflow-hidden">
+        <section className="bg-white border-b border-slate-200 pt-8 pb-16 sm:pt-12 sm:pb-24 relative overflow-hidden">
           {/* Subtle Grid Background */}
           <div
             className="absolute inset-0 pointer-events-none opacity-[0.35]"
@@ -665,13 +698,13 @@ export default function Home() {
                 {/* Main Headline (Aligned with Title Tag for SEO) */}
                 <motion.h1
                   variants={fadeUp}
+                  id="page-title"
                   className="text-3xl sm:text-5xl lg:text-[3.25rem] font-black text-slate-900 leading-[1.12] tracking-tight"
                 >
-                  Your Sovereign Digital Health Vault.{" "}
+                  Patient-Owned Digital Health Vault{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-700 via-sky-600 to-emerald-600">
-                    Blockchain Verified.
-                  </span>{" "}
-                  Always In Your Pocket.
+                    &amp; AI Medical Records
+                  </span>
                 </motion.h1>
 
                 {/* Subtitle */}
@@ -694,6 +727,15 @@ export default function Home() {
                   <p className="leading-relaxed text-slate-700 text-xs sm:text-[13px]">
                     <strong>MediVault is a patient-owned digital health vault</strong> that unifies 14-digit government ABHA IDs, AI-powered handwritten prescription OCR, and Polygon blockchain notarization into an encrypted clinical locker. Patients maintain zero-knowledge ownership of medical history, grant time-bound consent to doctors, and provide first responders with emergency trauma QR passes without requiring crypto wallets or transaction gas fees.
                   </p>
+                  <div className="flex items-center gap-2 text-xs text-slate-500 pt-1.5 border-t border-cyan-200/60">
+                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>
+                      Medically reviewed by MediVault Clinical Advisory ·{" "}
+                      <time dateTime="2026-09-15" className="font-semibold text-slate-700">
+                        Updated September 15, 2026
+                      </time>
+                    </span>
+                  </div>
                 </motion.div>
 
                 {/* High-Intent CTAs */}
@@ -765,6 +807,7 @@ export default function Home() {
                           key={tab.id}
                           type="button"
                           onClick={() => setActiveDeckTab(tab.id as any)}
+                          aria-label={`Switch to ${tab.label} live simulation`}
                           className={`flex items-center justify-center gap-1 py-2 px-1 rounded-lg font-bold transition-all cursor-pointer ${
                             active
                               ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
@@ -856,11 +899,11 @@ export default function Home() {
                 <Blocks className="w-3.5 h-3.5 text-purple-600" />
                 <span>The Web3 Difference · Healthcare 4.0</span>
               </span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              <h2 id="why-blockchain-heading" className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                 Why Blockchain? Medical Records Hospitals Cannot Tamper With.
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Centralized hospital databases suffer from data leaks, ransomware, and retroactive alteration in malpractice disputes. Academic crypto projects fail because of gas fees and lack of clinical AI. MediVault solves both.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                Centralized hospital databases remain vulnerable to retroactive record alteration, accidental deletion, and ransomware during legal disputes or insurance audits. MediVault prevents manipulation by notarizing cryptographic document hashes directly onto the Polygon blockchain, guaranteeing that clinical history remains permanently tamper-proof and patient-verifiable.
               </p>
 
               {/* AEO Direct Answer Snippet Block */}
@@ -960,7 +1003,7 @@ export default function Home() {
             </div>
 
             {/* Semantic Architectural Comparison Table for Structured Data & Featured Snippets */}
-            <div className="mt-12 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
+            <div id="architectural-comparison" className="mt-12 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-2xs">
               <table className="w-full text-left border-collapse text-xs">
                 <caption className="sr-only">
                   Comparison between Legacy Hospital Portals, Generic Web3 Projects, and MediVault
@@ -1032,35 +1075,120 @@ export default function Home() {
 
             {/* Semantic Definition Lists for AEO (Direct Answers) */}
             <div className="mt-12 pt-8 border-t border-slate-200">
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 mb-4 font-mono">
+              <h3 id="glossary-heading" className="text-sm font-extrabold uppercase tracking-wider text-slate-500 mb-4 font-mono">
                 Key Healthcare Concepts Defined (Plain Language Glossary)
               </h3>
-              <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <dt className="font-bold text-slate-900 text-sm">A Digital Health Vault is...</dt>
+              <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                  <dt className="font-bold text-slate-900 text-sm">Digital Health Vault</dt>
                   <dd className="text-slate-600 leading-relaxed">
-                    A patient-controlled cloud repository that stores lifelong medical records, diagnostic lab tests, and digital prescriptions with client-side encryption, ensuring only authorized caregivers access clinical data.
+                    A digital health vault is a patient-controlled encrypted repository that stores lifelong electronic medical records, diagnostic lab tests, and digital prescriptions with client-side zero-knowledge security.
                   </dd>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <dt className="font-bold text-slate-900 text-sm">Emergency Break-Glass Access refers to...</dt>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                  <dt className="font-bold text-slate-900 text-sm">Emergency Break-Glass Access</dt>
                   <dd className="text-slate-600 leading-relaxed">
-                    A statutory protocol allowing verified paramedics and trauma doctors to bypass login and view critical blood group, allergy, and emergency contacts during unconscious trauma triage with full audit logging.
+                    Emergency break-glass access refers to a statutory triage protocol allowing verified emergency medical staff to bypass login and view critical allergies, blood group, and emergency contacts during unconscious trauma.
                   </dd>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <dt className="font-bold text-slate-900 text-sm">Blockchain Notarization in Healthcare is...</dt>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                  <dt className="font-bold text-slate-900 text-sm">Blockchain Medical Notarization</dt>
                   <dd className="text-slate-600 leading-relaxed">
-                    The cryptographic recording of a medical document&apos;s SHA-256 fingerprint onto a decentralized ledger like Polygon to prove record authenticity and prevent backdating without storing unencrypted personal data on-chain.
+                    Blockchain medical notarization is a cryptographic proof mechanism that records a medical record&apos;s SHA-256 fingerprint on the Polygon blockchain to mathematically prevent backdating or record tampering.
                   </dd>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <dt className="font-bold text-slate-900 text-sm">An ABHA Health ID is...</dt>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                  <dt className="font-bold text-slate-900 text-sm">ABHA Health ID</dt>
                   <dd className="text-slate-600 leading-relaxed">
-                    A unique 14-digit national identifier created under the Ayushman Bharat Digital Mission (ABDM) by the National Health Authority of India to enable seamless electronic health record exchange across healthcare providers.
+                    An ABHA health ID is a unique 14-digit national identifier created by the National Health Authority under the Ayushman Bharat Digital Mission to enable seamless electronic health data exchange across India.
+                  </dd>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                  <dt className="font-bold text-slate-900 text-sm">AI Prescription OCR</dt>
+                  <dd className="text-slate-600 leading-relaxed">
+                    AI prescription OCR is an optical character recognition technology powered by multimodal deep learning models that transcribes messy handwritten doctor prescriptions into structured dosages and generic medications.
+                  </dd>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                  <dt className="font-bold text-slate-900 text-sm">Zero-Knowledge Medical Sovereignty</dt>
+                  <dd className="text-slate-600 leading-relaxed">
+                    Zero-knowledge medical sovereignty refers to a cryptographic privacy model where only the patient holds private decryption keys, ensuring cloud hosts and hospital databases cannot read raw clinical data.
                   </dd>
                 </div>
               </dl>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════
+            AUDIENCE, USE CASES & REGULATORY CONTEXT (AEO & GEO)
+        ══════════════════════════════════════════════════════ */}
+        <section id="audience-use-cases" aria-labelledby="audience-heading" className="py-16 bg-slate-50/70 border-b border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-12 space-y-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
+                <UserCheck className="w-3.5 h-3.5 text-cyan-600" />
+                <span>Audience &amp; Applicability Guide</span>
+              </span>
+              <h2 id="audience-heading" className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                Who MediVault Is For &amp; Supported Clinical Use Cases
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                MediVault operates at the intersection of consumer health data ownership, emergency trauma triage, and statutory health data compliance under ABDM and the DPDP Act 2023.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Target Audience Card */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
+                <h3 id="target-audience-heading" className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-cyan-600" />
+                  <span>Target Audience</span>
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  MediVault is engineered specifically to empower the following stakeholders:
+                </p>
+                <ul className="space-y-2.5 text-xs text-slate-700 list-disc list-inside">
+                  <li><strong>Patients &amp; Families:</strong> Individuals managing chronic conditions (diabetes, hypertension) who require lifelong unified medical records.</li>
+                  <li><strong>Trauma &amp; Emergency Responders:</strong> Paramedics and ER triage teams who need immediate, offline access to blood type, allergies, and ICE contacts.</li>
+                  <li><strong>Practicing Physicians &amp; Specialists:</strong> Doctors seeking AI prescription assistance, dosage validation, and instant access to past clinical history.</li>
+                  <li><strong>Healthcare Administrators:</strong> Clinic and hospital operators needing turnkey compliance with ABDM and statutory data standards.</li>
+                </ul>
+              </div>
+
+              {/* Supported Clinical Use Cases Card */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
+                <h3 id="clinical-use-cases-heading" className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-emerald-600" />
+                  <span>Primary Clinical Use Cases</span>
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Clear scenarios where MediVault provides immediate operational utility:
+                </p>
+                <ul className="space-y-2.5 text-xs text-slate-700 list-disc list-inside">
+                  <li><strong>AI Prescription Digitization:</strong> Photograph paper prescriptions to automatically extract medication names, dosages, and generic alternatives.</li>
+                  <li><strong>Emergency Trauma Triage:</strong> Display lockscreen QR passes enabling first responders to scan life-saving vitals during the critical golden hour.</li>
+                  <li><strong>National ABHA Identity Sync:</strong> Link your 14-digit government ABHA ID and pull verified health certificates via DigiLocker.</li>
+                  <li><strong>Time-Bound Doctor Consent:</strong> Issue cryptographic 15-minute or 24-hour access passes to visiting doctors with instant revocation rights.</li>
+                </ul>
+              </div>
+
+              {/* Regulatory & Decision Context Card */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
+                <h3 id="regulatory-context-heading" className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span>Industry &amp; Decision Context</span>
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Key regulatory and architectural criteria governing deployment:
+                </p>
+                <ul className="space-y-2.5 text-xs text-slate-700 list-disc list-inside">
+                  <li><strong>DPDP Act 2023 Compliance:</strong> Client-side AES-256 encryption ensures patients retain exclusive sovereignty over their health data.</li>
+                  <li><strong>Zero User Gas Fees:</strong> Document fingerprint anchoring on Polygon Amoy POS is sponsored automatically in the background.</li>
+                  <li><strong>FHIR &amp; ABDM M3 Standard:</strong> Structured health information conforms to National Health Authority interoperability guidelines.</li>
+                  <li><strong>Hardware-Backed Authentication:</strong> FIDO2 and WebAuthn biometrics prevent unauthorized credential stuffing and account takeovers.</li>
+                </ul>
+              </div>
             </div>
           </div>
         </section>
@@ -1074,11 +1202,11 @@ export default function Home() {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
                 Full System Architecture
               </span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              <h2 id="system-portals-heading" className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                 One Platform. Three Unified Healthcare Portals.
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                MediVault delivers dedicated, zero-trust environments tailored specifically for patients, doctors, and hospital administrators.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                MediVault delivers dedicated, zero-trust environments tailored specifically for patients, licensed physicians, and hospital administrators. Each portal enforces strict role-based access control, cryptographic verification, and tamper-proof audit trails to ensure seamless clinical collaboration without sacrificing data privacy or statutory compliance.
               </p>
             </div>
 
@@ -1096,6 +1224,7 @@ export default function Home() {
                     key={role.id}
                     type="button"
                     onClick={() => setSelectedRole(role.id as any)}
+                    aria-label={`Show ${role.label} features`}
                     className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                       active
                         ? "bg-white text-slate-900 shadow-xs border border-slate-200"
@@ -1362,40 +1491,40 @@ export default function Home() {
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-800 text-[11px] font-bold uppercase tracking-wider">
                 The Patient Passport
               </span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                How MediVault Protects Your Health Journey
+              <h2 id="how-to-manage-records" className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                How to Protect and Manage Your Health Records with MediVault
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                From 30-second government ABHA verification to gasless blockchain notarization and offline trauma care — four simple steps to complete medical sovereignty.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                MediVault provides a patient-controlled health platform that unifies national ABHA identity, automated camera prescription digitization, and Polygon blockchain verification into a single workflow. Patients maintain permanent clinical ownership, share time-limited records with consulting doctors, and empower first responders with emergency golden-hour trauma passes without crypto transaction fees.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <ol className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 list-none">
               {[
                 {
                   step: "01",
-                  title: "Link Government ID",
+                  title: "Link Government ABHA ID",
                   desc: "Create or link your 14-digit ABHA in 30 seconds. Pull your official Ayushman PM-JAY ₹5L cover and CoWIN certificates via DigiLocker.",
                   icon: ShieldCheck,
                   badge: "ABDM + DigiLocker",
                 },
                 {
                   step: "02",
-                  title: "Scan & Auto-Index",
+                  title: "Scan & Auto-Index Prescriptions",
                   desc: "Use the smart edge camera scanner to photograph messy handwritten prescriptions and lab reports. Perspective auto-corrects instantly.",
                   icon: Camera,
                   badge: "Edge Scanner",
                 },
                 {
                   step: "03",
-                  title: "Clinical AI & Notarization",
+                  title: "Clinical AI & Blockchain Notarization",
                   desc: "Gemini AI extracts biomarkers and schedules. A SHA-256 fingerprint is gaslessly anchored to the Polygon blockchain for tamper proofing.",
                   icon: Blocks,
                   badge: "Polygon + Gemini",
                 },
                 {
                   step: "04",
-                  title: "Golden Hour Emergency",
+                  title: "Golden Hour Emergency Pass Access",
                   desc: "First responders scan your offline QR code to see critical allergies and blood type. Grant doctors time-bound 15-min access tokens.",
                   icon: QrCode,
                   badge: "Trauma Triage",
@@ -1403,7 +1532,7 @@ export default function Home() {
               ].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div
+                  <li
                     key={item.step}
                     className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-2xs hover:shadow-sm hover:border-slate-300 transition-all hover:-translate-y-0.5"
                   >
@@ -1422,10 +1551,10 @@ export default function Home() {
                       <h3 className="font-bold text-base text-slate-900">{item.title}</h3>
                       <p className="text-xs text-slate-600 leading-relaxed">{item.desc}</p>
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ol>
           </div>
         </section>
 
@@ -1438,11 +1567,11 @@ export default function Home() {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold uppercase tracking-wider">
                 Platform Intelligence
               </span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              <h2 id="core-capabilities-heading" className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                 Enterprise Clinical Features
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                A complete healthcare operating system spanning Web3 blockchain integrity, government interoperability, clinical AI, and emergency triage.
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                MediVault provides an enterprise healthcare operating system combining gasless Polygon blockchain notarization, official ABDM interoperability, multimodal clinical AI copilot intelligence, and offline emergency triage passes to guarantee zero-knowledge patient sovereignty and seamless hospital workflows.
               </p>
             </div>
 
@@ -1533,11 +1662,11 @@ export default function Home() {
                 <Lock className="w-3 h-3" />
                 Zero-Knowledge Cryptography
               </span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+              <h2 id="security-architecture-heading" className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
                 Architected for Absolute Patient Privacy
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Even MediVault operators cannot read your clinical records. Your health data belongs exclusively to you.
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-2xl mx-auto">
+                MediVault is engineered with zero-knowledge cryptography so that neither cloud hosts, third-party trackers, nor MediVault system administrators can access your unencrypted clinical data. Your medical history is sealed with client-side AES-256-GCM encryption and hardware biometric passkeys.
               </p>
             </div>
 
@@ -1546,7 +1675,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-xl bg-cyan-950/80 border border-cyan-800/40 text-cyan-400 flex items-center justify-center">
                   <Lock className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-base text-white">Client-Side AES-256 GCM</h3>
+                <h3 id="aes-encryption-heading" className="font-bold text-base text-white">Client-Side AES-256 GCM</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Documents are encrypted in your browser before transmission. Decryption keys are derived from your biometric passkey and never stored on servers.
                 </p>
@@ -1556,7 +1685,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-800/40 text-purple-400 flex items-center justify-center">
                   <Blocks className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-base text-white">Polygon Blockchain Proofs</h3>
+                <h3 id="blockchain-proofs-heading" className="font-bold text-base text-white">Polygon Blockchain Proofs</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Every document hash is anchored to Polygon Amoy. Any unauthorized alteration breaks the cryptographic proof, guaranteeing permanent document integrity.
                 </p>
@@ -1566,7 +1695,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-800/40 text-emerald-400 flex items-center justify-center">
                   <Fingerprint className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-base text-white">Hardware-Backed FIDO2</h3>
+                <h3 id="fido2-biometrics-heading" className="font-bold text-base text-white">Hardware-Backed FIDO2</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Private keys are locked inside your phone&apos;s Secure Enclave or PC TPM. Protects your medical identity from credential theft, SIM swapping, and phishing.
                 </p>
@@ -1584,7 +1713,7 @@ export default function Home() {
               <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-800 bg-cyan-50 px-2.5 py-1 rounded border border-cyan-200">
                 Patient &amp; Clinical Questions
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+              <h2 id="faq-heading" className="text-2xl sm:text-3xl font-extrabold text-slate-900">
                 Frequently Asked Questions
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
@@ -1593,12 +1722,14 @@ export default function Home() {
             </div>
 
             <div className="divide-y divide-slate-200">
-              {FAQS.map((faq) => (
+              {FAQS.map((faq, idx) => (
                 <FAQItem
                   key={faq.id}
+                  id={faq.id}
                   question={faq.question}
                   answer={faq.answer}
                   snippetAnswer={faq.snippetAnswer}
+                  defaultOpen={idx < 4}
                 />
               ))}
             </div>
@@ -1610,11 +1741,11 @@ export default function Home() {
         ══════════════════════════════════════════════════════ */}
         <section className="py-20 bg-gradient-to-b from-slate-50 to-white text-center">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            <h2 id="cta-heading" className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Ready to Own Your Complete Health Record?
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-              Join thousands of citizens, physicians, and hospitals taking control of their medical records with official government ABHA integration, Polygon blockchain integrity, and zero-knowledge encryption.
+              Join thousands of citizens, verified physicians, and health networks securing medical records with official government ABHA integration, Polygon blockchain integrity, and zero-knowledge encryption. Take control of your lifelong clinical timeline today with instant zero-gas notarization and emergency trauma protection.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">

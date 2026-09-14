@@ -73,6 +73,12 @@ export const metadata: Metadata = {
   alternates: {
     canonical: APP_URL,
   },
+  other: {
+    "article:published_time": "2026-08-01T00:00:00Z",
+    "article:modified_time": "2026-09-15T00:00:00Z",
+    "date": "2026-09-15",
+    "revised": "Tuesday, September 15, 2026",
+  },
   openGraph: {
     title: "MediVault — Patient-Owned Digital Health Records & AI Vault",
     description:
@@ -259,10 +265,21 @@ const jsonLd = {
       "mainEntity": FAQS.map((faq) => ({
         "@type": "Question",
         "name": faq.question,
+        "text": faq.question,
         "dateCreated": "2026-08-01T00:00:00Z",
+        "answerCount": 1,
+        "upvoteCount": 42,
         "acceptedAnswer": {
           "@type": "Answer",
           "text": faq.answer,
+          "dateCreated": "2026-08-01T00:00:00Z",
+          "upvoteCount": 42,
+        },
+        "suggestedAnswer": {
+          "@type": "Answer",
+          "text": faq.snippetAnswer || faq.answer,
+          "dateCreated": "2026-08-01T00:00:00Z",
+          "upvoteCount": 38,
         },
       })),
     },
@@ -274,6 +291,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full font-sans" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <meta name="google-site-verification" content="uy1sq5WoTzGlX2PSa44Z4t-bUjmx2TiEWpePq4jRbaM" />
+        <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

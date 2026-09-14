@@ -112,6 +112,16 @@ export default function Footer() {
             <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/privacy" className="hover:text-white transition-colors py-1 inline-block">
+                  About MediVault Health
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:support@medivault.health" className="hover:text-white transition-colors py-1 inline-block">
+                  Contact Clinical Support
+                </a>
+              </li>
+              <li>
+                <Link href="/privacy" className="hover:text-white transition-colors py-1 inline-block">
                   Privacy Policy (DPDPA)
                 </Link>
               </li>
