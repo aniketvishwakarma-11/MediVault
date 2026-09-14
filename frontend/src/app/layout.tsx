@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "MediVault — Patient-Owned Digital Health Records & AI Vault",
+    default: "MediVault — Sovereign Digital Health Vault & AI Medical Records",
     template: "%s | MediVault Chain AI",
   },
   description:
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
     "revised": "Tuesday, September 15, 2026",
   },
   openGraph: {
-    title: "MediVault — Patient-Owned Digital Health Records & AI Vault",
+    title: "MediVault — Sovereign Digital Health Vault & AI Medical Records",
     description:
       "Secure digital health vault with AI prescription OCR, emergency trauma QR passes, and tamper-proof medical records notarized on Polygon blockchain.",
     url: APP_URL,
@@ -98,7 +98,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "MediVault — Patient-Owned Digital Health Records & AI Vault",
+    title: "MediVault — Sovereign Digital Health Vault & AI Medical Records",
     description:
       "Secure digital health vault with AI prescription OCR, emergency trauma QR passes, and tamper-proof medical records notarized on Polygon blockchain.",
     creator: "@medivault",
@@ -189,7 +189,7 @@ const jsonLd = {
       "@type": "WebPage",
       "@id": `${APP_URL}/#webpage`,
       "url": APP_URL,
-      "name": "MediVault — Patient-Owned Digital Health Records & AI Vault",
+      "name": "MediVault — Sovereign Digital Health Vault & AI Medical Records",
       "description": "Patient-owned electronic medical records, AI prescription scanner, and emergency medical QR pass secured with cryptographic blockchain proofs.",
       "datePublished": "2026-08-01T00:00:00Z",
       "dateModified": "2026-09-15T00:00:00Z",

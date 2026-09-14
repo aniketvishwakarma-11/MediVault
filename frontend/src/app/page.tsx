@@ -653,14 +653,13 @@ export default function Home() {
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans selection:bg-cyan-100 selection:text-cyan-900">
       <Navbar />
       <main id="main-content" className="flex-1 pt-16">
-        {/* Visible Breadcrumb Navigation for Hierarchical Context & LLM Citations */}
-        <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-1">
-          <ol className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+        {/* Semantic Breadcrumb Navigation for Hierarchical Context & LLM Citations (Accessible to Bots/Agents) */}
+        <nav aria-label="Breadcrumb" className="sr-only">
+          <ol>
             <li>
-              <Link href="/" className="hover:text-cyan-700 transition-colors">Home</Link>
+              <Link href="/">Home</Link>
             </li>
-            <li aria-hidden="true" className="text-slate-300">/</li>
-            <li aria-current="page" className="font-semibold text-cyan-900">
+            <li aria-current="page">
               Digital Health Vault &amp; AI Records
             </li>
           </ol>
@@ -669,7 +668,7 @@ export default function Home() {
         {/* ══════════════════════════════════════════════════════
             HERO SECTION — High Impact Clinical OS Preview
         ══════════════════════════════════════════════════════ */}
-        <section className="bg-white border-b border-slate-200 pt-8 pb-16 sm:pt-12 sm:pb-24 relative overflow-hidden">
+        <section className="bg-white border-b border-slate-200 pt-12 pb-16 sm:pt-16 sm:pb-24 relative overflow-hidden">
           {/* Subtle Grid Background */}
           <div
             className="absolute inset-0 pointer-events-none opacity-[0.35]"
@@ -695,16 +694,17 @@ export default function Home() {
                   <span>Web3 Sovereign Health Vault · Polygon Blockchain Notarized · ABDM Integrated</span>
                 </motion.div>
 
-                {/* Main Headline (Aligned with Title Tag for SEO) */}
+                {/* Main Headline */}
                 <motion.h1
                   variants={fadeUp}
                   id="page-title"
                   className="text-3xl sm:text-5xl lg:text-[3.25rem] font-black text-slate-900 leading-[1.12] tracking-tight"
                 >
-                  Patient-Owned Digital Health Vault{" "}
+                  Your Sovereign Digital Health Vault.{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-700 via-sky-600 to-emerald-600">
-                    &amp; AI Medical Records
-                  </span>
+                    Blockchain Verified.
+                  </span>{" "}
+                  Always In Your Pocket.
                 </motion.h1>
 
                 {/* Subtitle */}
@@ -714,29 +714,6 @@ export default function Home() {
                 >
                   MediVault unifies 14-digit ABHA IDs, DigiLocker records, AI handwritten prescription scanning, and Polygon blockchain notarization into a zero-knowledge, tamper-proof medical vault.
                 </motion.p>
-
-                {/* Top Summary / Key Takeaway for AEO & GEO Extractability */}
-                <motion.div
-                  variants={fadeUp}
-                  className="seo-answer-snippet p-4 rounded-2xl bg-cyan-50/80 border border-cyan-200/80 text-xs sm:text-sm text-slate-800 space-y-1.5 shadow-2xs text-left"
-                >
-                  <div className="flex items-center gap-1.5 font-bold text-cyan-900 text-[11px] uppercase tracking-wider">
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
-                    <span>Key Takeaways: What Is MediVault?</span>
-                  </div>
-                  <p className="leading-relaxed text-slate-700 text-xs sm:text-[13px]">
-                    <strong>MediVault is a patient-owned digital health vault</strong> that unifies 14-digit government ABHA IDs, AI-powered handwritten prescription OCR, and Polygon blockchain notarization into an encrypted clinical locker. Patients maintain zero-knowledge ownership of medical history, grant time-bound consent to doctors, and provide first responders with emergency trauma QR passes without requiring crypto wallets or transaction gas fees.
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-slate-500 pt-1.5 border-t border-cyan-200/60">
-                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>
-                      Medically reviewed by MediVault Clinical Advisory ·{" "}
-                      <time dateTime="2026-09-15" className="font-semibold text-slate-700">
-                        Updated September 15, 2026
-                      </time>
-                    </span>
-                  </div>
-                </motion.div>
 
                 {/* High-Intent CTAs */}
                 <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2">
@@ -1135,6 +1112,28 @@ export default function Home() {
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl mx-auto">
                 MediVault operates at the intersection of consumer health data ownership, emergency trauma triage, and statutory health data compliance under ABDM and the DPDP Act 2023.
+              </p>
+            </div>
+
+            {/* Top Summary / Key Takeaways for AEO & GEO Extractability */}
+            <div className="seo-answer-snippet mb-10 p-5 rounded-2xl bg-white border border-cyan-200/80 text-xs sm:text-sm text-slate-800 space-y-2 shadow-2xs max-w-4xl mx-auto text-left">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-900 text-xs uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-cyan-600" />
+                  <span>Platform Takeaways: What Is MediVault?</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>
+                    Clinically reviewed by MediVault Advisory ·{" "}
+                    <time dateTime="2026-09-15" className="font-semibold text-slate-700">
+                      Updated September 15, 2026
+                    </time>
+                  </span>
+                </div>
+              </div>
+              <p className="leading-relaxed text-slate-700 text-xs sm:text-[13px]">
+                <strong>MediVault is a sovereign digital health vault</strong> that unifies 14-digit government ABHA IDs, AI-powered handwritten prescription OCR, and Polygon blockchain notarization into an encrypted clinical locker. Patients maintain zero-knowledge ownership of medical history, grant time-bound consent to doctors, and provide first responders with emergency trauma QR passes without requiring crypto wallets or transaction gas fees.
               </p>
             </div>
 
